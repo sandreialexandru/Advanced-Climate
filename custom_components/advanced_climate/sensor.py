@@ -56,6 +56,9 @@ class PresenceSensor(HouseEntity, SensorEntity):
 
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = list(PRESENCE_STATES)
+    _unrecorded_attributes = frozenset(
+        {"advanced_climate_house", "entry_id", "house_name", "house_entities"}
+    )
 
     def __init__(self, house: House) -> None:
         """Initialize."""
@@ -76,6 +79,12 @@ class PresenceSensor(HouseEntity, SensorEntity):
             "vacation_active": self.house.vacation_active(),
             "pending": self.house.presence.pending,
             "pending_since": iso(self.house.presence.pending_since),
+            "advanced_climate_house": True,
+            "entry_id": self.house.entry.entry_id,
+            "house_name": self.house.entry.title,
+            "house_entities": entity_map(
+                self.hass, self.house.entry.entry_id, HOUSE_ENTITY_KEYS
+            ),
         }
 
 

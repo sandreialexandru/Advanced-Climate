@@ -15,7 +15,7 @@
  *   collapsed: false             # rooms start folded (header only)
  */
 
-const CARD_VERSION = "1.1.0";
+const CARD_VERSION = "1.1.1";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -194,8 +194,13 @@ class AdvancedClimateCard extends HTMLElement {
     this.shadowRoot.addEventListener("toggle", (ev) => this._onToggle(ev), true);
   }
 
-  static getConfigElement() {
-    return document.createElement("advanced-climate-card-editor");
+  static getConfigForm() {
+    const lang = (document.querySelector("home-assistant")?.hass?.locale?.language || navigator.language || "en").slice(0, 2);
+    const labels = EDITOR_LABELS[lang] || EDITOR_LABELS.en;
+    return {
+      schema: EDITOR_SCHEMA,
+      computeLabel: (schema) => labels[schema.name] || schema.name,
+    };
   }
 
   static getStubConfig() {
@@ -203,6 +208,12 @@ class AdvancedClimateCard extends HTMLElement {
   }
 
   setConfig(config) {
+    if (config === null || typeof config !== "object" || Array.isArray(config)) {
+      throw new Error("Invalid configuration");
+    }
+    if (config.rooms !== undefined && !Array.isArray(config.rooms)) {
+      throw new Error("'rooms' must be a list of Decision sensors");
+    }
     const merged = { ...DEFAULTS, ...(config || {}) };
     if (config && config.show_editor === false) merged.show_schedule_editor = false;
     if (config && config.entity && !config.rooms) merged.rooms = [config.entity];
@@ -262,6 +273,18 @@ class AdvancedClimateCard extends HTMLElement {
 
   _houses() {
     const houses = new Map();
+    const filtered = Array.isArray(this._config?.rooms) && this._config.rooms.length;
+    for (const s of Object.values(this._hass.states)) {
+      const a = s.attributes || {};
+      if (!a.advanced_climate_house || !a.entry_id) continue;
+      houses.set(a.entry_id, {
+        id: a.entry_id,
+        name: a.house_name,
+        entities: a.house_entities || {},
+        rooms: [],
+        standalone: true,
+      });
+    }
     for (const room of this._rooms()) {
       const a = room.attributes;
       if (!houses.has(a.entry_id)) {
@@ -272,9 +295,12 @@ class AdvancedClimateCard extends HTMLElement {
           rooms: [],
         });
       }
-      houses.get(a.entry_id).rooms.push(room);
+      const house = houses.get(a.entry_id);
+      house.standalone = false;
+      house.rooms.push(room);
     }
-    return [...houses.values()];
+    // With an explicit room list, only the houses of those rooms are shown.
+    return [...houses.values()].filter((h) => !filtered || h.rooms.length);
   }
 
   _watched() {
@@ -339,7 +365,11 @@ class AdvancedClimateCard extends HTMLElement {
         .map(
           (house) =>
             (cfg.show_house ? this._houseHtml(house) : "") +
-            (cfg.show_rooms ? house.rooms.map((r) => this._roomHtml(r)).join("") : "")
+            (cfg.show_rooms
+              ? house.rooms.length
+                ? house.rooms.map((r) => this._roomHtml(r)).join("")
+                : `<p class="empty">${this._t("no_rooms")}</p>`
+              : "")
         )
         .join("");
     }
@@ -1028,55 +1058,51 @@ const EDITOR_LABELS = {
   },
 };
 
-class AdvancedClimateCardEditor extends HTMLElement {
-  setConfig(config) {
-    this._config = { ...DEFAULTS, ...(config || {}) };
-    this._render();
-  }
-
-  set hass(hass) {
-    this._hass = hass;
-    if (this._form) this._form.hass = hass;
-    else this._render();
-  }
-
-  _render() {
-    if (!this._hass || !this._config) return;
-    if (!this._form) {
-      this._form = document.createElement("ha-form");
-      this._form.addEventListener("value-changed", (ev) => {
-        const config = { ...ev.detail.value };
-        for (const [k, v] of Object.entries(DEFAULTS)) if (config[k] === v) delete config[k];
-        if (!config.title) delete config.title;
-        if (Array.isArray(config.rooms) && !config.rooms.length) delete config.rooms;
-        this._config = { ...DEFAULTS, ...config };
-        this.dispatchEvent(
-          new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true })
-        );
-      });
-      this.appendChild(this._form);
+// ---------------------------------------------------------------- register
+// Some Home Assistant setups replace window.customElements after page load
+// (scoped custom element registry). Anything defined before the swap is not
+// visible to the new registry and Lovelace reports that the card does not
+// exist, so the card is defined again for a few seconds if needed.
+const CARD_TAG = "advanced-climate-card";
+const registerCard = () => {
+  try {
+    if (!window.customElements.get(CARD_TAG)) {
+      window.customElements.define(CARD_TAG, AdvancedClimateCard);
+      return true;
     }
-    const lang = (this._hass.locale?.language || "en").slice(0, 2);
-    const labels = EDITOR_LABELS[lang] || EDITOR_LABELS.en;
-    this._form.hass = this._hass;
-    this._form.schema = EDITOR_SCHEMA;
-    this._form.data = this._config;
-    this._form.computeLabel = (s) => labels[s.name] || s.name;
+  } catch (err) {
+    if (!window.customElements.get(CARD_TAG)) {
+      try {
+        window.customElements.define(CARD_TAG, class extends AdvancedClimateCard {});
+        return true;
+      } catch (err2) {
+        console.warn("advanced-climate-card: could not register on the current registry", err2);
+      }
+    }
   }
-}
+  return false;
+};
 
-if (!customElements.get("advanced-climate-card-editor")) {
-  customElements.define("advanced-climate-card-editor", AdvancedClimateCardEditor);
-}
-if (!customElements.get("advanced-climate-card")) {
-  customElements.define("advanced-climate-card", AdvancedClimateCard);
+if (!window.__advancedClimateCardLoaded) {
+  window.__advancedClimateCardLoaded = CARD_VERSION;
+  registerCard();
   window.customCards = window.customCards || [];
-  window.customCards.push({
-    type: "advanced-climate-card",
-    name: "Advanced Climate",
-    description: "House and rooms of Advanced Climate with every control and an editable schedule.",
-    preview: true,
-    documentationURL: "https://github.com/sandreialexandru/Advanced-Climate#lovelace-card",
-  });
+  if (!window.customCards.some((c) => c.type === CARD_TAG)) {
+    window.customCards.push({
+      type: CARD_TAG,
+      name: "Advanced Climate",
+      description: "House and rooms of Advanced Climate with every control and an editable schedule.",
+      preview: true,
+      documentationURL: "https://github.com/sandreialexandru/Advanced-Climate#lovelace-card",
+    });
+  }
   console.info(`%c ADVANCED-CLIMATE-CARD %c ${CARD_VERSION} `, "color:#fff;background:#f08c00", "");
+  let checks = 0;
+  const watch = setInterval(() => {
+    registerCard();
+    if (++checks >= 60) clearInterval(watch); // 30 s
+  }, 500);
+  window.addEventListener("location-changed", registerCard);
+} else {
+  registerCard();
 }

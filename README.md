@@ -140,8 +140,11 @@ its decision (`room`, `old_rule`, `rule`, `old_target`, `target`, `reason`).
 
 ## Lovelace card
 
-The card is registered automatically (no resource to add) and has a visual
-editor. With no options it shows every house and room with every control:
+The integration adds the card to the dashboard resources automatically
+(`/advanced_climate/advanced-climate-card.js?v=<version>`, updated on every
+release, so browsers and the companion app load the new version). With
+YAML-mode dashboards add that URL as a `module` resource yourself. The card has
+a visual editor. With no options it shows every house and room with every control:
 
 ```yaml
 type: custom:advanced-climate-card
