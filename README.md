@@ -140,16 +140,28 @@ its decision (`room`, `old_rule`, `rule`, `old_target`, `target`, `reason`).
 
 ## Lovelace card
 
-The card is registered automatically:
+The card is registered automatically (no resource to add) and has a visual
+editor. With no options it shows every house and room with every control:
 
 ```yaml
 type: custom:advanced-climate-card
-# entity: sensor.living_decision   # optional: one room only
-# title: Heating
 ```
 
-It shows every room with the decision, the reason, today's schedule as a 24 h
-timeline and an editor for the profiles.
+| Option | Default | Shows |
+| --- | --- | --- |
+| `title` | Heating | Card title (empty string hides it) |
+| `rooms` | all | List of room *Decision* sensors to show |
+| `show_house` | `true` | Presence and people, outdoor temperature, season, heat demand, heating time, mode (Auto / Vacation / Off / Summer), Pause, Guests, vacation dates, reevaluate and clear all manual changes |
+| `show_rooms` | `true` | The rooms |
+| `show_timeline` | `true` | Today's schedule as a temperature profile, with the current time and the next change |
+| `show_quick_override` | `true` | Set a level or a temperature for a number of hours (empty = the configured rule) |
+| `show_levels` | `true` | Level temperatures (rooms without Generic Thermostat, fixed *nearby* temperature) |
+| `show_details` | `true` | Room and target temperature, heating rate, heating time, active adjustments, level temperatures |
+| `show_schedule_editor` | `true` | Schedule profiles with an editor |
+| `collapsed` | `false` | Rooms start folded; tap the room name to open it |
+
+Every room also shows its decision, the reason, heating / window / manual change
+badges, the *Profile* select, the *Child lock* switch and *Back to automatic*.
 
 ## Translations
 

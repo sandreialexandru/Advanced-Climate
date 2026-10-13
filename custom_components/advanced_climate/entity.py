@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 
-from .const import DOMAIN, SIGNAL_UPDATE
+from .const import DOMAIN, PRESETS, SIGNAL_UPDATE
 from .house import House
 from .room import Room
 
@@ -74,3 +76,48 @@ class RoomEntity(Entity):
                 self.async_write_ha_state,
             )
         )
+
+
+HOUSE_ENTITY_KEYS: dict[str, str] = {
+    "mode": "select",
+    "presence": "sensor",
+    "outdoor_average": "sensor",
+    "heating_runtime": "sensor",
+    "heating_season": "binary_sensor",
+    "outdoor_cutoff": "binary_sensor",
+    "heat_demand": "binary_sensor",
+    "pause": "switch",
+    "guest_mode": "switch",
+    "vacation_start": "datetime",
+    "vacation_end": "datetime",
+    "clear_overrides": "button",
+    "reevaluate": "button",
+    "clear_vacation": "button",
+}
+
+ROOM_ENTITY_KEYS: dict[str, str] = {
+    "decision": "sensor",
+    "target_temperature": "sensor",
+    "room_temperature": "sensor",
+    "next_change": "sensor",
+    "heating_rate": "sensor",
+    "heating_runtime": "sensor",
+    "heat_demand": "binary_sensor",
+    "window_open": "binary_sensor",
+    "manual_override": "binary_sensor",
+    "profile": "select",
+    "child_lock": "switch",
+    "clear_override": "button",
+    **{f"level_{preset}": "number" for preset in (*PRESETS, "nearby")},
+}
+
+
+def entity_map(hass: HomeAssistant, prefix: str, keys: dict[str, str]) -> dict[str, str]:
+    """Map entity keys to their current entity ids (used by the card)."""
+    registry = er.async_get(hass)
+    result: dict[str, str] = {}
+    for key, domain in keys.items():
+        entity_id = registry.async_get_entity_id(domain, DOMAIN, f"{prefix}_{key}")
+        if entity_id:
+            result[key] = entity_id
+    return result
