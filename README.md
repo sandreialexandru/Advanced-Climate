@@ -61,9 +61,14 @@ Requires Home Assistant **2025.7** or newer.
 
 ## Configuration
 
-1. **Create the house**: name, people, nearby zones and the home rule.
-2. **Add rooms** with *Add room* on the integration page. Each room has its own
-   devices, sensors, windows and schedule.
+1. **Create the house**: name, people, nearby zones and the home rule, then the
+   **heating of the whole house** (e.g. your Generic Thermostat). That is enough
+   for a house heated by one thermostat: it becomes a zone named like the house
+   and uses every option. It can be changed later in *Configure → Heating of the
+   whole house*.
+2. Optionally **add rooms** with *Add room* on the integration page, for rooms
+   with their own valves or thermostats. Each room has its own devices,
+   sensors, windows and schedule.
 3. Everything else is in the integration **options** (presence, workdays and
    calendar, weather and season, energy, boiler, manual changes and vacation,
    alerts).

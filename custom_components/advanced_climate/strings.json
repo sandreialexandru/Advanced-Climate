@@ -14,14 +14,48 @@
           "nearby_zones": "Zones (e.g. the city) where the house is 'nearby' instead of 'far'.",
           "home_rule": "Whether one person at home is enough or everybody has to be home."
         }
+      },
+      "heating": {
+        "title": "Heating of the whole house",
+        "description": "The thermostat (or relay) that heats the whole house. It becomes the zone '{zone}' and works with every option of the house. Rooms with their own valves can be added later with \"Add room\".",
+        "data": {
+          "source": "Heated by",
+          "climates": "Thermostats",
+          "switches": "Switches (relays)",
+          "command_mode": "Command"
+        },
+        "data_description": {
+          "source": "Choose 'No heating devices yet' to add only rooms.",
+          "climates": "For Generic Thermostat choose its climate entity (e.g. climate.climate).",
+          "command_mode": "How the thermostats are controlled."
+        }
       }
+    },
+    "error": {
+      "no_devices": "Select at least one device."
     }
   },
   "options": {
     "step": {
+      "heating": {
+        "title": "Heating of the whole house",
+        "description": "The thermostat (or relay) that heats the whole house. It becomes the zone '{zone}' and works with every option of the house. Rooms with their own valves can be added later with \"Add room\".",
+        "data": {
+          "source": "Heated by",
+          "climates": "Thermostats",
+          "switches": "Switches (relays)",
+          "command_mode": "Command"
+        },
+        "data_description": {
+          "source": "Choose 'No heating devices yet' to add only rooms.",
+          "climates": "For Generic Thermostat choose its climate entity (e.g. climate.climate).",
+          "command_mode": "How the thermostats are controlled."
+        }
+      },
       "init": {
         "title": "Advanced Climate options",
         "menu_options": {
+          "heating": "Heating of the whole house",
           "presence": "Presence",
           "calendar": "Workdays and calendar",
           "weather": "Weather and season",
@@ -168,7 +202,8 @@
       }
     },
     "error": {
-      "invalid_month_day": "Use the MM-DD format, e.g. 10-15."
+      "invalid_month_day": "Use the MM-DD format, e.g. 10-15.",
+      "no_devices": "Select at least one device."
     }
   },
   "config_subentries": {
@@ -474,6 +509,14 @@
         "generic_thermostat": "Generic Thermostat",
         "climate": "Other thermostats / TRVs",
         "switch": "Switch (relay)"
+      }
+    },
+    "house_source": {
+      "options": {
+        "generic_thermostat": "Generic Thermostat",
+        "climate": "Other thermostats / TRVs",
+        "switch": "Switch (relay)",
+        "none": "No heating devices yet"
       }
     },
     "command_mode": {

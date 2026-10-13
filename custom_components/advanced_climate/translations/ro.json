@@ -14,14 +14,48 @@
           "nearby_zones": "Zone (de ex. orașul) în care casa e „aproape”, nu „departe”.",
           "home_rule": "Dacă ajunge o persoană acasă sau trebuie să fie toți."
         }
+      },
+      "heating": {
+        "title": "Încălzirea întregii case",
+        "description": "Termostatul (sau releul) care încălzește toată casa. Devine zona „{zone}” și folosește toate opțiunile casei. Camerele cu robinete proprii se pot adăuga mai târziu cu „Adaugă cameră”.",
+        "data": {
+          "source": "Încălzită prin",
+          "climates": "Termostate",
+          "switches": "Comutatoare (relee)",
+          "command_mode": "Comandă"
+        },
+        "data_description": {
+          "source": "Alege „Încă fără dispozitive” ca să adaugi doar camere.",
+          "climates": "Pentru Generic Thermostat alege entitatea lui climate (de ex. climate.climate).",
+          "command_mode": "Cum sunt comandate termostatele."
+        }
       }
+    },
+    "error": {
+      "no_devices": "Alege cel puțin un dispozitiv."
     }
   },
   "options": {
     "step": {
+      "heating": {
+        "title": "Încălzirea întregii case",
+        "description": "Termostatul (sau releul) care încălzește toată casa. Devine zona „{zone}” și folosește toate opțiunile casei. Camerele cu robinete proprii se pot adăuga mai târziu cu „Adaugă cameră”.",
+        "data": {
+          "source": "Încălzită prin",
+          "climates": "Termostate",
+          "switches": "Comutatoare (relee)",
+          "command_mode": "Comandă"
+        },
+        "data_description": {
+          "source": "Alege „Încă fără dispozitive” ca să adaugi doar camere.",
+          "climates": "Pentru Generic Thermostat alege entitatea lui climate (de ex. climate.climate).",
+          "command_mode": "Cum sunt comandate termostatele."
+        }
+      },
       "init": {
         "title": "Opțiuni Advanced Climate",
         "menu_options": {
+          "heating": "Încălzirea întregii case",
           "presence": "Prezență",
           "calendar": "Zile lucrătoare și calendar",
           "weather": "Vreme și sezon",
@@ -168,7 +202,8 @@
       }
     },
     "error": {
-      "invalid_month_day": "Folosește formatul LL-ZZ, de ex. 10-15."
+      "invalid_month_day": "Folosește formatul LL-ZZ, de ex. 10-15.",
+      "no_devices": "Alege cel puțin un dispozitiv."
     }
   },
   "config_subentries": {
@@ -474,6 +509,14 @@
         "generic_thermostat": "Generic Thermostat",
         "climate": "Alte termostate / TRV-uri",
         "switch": "Comutator (releu)"
+      }
+    },
+    "house_source": {
+      "options": {
+        "generic_thermostat": "Generic Thermostat",
+        "climate": "Alte termostate / TRV-uri",
+        "switch": "Comutator (releu)",
+        "none": "Încă fără dispozitive"
       }
     },
     "command_mode": {
