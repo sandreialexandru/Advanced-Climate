@@ -624,7 +624,7 @@
         },
         "profiles": {
           "name": "Profiles",
-          "description": "Profiles as an object: {\"workday\": [{\"time\": \"06:00\", \"preset\": \"home\"}]}"
+          "description": "Profiles as an object: profile name -> list of time and preset (used by the card)."
         }
       }
     }

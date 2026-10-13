@@ -25,4 +25,15 @@ jobs:
         with:
           python-version: "3.14"
       - run: pip install -r requirements_test.txt
-      - run: pytest -v
+      - name: pytest
+        run: |
+          set +e
+          pytest -v -p no:cacheprovider > pytest.log 2>&1
+          status=$?
+          cat pytest.log
+          if [ $status -ne 0 ]; then
+            summary=$(grep -E "^(FAILED|ERROR)|Error|error:|assert" pytest.log | head -40 | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=pytest failed::${summary}"
+            tail -60 pytest.log | sed ':a;N;$!ba;s/\n/%0A/g' | sed 's/^/::warning title=pytest tail::/'
+          fi
+          exit $status
