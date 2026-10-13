@@ -366,6 +366,14 @@ class Room:
                 return list(state.attributes.get("preset_modes") or [])  # type: ignore[union-attr]
         return []
 
+    def device_preset(self) -> str | None:
+        """Preset currently active on the first available thermostat."""
+        for entity_id in self.climates:
+            state = self.hass.states.get(entity_id)
+            if valid(state):
+                return state.attributes.get("preset_mode")  # type: ignore[union-attr]
+        return None
+
     def frost_temp(self) -> float:
         """Frost protection temperature."""
         if self.source == SOURCE_GT:

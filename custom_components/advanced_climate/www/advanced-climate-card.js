@@ -15,7 +15,7 @@
  *   collapsed: false             # rooms start folded (header only)
  */
 
-const CARD_VERSION = "1.3.0";
+const CARD_VERSION = "1.3.1";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -111,7 +111,10 @@ const TEXT = {
     persons: "People",
     on: "On",
     off: "Off",
-    level_temps_gt: "Set in Generic Thermostat",
+    level_temps_gt: "Preset temperatures (set in Generic Thermostat)",
+    device_preset: "Thermostat preset now",
+    no_preset: "none (manual temperature)",
+    active: "active",
   },
   ro: {
     title: "Încălzire",
@@ -184,7 +187,10 @@ const TEXT = {
     persons: "Persoane",
     on: "Pornit",
     off: "Oprit",
-    level_temps_gt: "Setate în Generic Thermostat",
+    level_temps_gt: "Temperaturile preseturilor (setate în Generic Thermostat)",
+    device_preset: "Preset în termostat acum",
+    no_preset: "niciunul (temperatură manuală)",
+    active: "activ",
   },
 };
 
@@ -778,28 +784,35 @@ class AdvancedClimateCard extends HTMLElement {
     const offsets =
       (a.offsets || []).map(([label, delta]) => `${label} ${delta > 0 ? "+" : ""}${delta}°`).join(", ") ||
       this._t("none");
+    const active = a.device_preset;
     const levelTemps = Object.entries(a.levels || {})
       .filter(([, t]) => t !== null && t !== undefined)
       .map(
         ([p, t]) =>
-          `<span class="lv"><span class="dot" style="--c:${PRESET_COLORS[p]}"></span>${esc(
+          `<span class="lv ${p === active ? "active" : ""}"><span class="dot" style="--c:${PRESET_COLORS[p]}"></span>${esc(
             this._presetName(a, p)
-          )} ${t}°</span>`
+          )} ${t}°${p === active ? ` <small>${this._t("active")}</small>` : ""}</span>`
       )
       .join("");
+    const devicePreset =
+      a.climate_entities && a.climate_entities.length
+        ? !active || active === "none"
+          ? this._t("no_preset")
+          : this._presetName(a, active)
+        : null;
     const dl = (k, v) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`;
     const html = `<dl class="details">
         ${dl(this._t("room_temp"), esc(this._temp(a.current_temperature)))}
         ${dl(this._t("target"), esc(this._temp(a.target_temperature)))}
         ${rate ? dl(this._t("rate"), `${esc(num(rate.state)?.toFixed(2) ?? "–")} °C/h`) : ""}
         ${runtime ? dl(this._t("runtime"), `${esc(num(runtime.state)?.toFixed(1) ?? "–")} h`) : ""}
+        ${devicePreset !== null ? dl(this._t("device_preset"), esc(devicePreset)) : ""}
         ${dl(this._t("adjustments"), esc(offsets))}
       </dl>
       ${
         levelTemps
-          ? `<div class="levels-line">${levelTemps}${
-              a.custom_levels ? "" : ` <span class="muted">${this._t("level_temps_gt")}</span>`
-            }</div>`
+          ? `<div class="label">${a.custom_levels ? this._t("levels") : this._t("level_temps_gt")}</div>
+             <div class="levels-line">${levelTemps}</div>`
           : ""
       }
       ${a.schedule_error ? `<p class="error">${esc(a.schedule_error)}</p>` : ""}`;
@@ -1216,7 +1229,8 @@ const STYLE = `
   .details dt { font-size: 0.75em; color: var(--ac-muted); }
   .details dd { margin: 2px 0 0; font-variant-numeric: tabular-nums; font-weight: 500; }
   .levels-line { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.85em; align-items: center; }
-  .lv { display: inline-flex; gap: 5px; align-items: center; }
+  .lv { display: inline-flex; gap: 5px; align-items: center; padding: 2px 8px; border-radius: 999px; }
+  .lv.active { background: var(--ac-surface-2); font-weight: 600; }
 
   /* schedule */
   .profiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
