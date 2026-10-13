@@ -118,3 +118,25 @@ async def test_set_schedule_service(hass: HomeAssistant, freezer: FrozenDateTime
     assert hass.states.get("sensor.bedroom_decision").attributes["preset"] == "eco"
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_card_resource(hass: HomeAssistant) -> None:
+    """The card is added to (and kept up to date in) the dashboard resources."""
+    from custom_components.advanced_climate.const import CARD_URL
+    from custom_components.advanced_climate.frontend import (
+        async_ensure_lovelace_resource,
+        async_remove_lovelace_resource,
+        lovelace_resources,
+    )
+
+    assert await async_setup_component(hass, "lovelace", {})
+    resources = lovelace_resources(hass)
+    assert resources is not None
+    assert await async_ensure_lovelace_resource(hass, f"{CARD_URL}?v=1.0.0")
+    assert await async_ensure_lovelace_resource(hass, f"{CARD_URL}?v=1.1.1")
+    mine = [i for i in resources.async_items() if i["url"].startswith(CARD_URL)]
+    assert len(mine) == 1
+    assert mine[0]["url"] == f"{CARD_URL}?v=1.1.1"
+    assert mine[0]["type"] == "module"
+    await async_remove_lovelace_resource(hass)
+    assert not [i for i in resources.async_items() if i["url"].startswith(CARD_URL)]

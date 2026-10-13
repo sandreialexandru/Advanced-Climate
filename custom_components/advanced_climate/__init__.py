@@ -11,7 +11,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
-from .frontend import async_register_card
+from .frontend import async_register_card, async_remove_lovelace_resource
 from .house import House
 from .services import async_setup_services
 
@@ -60,3 +60,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: AdvancedClimateConfigEn
     if unloaded:
         await entry.runtime_data.async_unload()
     return unloaded
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove the dashboard resource when the last house is deleted."""
+    if hass.config_entries.async_entries(DOMAIN):
+        return
+    await async_remove_lovelace_resource(hass)
