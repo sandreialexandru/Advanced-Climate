@@ -818,7 +818,7 @@ class House:
                 )
             else:
                 await self.hass.services.async_call(
-                    "homeassistant",
+                    domain,
                     SERVICE_TURN_ON if demand else SERVICE_TURN_OFF,
                     {"entity_id": boiler},
                     blocking=True,
