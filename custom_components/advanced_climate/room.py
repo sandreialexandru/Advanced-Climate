@@ -54,6 +54,8 @@ from .const import (
     CONF_OPTIMAL_STOP_MINUTES,
     CONF_OVERRIDE_HOURS,
     CONF_OVERRIDE_MODE,
+    CONF_LEVELS,
+    CONF_PRESET_MAP,
     CONF_PRESET_NAMES,
     CONF_SCHEDULE,
     CONF_SCHEDULE_HELPER,
@@ -147,6 +149,21 @@ class Room:
         self.preset_names: dict[str, str] = {
             p: (str(names.get(p)).strip() or p) if names.get(p) else p for p in PRESETS
         }
+        # Climate devices commanded with presets: which device preset each level uses.
+        # Levels without a device preset are reached with a temperature.
+        self.preset_map: dict[str, str] | None = None
+        self._legacy_map = False
+        if self.source == SOURCE_CLIMATE and self.command_mode == COMMAND_PRESET:
+            raw = self.config.get(CONF_PRESET_MAP)
+            if raw is None:
+                # Rooms made before 1.4: the level name (or the role) is the device preset.
+                self._legacy_map = True
+                raw = dict(self.preset_names)
+            self.preset_map = {
+                p: str(v).strip() for p, v in dict(raw).items() if p in PRESETS and v and str(v).strip()
+            }
+            if not self._legacy_map:
+                self.preset_names = {p: self.preset_map.get(p, p) for p in PRESETS}
         self.aliases: dict[str, str] = {p: p for p in PRESETS}
         for role, name in self.preset_names.items():
             self.aliases[name.lower()] = role
@@ -160,6 +177,13 @@ class Room:
         self.levels: dict[str, float] = {
             p: float(stored.get("levels", {}).get(p, DEFAULT_LEVEL_TEMPS[p])) for p in PRESETS
         }
+        configured = self.config.get(CONF_LEVELS) or None
+        if configured and configured != stored.get("levels_config"):
+            # New temperatures chosen in the room settings win over older edits.
+            for preset, value in configured.items():
+                if preset in PRESETS and value is not None:
+                    self.levels[preset] = float(value)
+        self.levels_config: dict[str, float] | None = configured
         self.nearby_temp: float = float(
             stored.get("nearby_temp", self.config.get(CONF_NEARBY_TEMP) or 17.0)
         )
@@ -269,6 +293,7 @@ class Room:
             }
         return {
             "levels": self.levels,
+            "levels_config": self.levels_config,
             "nearby_temp": self.nearby_temp,
             "override": override,
             "child_lock": self.child_lock,
@@ -301,6 +326,42 @@ class Room:
     def uses_custom_levels(self) -> bool:
         """True when the temperatures of the levels are set by this integration."""
         return self.source != SOURCE_GT
+
+    @property
+    def device_levels(self) -> list[str]:
+        """Levels whose temperature is kept by the thermostat itself."""
+        if self.source == SOURCE_GT:
+            return list(PRESETS)
+        if self.preset_map is None:
+            return []
+        if self._legacy_map:
+            available = self.device_presets()
+            return [p for p in PRESETS if self._device_preset(p, available) is not None]
+        return [p for p in PRESETS if p in self.preset_map]
+
+    @property
+    def editable_levels(self) -> list[str]:
+        """Levels whose temperature is set in this integration."""
+        if self.source == SOURCE_GT:
+            return []
+        if self._legacy_map:
+            # Rooms made before 1.4 keep every level editable until reconfigured.
+            return list(PRESETS)
+        return [p for p in PRESETS if p not in self.device_levels]
+
+    def level_of_device_preset(self, name: str | None) -> str | None:
+        """Level that uses the given device preset."""
+        if not name:
+            return None
+        if self.source == SOURCE_GT:
+            return name if name in PRESETS else None
+        if self.preset_map is not None:
+            for preset, device in self.preset_map.items():
+                if device == name:
+                    return preset
+            if self._legacy_map and name in PRESETS:
+                return name
+        return None
 
     @property
     def supports_valve_exercise(self) -> bool:
@@ -348,7 +409,10 @@ class Room:
         """Return the temperature of a level, if known."""
         if preset not in PRESETS:
             return None
-        if self.uses_custom_levels:
+        if self.source != SOURCE_GT:
+            if preset in self.device_levels and preset in self.observed_temps:
+                # The thermostat keeps this preset; show what it really uses.
+                return self.observed_temps[preset]
             return self.levels.get(preset)
         value = self._gt_options().get(GT_PRESET_KEYS[preset])
         if value is not None:
@@ -433,12 +497,12 @@ class Room:
         self.house.async_request_evaluate()
 
     def _remember_preset_temp(self, state: State | None) -> None:
-        """Learn GT preset temperatures from the climate state."""
+        """Learn the temperatures of the thermostat presets from the climate state."""
         if not valid(state):
             return
-        preset = state.attributes.get("preset_mode")  # type: ignore[union-attr]
+        preset = self.level_of_device_preset(state.attributes.get("preset_mode"))  # type: ignore[union-attr]
         temperature = float_attr(state, ATTR_TEMPERATURE)
-        if preset in PRESETS and temperature is not None:
+        if preset is not None and temperature is not None:
             self.observed_temps[preset] = temperature
 
     def _is_manual_change(self, event: Event, old: State | None, new: State | None) -> bool:
@@ -937,9 +1001,13 @@ class Room:
         """Map a level to the device preset name."""
         if self.source == SOURCE_GT:
             return preset if preset in available else None
-        name = self.preset_names.get(preset, preset)
-        for candidate in (name, preset):
-            if candidate in available:
+        if self.preset_map is None:
+            return None
+        candidates = [self.preset_map.get(preset)]
+        if self._legacy_map:
+            candidates.append(preset)
+        for candidate in candidates:
+            if candidate and candidate in available:
                 return candidate
         return None
 

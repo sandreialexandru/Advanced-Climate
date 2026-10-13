@@ -242,7 +242,7 @@
         },
         "levels": {
           "title": "Levels",
-          "description": "The levels have fixed roles: home, sleep, eco (nearby), away (far / vacation), comfort and activity.",
+          "description": "The levels have fixed roles: home, sleep, eco (nearby), away (far / vacation), comfort and activity. With preset control, pick the thermostat preset used by each level (presets found: {presets}); the thermostat keeps its temperature. A level without a preset is reached by sending its temperature. With temperature or on/off control, the temperatures below are used and can be changed later from the card.",
           "data": {
             "nearby_mode": "When nobody is home but someone is nearby",
             "nearby_temp": "Fixed temperature when nearby",
@@ -251,10 +251,34 @@
             "name_eco": "Name of the 'eco' level",
             "name_away": "Name of the 'away' level",
             "name_comfort": "Name of the 'comfort' level",
-            "name_activity": "Name of the 'activity' level"
+            "name_activity": "Name of the 'activity' level",
+            "device_home": "Thermostat preset for 'home'",
+            "device_sleep": "Thermostat preset for 'sleep'",
+            "device_eco": "Thermostat preset for 'eco'",
+            "device_away": "Thermostat preset for 'away'",
+            "device_comfort": "Thermostat preset for 'comfort'",
+            "device_activity": "Thermostat preset for 'activity'",
+            "temp_home": "Temperature of 'home'",
+            "temp_sleep": "Temperature of 'sleep'",
+            "temp_eco": "Temperature of 'eco'",
+            "temp_away": "Temperature of 'away'",
+            "temp_comfort": "Temperature of 'comfort'",
+            "temp_activity": "Temperature of 'activity'"
           },
           "data_description": {
-            "nearby_mode": "Use the eco preset or a fixed temperature."
+            "nearby_mode": "Use the eco preset or a fixed temperature.",
+            "device_home": "Empty = no preset: the temperature below is sent instead.",
+            "device_sleep": "Empty = no preset: the temperature below is sent instead.",
+            "device_eco": "Empty = no preset: the temperature below is sent instead.",
+            "device_away": "Empty = no preset: the temperature below is sent instead.",
+            "device_comfort": "Empty = no preset: the temperature below is sent instead.",
+            "device_activity": "Empty = no preset: the temperature below is sent instead.",
+            "temp_home": "With a thermostat preset, used only if the thermostat does not report the preset temperature.",
+            "temp_sleep": "With a thermostat preset, used only if the thermostat does not report the preset temperature.",
+            "temp_eco": "With a thermostat preset, used only if the thermostat does not report the preset temperature.",
+            "temp_away": "With a thermostat preset, used only if the thermostat does not report the preset temperature.",
+            "temp_comfort": "With a thermostat preset, used only if the thermostat does not report the preset temperature.",
+            "temp_activity": "With a thermostat preset, used only if the thermostat does not report the preset temperature."
           }
         },
         "sensors": {

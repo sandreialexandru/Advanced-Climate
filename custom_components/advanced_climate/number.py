@@ -5,10 +5,11 @@ from __future__ import annotations
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.const import EntityCategory, UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import AdvancedClimateConfigEntry
-from .const import CONF_NEARBY_MODE, NEARBY_TEMPERATURE, PRESETS
+from .const import CONF_NEARBY_MODE, DOMAIN, NEARBY_TEMPERATURE, PRESETS
 from .entity import RoomEntity
 from .room import Room
 
@@ -20,14 +21,24 @@ async def async_setup_entry(
 ) -> None:
     """Set up numbers."""
     house = entry.runtime_data
+    registry = er.async_get(hass)
     for room in house.rooms.values():
-        entities: list[NumberEntity] = []
-        if room.uses_custom_levels:
-            entities += [LevelNumber(room, preset) for preset in PRESETS]
+        wanted = list(room.editable_levels)
         if room.config.get(CONF_NEARBY_MODE) == NEARBY_TEMPERATURE:
-            entities.append(LevelNumber(room, "nearby"))
-        if entities:
-            async_add_entities(entities, config_subentry_id=room.id)
+            wanted.append("nearby")
+        # Levels now kept by the thermostat (or no longer used) lose their number.
+        for preset in (*PRESETS, "nearby"):
+            if preset in wanted:
+                continue
+            entity_id = registry.async_get_entity_id(
+                "number", DOMAIN, f"{room.id}_level_{preset}"
+            )
+            if entity_id:
+                registry.async_remove(entity_id)
+        if wanted:
+            async_add_entities(
+                [LevelNumber(room, preset) for preset in wanted], config_subentry_id=room.id
+            )
 
 
 class LevelNumber(RoomEntity, NumberEntity):
