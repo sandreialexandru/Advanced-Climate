@@ -15,7 +15,7 @@
  *   collapsed: false             # rooms start folded (header only)
  */
 
-const CARD_VERSION = "1.2.2";
+const CARD_VERSION = "1.3.0";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -25,6 +25,8 @@ const PRESET_COLORS = {
   sleep: "#5f6fd1",
   away: "#8a96a3",
 };
+
+const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
 const DEFAULTS = {
   show_house: true,
@@ -40,6 +42,25 @@ const DEFAULTS = {
 const TEXT = {
   en: {
     title: "Heating",
+    now_tag: "Now",
+    target_tag: "Target",
+    arriving: "On the way home",
+    vacation_none: "not planned",
+    vacation_hint: "During the vacation every room uses away. Heating starts again a few hours before the end.",
+    today: "Today",
+    quick_hint: "Keeps a level or a temperature as a manual change. Empty duration = the rule from the options.",
+    days_workday: "Monday–Friday, except holidays",
+    days_weekend: "Saturday, Sunday and holidays",
+    days_weekday: "Every {day}",
+    days_custom: "Chosen manually or by a calendar event",
+    schedule_help: "Each time starts a level that lasts until the next time; the last one lasts until the first time of the next day. The schedule is used while someone is home; windows, manual changes, vacation, presence (nearby = eco, far = away) and the house mode come first.",
+    schedule_active: "The schedule decides right now.",
+    schedule_not_active: "Right now {rule} decides; the schedule applies again when that ends.",
+    next_day: "next day",
+    starts: "From",
+    ends: "Until",
+    level: "Level",
+    remove_profile: "Delete profile",
     presence: "Presence",
     outdoor: "Outdoor",
     season: "Heating season",
@@ -94,6 +115,25 @@ const TEXT = {
   },
   ro: {
     title: "Încălzire",
+    now_tag: "Acum",
+    target_tag: "Țintă",
+    arriving: "Pe drum spre casă",
+    vacation_none: "neplanificată",
+    vacation_hint: "În vacanță toate zonele folosesc away. Încălzirea repornește cu câteva ore înainte de sfârșit.",
+    today: "Azi",
+    quick_hint: "Păstrează un nivel sau o temperatură ca modificare manuală. Durată goală = regula din opțiuni.",
+    days_workday: "Luni–vineri, fără sărbători",
+    days_weekend: "Sâmbătă, duminică și sărbători",
+    days_weekday: "În fiecare {day}",
+    days_custom: "Ales manual sau dintr-un eveniment din calendar",
+    schedule_help: "Fiecare oră pornește un nivel care ține până la ora următoare; ultimul ține până la prima oră din ziua următoare. Programul se folosește cât timp e cineva acasă; ferestrele, modificările manuale, vacanța, prezența (aproape = eco, departe = away) și modul casei au prioritate.",
+    schedule_active: "Acum decide programul.",
+    schedule_not_active: "Acum decide {rule}; programul se aplică din nou după ce se termină.",
+    next_day: "a doua zi",
+    starts: "De la",
+    ends: "Până la",
+    level: "Nivel",
+    remove_profile: "Șterge profilul",
     presence: "Prezență",
     outdoor: "Exterior",
     season: "Sezon de încălzire",
@@ -224,6 +264,7 @@ class AdvancedClimateCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this.style.colorScheme = hass?.themes?.darkMode ? "dark" : "light";
     if (this._editing) return;
     const active = this.shadowRoot.activeElement;
     if (active && ["INPUT", "SELECT"].includes(active.tagName)) return;
@@ -380,14 +421,33 @@ class AdvancedClimateCard extends HTMLElement {
       </ha-card>`;
   }
 
+  _icon(name) {
+    return name ? `<ha-icon icon="mdi:${name}"></ha-icon>` : "";
+  }
+
+  _btn(label, attrs, { icon = "", kind = "" } = {}) {
+    return `<button class="btn ${kind}" ${attrs}>${this._icon(icon)}<span>${esc(label)}</span></button>`;
+  }
+
   _toggle(entityId, label) {
     const s = this._state(entityId);
     if (!s) return "";
     const on = s.state === "on";
     return `<button class="toggle ${on ? "on" : ""}" role="switch" aria-checked="${on}"
-      data-action="toggle" data-entity="${esc(entityId)}"><span class="knob"></span>${esc(
+      data-action="toggle" data-entity="${esc(entityId)}"><span class="knob"></span><span>${esc(
       label
-    )}</button>`;
+    )}</span></button>`;
+  }
+
+  _tempPair(current, target, color) {
+    return `<div class="temps">
+        <div class="tval"><span class="tag">${this._t("now_tag")}</span><span class="tnum">${this._temp(
+          current
+        )}</span></div>
+        <div class="tval target" style="--c:${color}"><span class="tag">${this._t(
+          "target_tag"
+        )}</span><span class="tnum">${this._temp(target)}</span></div>
+      </div>`;
   }
 
   _houseHtml(house) {
@@ -408,7 +468,9 @@ class AdvancedClimateCard extends HTMLElement {
       .map(([id, cls]) => {
         const p = this._hass.states[id];
         const name = p?.attributes?.friendly_name || id.split(".")[1];
-        return `<span class="person ${esc(cls || "unknown")}">${esc(name)}</span>`;
+        return `<span class="person ${esc(cls || "unknown")}" title="${esc(
+          this._label(presence, cls)
+        )}">${esc(name)}</span>`;
       })
       .join("");
 
@@ -424,19 +486,24 @@ class AdvancedClimateCard extends HTMLElement {
         value
       )}</span></div>`;
     const onOff = (s) => (s ? (s.state === "on" ? this._t("on") : this._t("off")) : "–");
-
     const guestUntil = guest?.attributes?.until
-      ? ` <span class="muted">${this._t("until")} ${esc(this._fmtTime(guest.attributes.until))}</span>`
+      ? `<span class="muted">${this._t("until")} ${esc(this._fmtTime(guest.attributes.until))}</span>`
       : "";
+    const vacationSet = vStart && !Number.isNaN(Date.parse(vStart.state));
+    const vacationSummary = vacationSet
+      ? `${esc(this._fmtTime(vStart.state))} – ${esc(this._fmtTime(vEnd?.state))}`
+      : this._t("vacation_none");
 
     return `
-      <section class="house">
+      <section class="block house">
         <div class="house-head">
           <div>
-            <div class="house-name">${esc(house.name || "")}</div>
-            <div class="presence"><span class="presence-state ${esc(presence?.state)}">${esc(
-      this._label(presence)
-    )}</span>${presence?.attributes?.arriving ? `<span class="muted">↩</span>` : ""}${personList}</div>
+            <div class="name">${esc(house.name || "")}</div>
+            <div class="presence">
+              <span class="pill presence-state ${esc(presence?.state)}">${esc(this._label(presence))}</span>
+              ${presence?.attributes?.arriving ? `<span class="pill">${this._t("arriving")}</span>` : ""}
+              ${personList}
+            </div>
           </div>
           <div class="stats">
             ${stat(this._t("outdoor"), this._temp(outdoor?.state))}
@@ -446,52 +513,47 @@ class AdvancedClimateCard extends HTMLElement {
             ${runtime ? stat(this._t("runtime"), `${num(runtime.state)?.toFixed(1) ?? "–"} h`) : ""}
           </div>
         </div>
+        <div class="label">${this._t("mode")}</div>
+        <div class="segmented" role="group" aria-label="${esc(this._t("mode"))}">${modes}</div>
         <div class="row wrap">
-          <div class="segmented" role="group" aria-label="${esc(this._t("mode"))}">${modes}</div>
-          <div class="toggles">${this._toggle(e.pause, this._t("pause"))}${this._toggle(
-      e.guest_mode,
-      this._t("guests")
-    )}${guestUntil}</div>
+          ${this._toggle(e.pause, this._t("pause"))}
+          ${this._toggle(e.guest_mode, this._t("guests"))}${guestUntil}
         </div>
         <details class="fold" data-fold="vac-${esc(house.id)}" ${this._open[`vac-${house.id}`] ? "open" : ""}>
-          <summary>${this._t("vacation")}${
-      vStart && num(Date.parse(vStart.state))
-        ? ` <span class="muted">${esc(this._fmtTime(vStart.state))} – ${esc(this._fmtTime(vEnd?.state))}</span>`
-        : ""
-    }</summary>
-          <div class="row wrap">
-            <label class="field">${this._t("from")}<input type="datetime-local" data-vac="start" data-house="${esc(
-      house.id
-    )}" value="${esc(toLocalInput(vStart?.state))}"></label>
-            <label class="field">${this._t("to")}<input type="datetime-local" data-vac="end" data-house="${esc(
-      house.id
-    )}" value="${esc(toLocalInput(vEnd?.state))}"></label>
-            <button class="primary" data-action="vacation" data-house="${esc(house.id)}">${this._t(
-      "set_vacation"
-    )}</button>
-            ${
-              e.clear_vacation
-                ? `<button class="link" data-action="press" data-entity="${esc(e.clear_vacation)}">${this._t(
-                    "clear_vacation"
-                  )}</button>`
-                : ""
-            }
+          <summary><span>${this._t("vacation")}</span><span class="muted">${vacationSummary}</span></summary>
+          <div class="fold-body">
+            <div class="dates">
+              <label class="datefield"><span>${this._t("from")}</span>
+                <input type="datetime-local" data-vac="start" data-house="${esc(house.id)}"
+                  value="${esc(toLocalInput(vStart?.state))}"></label>
+              <label class="datefield"><span>${this._t("to")}</span>
+                <input type="datetime-local" data-vac="end" data-house="${esc(house.id)}"
+                  value="${esc(toLocalInput(vEnd?.state))}"></label>
+            </div>
+            <p class="hint">${this._t("vacation_hint")}</p>
+            <div class="row wrap">
+              ${this._btn(this._t("set_vacation"), `data-action="vacation" data-house="${esc(house.id)}"`, {
+                icon: "content-save",
+                kind: "primary",
+              })}
+              ${
+                e.clear_vacation && vacationSet
+                  ? this._btn(this._t("clear_vacation"), `data-action="press" data-entity="${esc(e.clear_vacation)}"`, {
+                      icon: "close",
+                    })
+                  : ""
+              }
+            </div>
+            ${this._error[`vac-${house.id}`] ? `<p class="error">${esc(this._error[`vac-${house.id}`])}</p>` : ""}
           </div>
-          ${this._error[`vac-${house.id}`] ? `<p class="error">${esc(this._error[`vac-${house.id}`])}</p>` : ""}
         </details>
-        <div class="row wrap actions">
-          ${
-            e.reevaluate
-              ? `<button class="link" data-action="press" data-entity="${esc(e.reevaluate)}">${this._t(
-                  "reevaluate"
-                )}</button>`
-              : ""
-          }
+        <div class="row wrap">
+          ${e.reevaluate ? this._btn(this._t("reevaluate"), `data-action="press" data-entity="${esc(e.reevaluate)}"`, { icon: "refresh" }) : ""}
           ${
             e.clear_overrides
-              ? `<button class="link" data-action="press" data-entity="${esc(e.clear_overrides)}">${this._t(
-                  "clear_all"
-                )}</button>`
+              ? this._btn(this._t("clear_all"), `data-action="press" data-entity="${esc(e.clear_overrides)}"`, {
+                  icon: "restore",
+                })
               : ""
           }
         </div>
@@ -507,27 +569,28 @@ class AdvancedClimateCard extends HTMLElement {
     const color = PRESET_COLORS[a.preset] || "var(--secondary-text-color)";
 
     const badges = [];
-    if (a.heat_demand) badges.push(`<span class="badge hot">${this._t("heating")}</span>`);
-    if (a.window_open) badges.push(`<span class="badge warn">${this._t("window")}</span>`);
+    if (a.heat_demand) badges.push(`<span class="pill hot">${this._t("heating")}</span>`);
+    if (a.window_open) badges.push(`<span class="pill warn">${this._t("window")}</span>`);
     if (a.override) {
       const until = a.override.until
         ? `${this._t("until")} ${this._fmtTime(a.override.until)}`
         : this._t("until_change");
       const prefix = stateObj.state === "manual_override" ? "" : `${this._t("override")} `;
-      badges.push(`<span class="badge">${esc(prefix + until)}</span>`);
+      badges.push(`<span class="pill">${esc(prefix + until)}</span>`);
     }
 
     const head = `
-      <button class="room-head" data-action="fold" data-key="room-${esc(key)}" aria-expanded="${!folded}">
-        <span class="room-name">${esc(a.room_name)}</span>
-        <span class="temps"><span class="current">${this._temp(a.current_temperature)}</span>
-          <span class="target" style="--c:${color}">${this._temp(a.target_temperature)}</span></span>
-      </button>
-      <div class="decision"><span class="rule" style="--c:${color}">${esc(this._label(stateObj))}</span>${badges.join(
-      ""
-    )}</div>`;
+      <div class="room-head">
+        <button class="room-title" data-action="fold" data-key="room-${esc(key)}" aria-expanded="${!folded}">
+          <span class="chev ${folded ? "" : "open"}"></span><span class="name">${esc(a.room_name)}</span>
+        </button>
+        ${this._tempPair(a.current_temperature, a.target_temperature, color)}
+      </div>
+      <div class="decision"><span class="pill rule" style="--c:${color}">${esc(
+        this._label(stateObj)
+      )}</span>${badges.join("")}</div>`;
 
-    if (folded) return `<section class="room">${head}</section>`;
+    if (folded) return `<section class="block room">${head}</section>`;
 
     const parts = [
       `<p class="reason">${esc(a.reason || "")}</p>`,
@@ -536,24 +599,45 @@ class AdvancedClimateCard extends HTMLElement {
       cfg.show_quick_override ? this._quickHtml(a) : "",
       cfg.show_levels ? this._levelsHtml(a, e) : "",
       cfg.show_details ? this._detailsHtml(a, e) : "",
-      cfg.show_schedule_editor ? this._scheduleHtml(a) : "",
+      cfg.show_schedule_editor ? this._scheduleHtml(a, stateObj) : "",
     ];
-    return `<section class="room">${head}${parts.join("")}</section>`;
+    return `<section class="block room">${head}${parts.join("")}</section>`;
+  }
+
+  /** Segments of a profile over one day (the last slot continues past midnight). */
+  _segments(slots) {
+    const sorted = [...slots].sort((x, y) => toMinutes(x.time) - toMinutes(y.time));
+    const segments = [];
+    const last = sorted[sorted.length - 1];
+    if (toMinutes(sorted[0].time) > 0) {
+      segments.push({ start: 0, end: toMinutes(sorted[0].time), preset: last.preset });
+    }
+    sorted.forEach((slot, i) => {
+      const end = i + 1 < sorted.length ? toMinutes(sorted[i + 1].time) : 1440;
+      segments.push({ start: toMinutes(slot.time), end, preset: slot.preset });
+    });
+    return segments.filter((s) => s.end > s.start);
+  }
+
+  /** Intervals as people read them: from a slot to the next one; the last one ends at the first slot of the next day. */
+  _intervals(slots) {
+    const sorted = [...slots].sort((x, y) => toMinutes(x.time) - toMinutes(y.time));
+    return sorted.map((slot, i) => {
+      if (i + 1 < sorted.length) {
+        return { from: slot.time, to: sorted[i + 1].time, preset: slot.preset, nextDay: false };
+      }
+      const first = sorted[0];
+      if (sorted.length > 1 && toMinutes(first.time) === 0) {
+        return { from: slot.time, to: "24:00", preset: slot.preset, nextDay: false };
+      }
+      return { from: slot.time, to: first.time, preset: slot.preset, nextDay: true };
+    });
   }
 
   _timelineHtml(a) {
     const profile = a.profile && a.schedule && a.schedule[a.profile];
     if (!profile || !profile.length) return "";
-    const slots = [...profile].sort((x, y) => toMinutes(x.time) - toMinutes(y.time));
-    const segments = [];
-    const last = slots[slots.length - 1];
-    if (toMinutes(slots[0].time) > 0) {
-      segments.push({ start: 0, end: toMinutes(slots[0].time), preset: last.preset });
-    }
-    slots.forEach((slot, i) => {
-      const end = i + 1 < slots.length ? toMinutes(slots[i + 1].time) : 1440;
-      segments.push({ start: toMinutes(slot.time), end, preset: slot.preset });
-    });
+    const segments = this._segments(profile);
     const levels = a.levels || {};
     const temps = segments.map((s) => num(levels[s.preset])).filter((t) => t !== null);
     const lo = temps.length ? Math.min(...temps) : 0;
@@ -568,21 +652,21 @@ class AdvancedClimateCard extends HTMLElement {
     let path = `M0 ${H}`;
     const labels = [];
     const blocks = segments
-      .filter((s) => s.end > s.start)
       .map((s) => {
         const h = height(s.preset);
         path += ` L${s.start} ${H - h} L${s.end} ${H - h}`;
         const t = num(levels[s.preset]);
         if (s.end - s.start >= 120) {
           const pct = ((s.start + s.end) / 2 / W) * 100;
-          const align = s.start === 0 ? "left:0;transform:none" : s.end >= W ? "right:0;transform:none" : `left:${pct}%`;
+          const align =
+            s.start === 0 ? "left:0;transform:none" : s.end >= W ? "right:0;transform:none" : `left:${pct}%`;
           labels.push(
             `<span style="${align};bottom:${((h + 4) / (H + 14)) * 100}%">${esc(
               this._presetName(a, s.preset)
             )}${t !== null ? ` ${t}°` : ""}</span>`
           );
         }
-        return `<rect x="${s.start}" y="${H - h}" width="${s.end - s.start}" height="${h}"
+        return `<rect x="${s.start}" y="${H - h}" width="${s.end - s.start}" height="${h}" rx="0"
           fill="${PRESET_COLORS[s.preset] || "var(--primary-color)"}"><title>${esc(
           this._presetName(a, s.preset)
         )} ${hhmm(s.start)}–${hhmm(s.end % 1440)}</title></rect>`;
@@ -592,25 +676,27 @@ class AdvancedClimateCard extends HTMLElement {
     const now = new Date();
     const nowMin = now.getHours() * 60 + now.getMinutes();
     const ticks = [0, 6, 12, 18, 24]
-      .map((h) => `<span style="left:${(h / 24) * 100}%">${String(h).padStart(2, "0")}</span>`)
+      .map((h) => `<span style="left:${(h / 24) * 100}%">${String(h).padStart(2, "0")}:00</span>`)
       .join("");
     const next = a.next_change
-      ? `<span>${this._t("next")}: <b>${esc(this._fmtTime(a.next_change))}</b> ${esc(
+      ? `<span>${this._t("next")}: <b>${esc(this._fmtTime(a.next_change))}</b> → ${esc(
           this._presetName(a, a.next_preset)
         )}</span>`
       : "";
     return `
-      <div class="profile-chart">
-        <svg viewBox="0 -14 ${W} ${H + 14}" preserveAspectRatio="none" role="img"
-          aria-label="${esc(this._t("schedule"))}">
-          ${blocks}
-          <path d="${path}" class="edge"></path>
-          <line x1="${nowMin}" x2="${nowMin}" y1="-14" y2="${H}" class="now"></line>
-        </svg>
-        <div class="chart-labels">${labels.join("")}</div>
-        <div class="ticks">${ticks}</div>
-      </div>
-      <div class="meta"><span>${this._t("profile")}: <b>${esc(a.profile || "–")}</b></span>${next}</div>`;
+      <div class="chart-card">
+        <div class="profile-chart">
+          <svg viewBox="0 -14 ${W} ${H + 14}" preserveAspectRatio="none" role="img"
+            aria-label="${esc(this._t("schedule"))}">
+            ${blocks}
+            <path d="${path}" class="edge"></path>
+            <line x1="${nowMin}" x2="${nowMin}" y1="-14" y2="${H}" class="now"></line>
+          </svg>
+          <div class="chart-labels">${labels.join("")}</div>
+          <div class="ticks">${ticks}</div>
+        </div>
+        <div class="meta"><span>${this._t("today")}: <b>${esc(a.profile || "–")}</b></span>${next}</div>
+      </div>`;
   }
 
   _controlsHtml(a, e) {
@@ -624,14 +710,15 @@ class AdvancedClimateCard extends HTMLElement {
       )
       .join("");
     const select = profile
-      ? `<label class="field">${this._t("profile")}<select data-action="select" data-entity="${esc(
+      ? `<label class="selectfield"><span>${this._t("profile")}</span><select data-action="select" data-entity="${esc(
           e.profile
         )}">${options}</select></label>`
       : "";
     const clear = a.override
-      ? `<button class="link" data-action="clear" data-room="${esc(a.room_id)}">${this._t(
-          "clear_override"
-        )}</button>`
+      ? this._btn(this._t("clear_override"), `data-action="clear" data-room="${esc(a.room_id)}"`, {
+          icon: "autorenew",
+          kind: "primary",
+        })
       : "";
     return `<div class="row wrap controls">${select}${this._toggle(e.child_lock, this._t("child_lock"))}${clear}</div>`;
   }
@@ -640,26 +727,28 @@ class AdvancedClimateCard extends HTMLElement {
     const presets = (a.presets || Object.keys(PRESET_COLORS))
       .map(
         (p) => `<button class="preset" style="--c:${PRESET_COLORS[p] || "var(--primary-color)"}"
-          data-action="quick-preset" data-room="${esc(a.room_id)}" data-preset="${esc(p)}">${esc(
+          data-action="quick-preset" data-room="${esc(a.room_id)}" data-preset="${esc(p)}"><span class="dot"></span>${esc(
           this._presetName(a, p)
-        )}</button>`
+        )}${num(a.levels?.[p]) !== null ? ` <small>${num(a.levels[p])}°</small>` : ""}</button>`
       )
       .join("");
     const target = num(a.target_temperature) ?? 21;
-    return `
-      <div class="quick">
-        <div class="sub">${this._t("quick")}</div>
-        <div class="row wrap">${presets}</div>
+    return this._fold(
+      `quick-${a.room_id}`,
+      this._t("quick"),
+      `<p class="hint">${this._t("quick_hint")}</p>
+        <div class="presets">${presets}</div>
         <div class="row wrap">
-          <label class="field small"><input type="number" step="0.5" min="5" max="30"
-            data-quick="temp" data-room="${esc(a.room_id)}" value="${target}">°C</label>
-          <label class="field small">${this._t("for_hours")}<input type="number" step="0.5" min="0.5" max="72"
-            data-quick="hours" data-room="${esc(a.room_id)}" placeholder="auto">${this._t("hours")}</label>
-          <button class="primary" data-action="quick-temp" data-room="${esc(a.room_id)}">${this._t(
-      "apply"
-    )}</button>
-        </div>
-      </div>`;
+          <label class="numfield"><span>${this._t("target_tag")}</span><input type="number" step="0.5" min="5" max="30"
+            data-quick="temp" data-room="${esc(a.room_id)}" value="${target}"><em>°C</em></label>
+          <label class="numfield"><span>${this._t("for_hours")}</span><input type="number" step="0.5" min="0.5" max="72"
+            data-quick="hours" data-room="${esc(a.room_id)}" placeholder="auto"><em>${this._t("hours")}</em></label>
+          ${this._btn(this._t("apply"), `data-action="quick-temp" data-room="${esc(a.room_id)}"`, {
+            icon: "thermometer-check",
+            kind: "primary",
+          })}
+        </div>`
+    );
   }
 
   _levelsHtml(a, e) {
@@ -671,13 +760,13 @@ class AdvancedClimateCard extends HTMLElement {
         if (!s) return "";
         const preset = k.replace("level_", "");
         const name = s.attributes.friendly_name?.replace(`${a.room_name} `, "") || this._presetName(a, preset);
-        return `<label class="field level"><span class="dot" style="--c:${
+        return `<label class="numfield level"><span class="dot" style="--c:${
           PRESET_COLORS[preset] || "var(--divider-color)"
-        }"></span>${esc(name)}<input type="number" step="${s.attributes.step || 0.5}" min="${
+        }"></span><span class="lname">${esc(name)}</span><input type="number" step="${s.attributes.step || 0.5}" min="${
           s.attributes.min ?? 5
         }" max="${s.attributes.max ?? 30}" data-action="number" data-entity="${esc(id)}" value="${esc(
           s.state
-        )}">°C</label>`;
+        )}"><em>°C</em></label>`;
       })
       .join("");
     return this._fold(`levels-${a.room_id}`, this._t("levels"), `<div class="grid">${rows}</div>`);
@@ -706,35 +795,72 @@ class AdvancedClimateCard extends HTMLElement {
         ${runtime ? dl(this._t("runtime"), `${esc(num(runtime.state)?.toFixed(1) ?? "–")} h`) : ""}
         ${dl(this._t("adjustments"), esc(offsets))}
       </dl>
-      ${levelTemps ? `<div class="levels-line">${levelTemps}${a.custom_levels ? "" : ` <span class="muted">${this._t("level_temps_gt")}</span>`}</div>` : ""}
+      ${
+        levelTemps
+          ? `<div class="levels-line">${levelTemps}${
+              a.custom_levels ? "" : ` <span class="muted">${this._t("level_temps_gt")}</span>`
+            }</div>`
+          : ""
+      }
       ${a.schedule_error ? `<p class="error">${esc(a.schedule_error)}</p>` : ""}`;
     return this._fold(`details-${a.room_id}`, this._t("details"), html);
   }
 
-  _scheduleHtml(a) {
+  _profileDays(name) {
+    const days = {
+      workday: this._t("days_workday"),
+      weekend: this._t("days_weekend"),
+    };
+    if (days[name]) return days[name];
+    const weekday = WEEKDAY_KEYS.indexOf(name);
+    if (weekday >= 0) return this._t("days_weekday").replace("{day}", this._weekdayName(weekday));
+    return this._t("days_custom");
+  }
+
+  _weekdayName(index) {
+    // 2024-01-01 was a Monday.
+    return new Date(2024, 0, 1 + index).toLocaleDateString(this._lang(), { weekday: "long" });
+  }
+
+  _scheduleIntro(a, stateObj) {
+    const scheduleRules = ["schedule", "optimal_start", "optimal_stop"];
+    const now = scheduleRules.includes(stateObj.state)
+      ? `<p class="hint ok">${this._t("schedule_active")}</p>`
+      : `<p class="hint warn">${this._t("schedule_not_active").replace("{rule}", esc(this._label(stateObj)))}</p>`;
+    return `<p class="hint">${this._t("schedule_help")}</p>${now}`;
+  }
+
+  _scheduleHtml(a, stateObj) {
     if (!a.schedule_editable) {
-      return this._fold(`sched-${a.room_id}`, this._t("schedule"), `<p class="muted">${this._t("not_editable")}</p>`);
+      return this._fold(`sched-${a.room_id}`, this._t("schedule"), `<p class="hint">${this._t("not_editable")}</p>`);
     }
+    const intro = this._scheduleIntro(a, stateObj);
     if (this._editing !== a.room_id) {
-      const summary = Object.entries(a.schedule || {})
-        .map(
-          ([name, slots]) =>
-            `<div class="sched-line"><b>${esc(name)}</b>${slots
-              .map(
-                (s) =>
-                  `<span class="slot"><span class="dot" style="--c:${PRESET_COLORS[s.preset]}"></span>${esc(
-                    s.time
-                  )} ${esc(this._presetName(a, s.preset))}</span>`
-              )
-              .join("")}</div>`
-        )
+      const profiles = Object.entries(a.schedule || {})
+        .map(([name, slots]) => {
+          const rows = this._intervals(slots)
+            .map(
+              (it) => `<li><span class="dot" style="--c:${PRESET_COLORS[it.preset]}"></span>
+                <span class="range">${esc(it.from)} – ${esc(it.to)}${
+                it.nextDay ? ` <small>${this._t("next_day")}</small>` : ""
+              }</span><span class="pname">${esc(this._presetName(a, it.preset))}</span></li>`
+            )
+            .join("");
+          return `<div class="profile ${a.profile === name ? "today" : ""}">
+              <div class="phead"><b>${esc(name)}</b>${
+            a.profile === name ? `<span class="pill">${this._t("today")}</span>` : ""
+          }<span class="muted">${esc(this._profileDays(name))}</span></div>
+              <ul class="intervals">${rows}</ul></div>`;
+        })
         .join("");
       return this._fold(
         `sched-${a.room_id}`,
         this._t("schedule"),
-        `${summary}<button class="link" data-action="edit" data-room="${esc(a.room_id)}">${this._t(
-          "edit"
-        )}</button>`
+        `${intro}<div class="profiles">${profiles}</div>
+         <div class="row">${this._btn(this._t("edit"), `data-action="edit" data-room="${esc(a.room_id)}"`, {
+           icon: "pencil",
+           kind: "primary",
+         })}</div>`
       );
     }
     const presets = a.presets || Object.keys(PRESET_COLORS);
@@ -744,36 +870,63 @@ class AdvancedClimateCard extends HTMLElement {
       )}</option>`;
     const blocks = Object.entries(this._draft || {})
       .map(([name, slots]) => {
-        const rows = slots
-          .map(
-            (slot, i) => `<div class="row">
-              <input type="time" data-profile="${esc(name)}" data-index="${i}" data-field="time" value="${esc(slot.time)}">
+        const intervals = this._intervals(slots);
+        const sorted = [...slots]
+          .map((slot, i) => ({ slot, i }))
+          .sort((x, y) => toMinutes(x.slot.time) - toMinutes(y.slot.time));
+        const rows = sorted
+          .map(({ slot, i }, pos) => {
+            const it = intervals[pos];
+            return `<div class="slot-row">
+              <span class="dot" style="--c:${PRESET_COLORS[slot.preset]}"></span>
+              <input type="time" data-profile="${esc(name)}" data-index="${i}" data-field="time" value="${esc(slot.time)}"
+                aria-label="${this._t("starts")}">
+              <span class="until">→ ${esc(it.to)}${it.nextDay ? ` <small>${this._t("next_day")}</small>` : ""}</span>
               <select data-profile="${esc(name)}" data-index="${i}" data-field="preset">${presets
                 .map((p) => option(p, slot.preset))
                 .join("")}</select>
-              <button class="icon" data-action="del-slot" data-profile="${esc(name)}" data-index="${i}"
-                aria-label="${this._t("remove")}">✕</button></div>`
-          )
+              <button class="btn icon-only" data-action="del-slot" data-profile="${esc(name)}" data-index="${i}"
+                aria-label="${this._t("remove")}" title="${this._t("remove")}">${this._icon("delete-outline")}<span class="x">✕</span></button>
+            </div>`;
+          })
           .join("");
-        return `<div class="profile-edit"><div class="row between"><b>${esc(name)}</b>
-            <button class="link" data-action="del-profile" data-profile="${esc(name)}">${this._t("remove")}</button></div>
+        return `<div class="profile edit">
+            <div class="phead"><b>${esc(name)}</b><span class="muted">${esc(this._profileDays(name))}</span>
+              ${this._btn(this._t("remove_profile"), `data-action="del-profile" data-profile="${esc(name)}"`, {
+                icon: "delete-outline",
+                kind: "danger",
+              })}</div>
+            <div class="slot-head"><span></span><span>${this._t("starts")}</span><span>${this._t("ends")}</span><span>${this._t(
+              "level"
+            )}</span><span></span></div>
             ${rows}
-            <button class="link" data-action="add-slot" data-profile="${esc(name)}">${this._t("add_slot")}</button></div>`;
+            ${this._btn(this._t("add_slot"), `data-action="add-slot" data-profile="${esc(name)}"`, { icon: "plus" })}
+          </div>`;
       })
       .join("");
     return `<div class="editor">
+        <div class="ehead"><b>${this._t("schedule")}</b></div>
+        ${intro}
         ${blocks}
-        <div class="row"><input type="text" class="newprofile" placeholder="${this._t("profile_name")}">
-          <button class="link" data-action="add-profile">${this._t("add_profile")}</button></div>
+        <div class="row wrap">
+          <label class="textfield"><span>${this._t("profile_name")}</span>
+            <input type="text" class="newprofile" placeholder="home_office"></label>
+          ${this._btn(this._t("add_profile"), `data-action="add-profile"`, { icon: "plus" })}
+        </div>
         ${this._error[`sched-${a.room_id}`] ? `<p class="error">${esc(this._error[`sched-${a.room_id}`])}</p>` : ""}
-        <div class="row"><button class="primary" data-action="save" data-room="${esc(a.room_id)}">${this._t("save")}</button>
-          <button class="link" data-action="cancel">${this._t("cancel")}</button></div>
+        <div class="row wrap end">
+          ${this._btn(this._t("cancel"), `data-action="cancel"`, {})}
+          ${this._btn(this._t("save"), `data-action="save" data-room="${esc(a.room_id)}"`, {
+            icon: "content-save",
+            kind: "primary",
+          })}
+        </div>
       </div>`;
   }
 
   _fold(key, title, content) {
     return `<details class="fold" data-fold="${esc(key)}" ${this._open[key] ? "open" : ""}>
-      <summary>${esc(title)}</summary>${content}</details>`;
+      <summary><span>${esc(title)}</span></summary><div class="fold-body">${content}</div></details>`;
   }
 
   // ------------------------------------------------------------------ events
@@ -805,6 +958,7 @@ class AdvancedClimateCard extends HTMLElement {
       if (value !== null) await this._call("number", "set_value", { entity_id: d.entity, value });
     } else if (d.field && this._draft?.[d.profile]) {
       this._draft[d.profile][Number(d.index)][d.field] = el.value;
+      this._render();
     }
   }
 
@@ -911,101 +1065,184 @@ class AdvancedClimateCard extends HTMLElement {
 }
 
 const STYLE = `
-  :host { --ac-gap: 12px; color: var(--primary-text-color); }
-  ha-card { padding: 16px; color: var(--primary-text-color); }
-  .title { margin: 0 0 12px; font-size: 1.3em; font-weight: 500; }
-  .empty, .muted { color: var(--secondary-text-color); }
-  .muted { font-size: 0.85em; }
-  section { padding: 12px 0; border-top: 1px solid var(--divider-color); }
-  section:first-of-type { border-top: none; padding-top: 0; }
-  .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  :host {
+    --ac-surface: color-mix(in srgb, var(--primary-text-color) 4%, transparent);
+    --ac-surface-2: color-mix(in srgb, var(--primary-text-color) 7%, transparent);
+    --ac-line: color-mix(in srgb, var(--primary-text-color) 12%, transparent);
+    --ac-muted: var(--secondary-text-color);
+    --ac-accent: var(--primary-color);
+    --ac-hot: #d9480f;
+    --ac-warn: #c98a12;
+    color: var(--primary-text-color);
+  }
+  ha-card { padding: 16px; color: var(--primary-text-color); display: flex; flex-direction: column; gap: 12px; }
+  .title { margin: 0; font-size: 1.35em; font-weight: 500; letter-spacing: -0.01em; }
+  .empty { margin: 0; color: var(--ac-muted); }
+  .muted { color: var(--ac-muted); font-size: 0.85em; }
+  .block { border: 1px solid var(--ac-line); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .house { background: var(--ac-surface); }
+  .name { font-weight: 600; font-size: 1.1em; }
+  .label { font-size: 0.8em; color: var(--ac-muted); margin-bottom: -4px; }
+  .row { display: flex; gap: 10px; align-items: center; }
   .row.wrap { flex-wrap: wrap; }
-  .row.between { justify-content: space-between; }
-  .house-head { display: flex; justify-content: space-between; gap: var(--ac-gap); flex-wrap: wrap; }
-  .house-name { font-weight: 500; font-size: 1.1em; }
-  .presence { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
-  .presence-state { font-weight: 500; }
-  .presence-state.home { color: #f08c00; }
-  .presence-state.nearby { color: #2f9e8f; }
-  .presence-state.far { color: #8a96a3; }
-  .person { font-size: 0.8em; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--divider-color); }
-  .person.home { border-color: #f08c00; }
-  .person.nearby { border-color: #2f9e8f; }
-  .stats { display: flex; gap: 16px; flex-wrap: wrap; }
-  .stat { display: flex; flex-direction: column; }
-  .stat .k { font-size: 0.75em; color: var(--secondary-text-color); }
-  .stat .v { font-variant-numeric: tabular-nums; font-weight: 500; }
-  .stat.hot .v { color: #d9480f; }
-  .stat.warn .v { color: var(--warning-color, #e0a030); }
-  .segmented { display: inline-flex; border: 1px solid var(--divider-color); border-radius: 8px; overflow: hidden; }
-  .seg { background: none; border: none; padding: 6px 12px; font: inherit; color: var(--primary-text-color); cursor: pointer; }
-  .seg + .seg { border-left: 1px solid var(--divider-color); }
-  .seg.active { background: var(--primary-color); color: var(--text-primary-color, #fff); }
-  .toggles { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .toggle { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; font: inherit;
-    color: var(--primary-text-color); cursor: pointer; padding: 2px 0; }
-  .toggle .knob { width: 30px; height: 16px; border-radius: 8px; background: var(--disabled-color, #bdbdbd); position: relative; }
-  .toggle .knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px;
+  .row.end { justify-content: flex-end; }
+  .controls { align-items: flex-end; }
+  .controls .toggle { min-height: 36px; }
+  .hint { margin: 0; font-size: 0.85em; color: var(--ac-muted); line-height: 1.45; }
+  .hint.ok { color: #2f9e8f; }
+  .hint.warn { color: var(--ac-warn); }
+  .error { margin: 0; color: var(--error-color, #db4437); font-size: 0.85em; }
+
+  /* house */
+  .house-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .presence { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  .stats { display: grid; grid-auto-flow: column; gap: 18px; align-items: start; }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat .k { font-size: 0.75em; color: var(--ac-muted); }
+  .stat .v { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .stat.hot .v { color: var(--ac-hot); }
+  .stat.warn .v { color: var(--ac-warn); }
+  @media (max-width: 520px) { .stats { grid-auto-flow: row; grid-template-columns: 1fr 1fr; } }
+
+  /* pills */
+  .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8em; padding: 3px 10px;
+    border-radius: 999px; background: var(--ac-surface-2); white-space: nowrap; }
+  .pill.rule { background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--primary-text-color);
+    box-shadow: inset 0 0 0 1.5px var(--c); font-weight: 500; }
+  .pill.hot { background: var(--ac-hot); color: #fff; }
+  .pill.warn { background: var(--ac-warn); color: #fff; }
+  .presence-state.home { background: color-mix(in srgb, #f08c00 22%, transparent); }
+  .presence-state.nearby { background: color-mix(in srgb, #2f9e8f 22%, transparent); }
+  .presence-state.far { background: color-mix(in srgb, #8a96a3 25%, transparent); }
+  .person { font-size: 0.8em; padding: 2px 9px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--ac-line); }
+  .person.home { box-shadow: inset 0 0 0 1.5px #f08c00; }
+  .person.nearby { box-shadow: inset 0 0 0 1.5px #2f9e8f; }
+
+  /* buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 0.9em; font-weight: 500;
+    padding: 7px 14px; border-radius: 10px; border: 1px solid var(--ac-line); background: var(--card-background-color);
+    color: var(--primary-text-color); cursor: pointer; transition: background .15s, border-color .15s; }
+  .btn:hover { background: var(--ac-surface-2); }
+  .btn ha-icon { --mdc-icon-size: 18px; }
+  .btn.primary { background: var(--ac-accent); border-color: var(--ac-accent); color: var(--text-primary-color, #fff); }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.danger { color: var(--error-color, #db4437); border-color: color-mix(in srgb, var(--error-color, #db4437) 40%, transparent); }
+  .btn.icon-only { padding: 6px; }
+  .btn.icon-only .x { display: none; }
+  .btn.icon-only ha-icon:not(:defined) + .x { display: inline; }
+  .segmented { display: grid; grid-template-columns: repeat(4, 1fr); padding: 3px; gap: 3px; border-radius: 12px;
+    background: var(--ac-surface-2); }
+  .seg { border: none; background: none; padding: 8px 6px; border-radius: 9px; font: inherit; font-size: 0.9em;
+    color: var(--primary-text-color); cursor: pointer; }
+  .seg.active { background: var(--card-background-color); box-shadow: 0 1px 2px rgba(0,0,0,.18); font-weight: 600; color: var(--ac-accent); }
+  .toggle { display: inline-flex; align-items: center; gap: 8px; background: none; border: none; font: inherit;
+    color: var(--primary-text-color); cursor: pointer; padding: 4px 0; }
+  .toggle .knob { width: 34px; height: 20px; border-radius: 10px; background: var(--disabled-color, #bdbdbd); position: relative; flex: none; }
+  .toggle .knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px;
     border-radius: 50%; background: #fff; transition: transform .15s; }
-  .toggle.on .knob { background: var(--primary-color); }
+  .toggle.on .knob { background: var(--ac-accent); }
   .toggle.on .knob::after { transform: translateX(14px); }
-  .room-head { width: 100%; display: flex; justify-content: space-between; align-items: baseline; background: none;
-    border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
-  .room-name { font-size: 1.1em; font-weight: 500; }
-  .temps { font-variant-numeric: tabular-nums; display: flex; gap: 10px; align-items: baseline; }
-  .current { font-size: 1.6em; font-weight: 300; }
-  .target { font-weight: 600; color: var(--c); }
-  .decision { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
-  .rule { padding: 2px 10px; border-radius: 12px; font-size: 0.85em; border: 1.5px solid var(--c); }
-  .badge { font-size: 0.8em; padding: 2px 8px; border-radius: 12px; background: var(--secondary-background-color); }
-  .badge.hot { background: #d9480f; color: #fff; }
-  .badge.warn { background: var(--warning-color, #e0a030); color: #fff; }
-  .reason { margin: 6px 0 0; color: var(--secondary-text-color); font-size: 0.9em; }
-  .profile-chart { margin-top: 10px; position: relative; }
-  .chart-labels { position: absolute; left: 0; right: 0; top: 0; height: 72px; pointer-events: none; }
-  .chart-labels span { position: absolute; transform: translateX(-50%); font-size: 0.75em; white-space: nowrap;
-    color: var(--primary-text-color); }
+  button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--ac-accent); outline-offset: 2px; }
+
+  /* fields */
+  input, select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color);
+    border: 1px solid var(--ac-line); border-radius: 10px; padding: 7px 10px; min-height: 36px; box-sizing: border-box; }
+  input:hover, select:hover { border-color: color-mix(in srgb, var(--primary-text-color) 30%, transparent); }
+  input:focus, select:focus { border-color: var(--ac-accent); outline: none; }
+  .dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+  .datefield, .selectfield, .textfield { display: flex; flex-direction: column; gap: 4px; font-size: 0.8em; color: var(--ac-muted); }
+  .datefield input, .selectfield select, .textfield input { font-size: 1.1em; }
+  .datefield input { width: 100%; }
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .7; }
+  .numfield { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9em; }
+  .numfield span { color: var(--ac-muted); font-size: 0.9em; }
+  .numfield em { font-style: normal; color: var(--ac-muted); }
+  .numfield input { width: 5em; text-align: right; }
+  .numfield.level { display: grid; grid-template-columns: 10px 1fr auto auto; padding: 6px 10px; border-radius: 12px; background: var(--ac-surface); }
+  .numfield.level .lname { color: var(--primary-text-color); }
+
+  /* rooms */
+  .room-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .room-title { display: inline-flex; align-items: center; gap: 8px; background: none; border: none; padding: 0;
+    font: inherit; color: inherit; cursor: pointer; text-align: left; }
+  .chev { width: 8px; height: 8px; border-right: 2px solid var(--ac-muted); border-bottom: 2px solid var(--ac-muted);
+    transform: rotate(-45deg); transition: transform .15s; }
+  .chev.open { transform: rotate(45deg); }
+  .temps { display: flex; gap: 6px; }
+  .tval { display: flex; flex-direction: column; align-items: flex-end; padding: 4px 10px; border-radius: 12px; background: var(--ac-surface); min-width: 64px; }
+  .tval .tag { font-size: 0.68em; color: var(--ac-muted); }
+  .tval .tnum { font-size: 1.45em; font-variant-numeric: tabular-nums; line-height: 1.15; font-weight: 300; }
+  .tval.target { background: color-mix(in srgb, var(--c) 16%, transparent); }
+  .tval.target .tnum { font-weight: 600; }
+  .decision { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .reason { margin: 0; color: var(--ac-muted); font-size: 0.9em; }
+  .chart-card { border-radius: 12px; background: var(--ac-surface); padding: 10px 10px 8px; }
+  .profile-chart { position: relative; }
   .profile-chart svg { width: 100%; height: 72px; display: block; overflow: visible; }
   .profile-chart rect { opacity: 0.85; }
-  .profile-chart .edge { fill: none; stroke: var(--primary-text-color); stroke-width: 3; opacity: 0.35;
-    vector-effect: non-scaling-stroke; }
+  .profile-chart .edge { fill: none; stroke: var(--primary-text-color); stroke-width: 2; opacity: 0.3; vector-effect: non-scaling-stroke; }
   .profile-chart .now { stroke: var(--primary-text-color); stroke-width: 2; vector-effect: non-scaling-stroke; }
-  .ticks { position: relative; height: 14px; font-size: 0.7em; color: var(--secondary-text-color); }
+  .chart-labels { position: absolute; left: 0; right: 0; top: 0; height: 72px; pointer-events: none; }
+  .chart-labels span { position: absolute; transform: translateX(-50%); font-size: 0.75em; white-space: nowrap; }
+  .ticks { position: relative; height: 16px; font-size: 0.7em; color: var(--ac-muted); margin-top: 2px; }
   .ticks span { position: absolute; transform: translateX(-50%); }
   .ticks span:first-child { transform: none; }
   .ticks span:last-child { transform: translateX(-100%); }
   .meta { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 0.85em; margin-top: 4px; }
-  .field { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9em; }
-  .field.level { display: grid; grid-template-columns: 10px 1fr auto auto; gap: 6px; }
-  input, select { font: inherit; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--divider-color);
-    background: var(--card-background-color); color: var(--primary-text-color); }
-  input[type="number"] { width: 4.5em; }
-  .quick { margin-top: 10px; }
-  .sub { font-size: 0.85em; color: var(--secondary-text-color); }
-  .preset { font: inherit; font-size: 0.85em; padding: 4px 10px; border-radius: 14px; cursor: pointer;
-    background: none; color: var(--primary-text-color); border: 1.5px solid var(--c); }
-  .preset:hover { background: var(--c); color: #fff; }
-  button.link { background: none; border: none; color: var(--primary-color); cursor: pointer; padding: 0; font: inherit; }
-  button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); border: none;
-    border-radius: 6px; padding: 6px 14px; cursor: pointer; font: inherit; }
-  button.icon { background: none; border: none; cursor: pointer; color: var(--secondary-text-color); }
-  button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
-    outline: 2px solid var(--primary-color); outline-offset: 2px; }
-  .fold { margin-top: 10px; }
-  .fold summary { cursor: pointer; font-size: 0.9em; color: var(--primary-text-color); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px 16px; margin-top: 8px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; }
+  .preset { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 0.85em; padding: 6px 12px;
+    border-radius: 10px; cursor: pointer; background: color-mix(in srgb, var(--c) 12%, transparent);
+    color: var(--primary-text-color); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); }
+  .preset:hover { background: color-mix(in srgb, var(--c) 28%, transparent); }
+  .preset small { color: var(--ac-muted); }
+  .preset .dot { background: var(--c); }
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); display: inline-block; flex: none; }
-  .details { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 8px 0 0; }
-  .details dt { font-size: 0.75em; color: var(--secondary-text-color); }
-  .details dd { margin: 0; font-variant-numeric: tabular-nums; }
-  .levels-line { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 0.85em; align-items: center; }
-  .lv, .slot { display: inline-flex; gap: 4px; align-items: center; }
-  .sched-line { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 6px 0; font-size: 0.9em; }
-  .editor { margin-top: 10px; padding: 10px; border-radius: 8px; background: var(--secondary-background-color); }
-  .profile-edit { margin-bottom: 10px; }
-  .error { color: var(--error-color, #db4437); font-size: 0.85em; }
-  .actions { gap: 16px; }
-  @media (prefers-reduced-motion: reduce) { .toggle .knob::after { transition: none; } }
+
+  /* folds */
+  .fold { border-top: 1px solid var(--ac-line); padding-top: 8px; }
+  .fold summary { cursor: pointer; display: flex; justify-content: space-between; gap: 8px; align-items: center;
+    list-style: none; font-weight: 500; padding: 2px 0; }
+  .fold summary::-webkit-details-marker { display: none; }
+  .fold summary::after { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--ac-muted);
+    border-bottom: 2px solid var(--ac-muted); transform: rotate(45deg); margin-right: 4px; transition: transform .15s; flex: none; }
+  .fold[open] summary::after { transform: rotate(-135deg); }
+  .fold summary .muted { margin-left: auto; font-weight: 400; }
+  .fold-body { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+  .details { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 0; }
+  .details div { background: var(--ac-surface); border-radius: 10px; padding: 8px 10px; }
+  .details dt { font-size: 0.75em; color: var(--ac-muted); }
+  .details dd { margin: 2px 0 0; font-variant-numeric: tabular-nums; font-weight: 500; }
+  .levels-line { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.85em; align-items: center; }
+  .lv { display: inline-flex; gap: 5px; align-items: center; }
+
+  /* schedule */
+  .profiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .profile { border-radius: 12px; padding: 10px 12px; background: var(--ac-surface); display: flex; flex-direction: column; gap: 6px; }
+  .profile.today { box-shadow: inset 0 0 0 1.5px var(--ac-accent); }
+  .phead { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .phead .muted { flex: 1 1 100%; }
+  .profile.edit .phead .muted { flex: 1; }
+  .intervals { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .intervals li { display: grid; grid-template-columns: 10px auto 1fr; gap: 8px; align-items: center; font-size: 0.9em; }
+  .intervals .range { font-variant-numeric: tabular-nums; }
+  .intervals .pname { text-align: right; color: var(--ac-muted); }
+  small { font-size: 0.8em; color: var(--ac-muted); }
+  .editor { border-radius: 14px; background: var(--ac-surface); padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+  .ehead { font-size: 1em; }
+  .slot-head, .slot-row { display: grid; grid-template-columns: 10px minmax(130px, 150px) minmax(90px, auto) 1fr auto; gap: 8px; align-items: center; }
+  .slot-head { font-size: 0.75em; color: var(--ac-muted); }
+  .slot-row .until { font-variant-numeric: tabular-nums; color: var(--ac-muted); font-size: 0.9em; }
+  .profile.edit { background: var(--card-background-color); }
+  @media (max-width: 480px) {
+    .slot-head { display: none; }
+    .slot-row { grid-template-columns: 10px 1fr auto; }
+    .slot-row .until { grid-column: 2 / 4; order: 5; }
+    .slot-row select { grid-column: 2 / 3; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 `;
 
 // ---------------------------------------------------------------------- editor
