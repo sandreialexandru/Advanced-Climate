@@ -17,7 +17,7 @@
       },
       "heating": {
         "title": "Heating of the whole house",
-        "description": "The thermostat (or relay) that heats the whole house. It becomes the zone '{zone}' and works with every option of the house. Rooms with their own valves can be added later with \"Add room\".",
+        "description": "The thermostat (or relay) that heats the whole house. It becomes the zone {zone} and works with every option of the house. Rooms with their own valves can be added later with \"Add room\".",
         "data": {
           "source": "Heated by",
           "climates": "Thermostats",
@@ -39,7 +39,7 @@
     "step": {
       "heating": {
         "title": "Heating of the whole house",
-        "description": "The thermostat (or relay) that heats the whole house. It becomes the zone '{zone}' and works with every option of the house. Rooms with their own valves can be added later with \"Add room\".",
+        "description": "The thermostat (or relay) that heats the whole house. It becomes the zone {zone} and works with every option of the house. Rooms with their own valves can be added later with \"Add room\".",
         "data": {
           "source": "Heated by",
           "climates": "Thermostats",
