@@ -1,0 +1,88 @@
+set_override:
+  fields:
+    room:
+      example: "Living"
+      selector:
+        text:
+    entity_id:
+      selector:
+        entity:
+          integration: advanced_climate
+          multiple: true
+    preset:
+      example: "comfort"
+      selector:
+        select:
+          custom_value: true
+          options:
+            - home
+            - sleep
+            - eco
+            - away
+            - comfort
+            - activity
+    temperature:
+      selector:
+        number:
+          min: 5
+          max: 30
+          step: 0.5
+          unit_of_measurement: "°C"
+    duration_hours:
+      selector:
+        number:
+          min: 0.25
+          max: 168
+          step: 0.25
+          unit_of_measurement: h
+
+clear_override:
+  fields:
+    room:
+      selector:
+        text:
+    entity_id:
+      selector:
+        entity:
+          integration: advanced_climate
+          multiple: true
+
+set_vacation:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: advanced_climate
+    start:
+      selector:
+        datetime:
+    end:
+      selector:
+        datetime:
+
+reevaluate:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: advanced_climate
+
+set_schedule:
+  fields:
+    room:
+      example: "Living"
+      selector:
+        text:
+    entity_id:
+      selector:
+        entity:
+          integration: advanced_climate
+          multiple: true
+    schedule:
+      example: "workday: 00:00 sleep, 06:00 home, 22:00 sleep"
+      selector:
+        text:
+          multiline: true
+    profiles:
+      selector:
+        object:

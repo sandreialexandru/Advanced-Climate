@@ -1,0 +1,661 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Advanced Climate",
+        "description": "Create the house. Rooms are added afterwards with \"Add room\"; all other options are in the integration options.",
+        "data": {
+          "name": "Name",
+          "persons": "People",
+          "nearby_zones": "Nearby zones",
+          "home_rule": "The house is home when"
+        },
+        "data_description": {
+          "nearby_zones": "Zones (e.g. the city) where the house is 'nearby' instead of 'far'.",
+          "home_rule": "Whether one person at home is enough or everybody has to be home."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Advanced Climate options",
+        "menu_options": {
+          "presence": "Presence",
+          "calendar": "Workdays and calendar",
+          "weather": "Weather and season",
+          "energy": "Energy",
+          "boiler": "Boiler and heat demand",
+          "behavior": "Overrides, vacation and limits",
+          "alerts": "Alerts"
+        }
+      },
+      "presence": {
+        "title": "Presence",
+        "data": {
+          "persons": "People",
+          "home_rule": "The house is home when",
+          "nearby_zones": "Nearby zones",
+          "nearby_geometric": "Use coordinates for nearby zones",
+          "departure_delay": "Departure delay",
+          "arrival_delay": "Arrival delay",
+          "presence_sensors": "Presence sensors",
+          "guest_expire_hours": "Guest mode turns off after",
+          "proximity_distance": "Proximity distance sensor",
+          "proximity_direction": "Proximity direction sensor",
+          "travel_time": "Travel time sensor",
+          "arrival_distance": "Preheat below distance",
+          "arrival_minutes": "Preheat below travel time"
+        },
+        "data_description": {
+          "nearby_zones": "Zones (e.g. the city) where the house is 'nearby' instead of 'far'.",
+          "nearby_geometric": "Classify people by their coordinates and treat zones inside a nearby zone (e.g. Office) as nearby.",
+          "presence_sensors": "Sensors or switches that keep the house 'home' (mmWave, motion, people without a phone).",
+          "guest_expire_hours": "0 = never.",
+          "proximity_distance": "Nearest distance sensor of the Proximity integration.",
+          "proximity_direction": "When set, preheating only starts when someone is moving towards home.",
+          "travel_time": "Travel time to home (e.g. Waze)."
+        }
+      },
+      "calendar": {
+        "title": "Workdays and calendar",
+        "data": {
+          "workday_sensor": "Workday sensor",
+          "calendar": "Calendar",
+          "day_boundary": "Schedule day starts at"
+        },
+        "data_description": {
+          "workday_sensor": "Binary sensor of the Workday integration (holidays included).",
+          "calendar": "An event whose title is a profile name selects that profile; a preset name selects that level.",
+          "day_boundary": "For night shifts: the moment the schedule switches to the next day."
+        }
+      },
+      "weather": {
+        "title": "Weather and season",
+        "data": {
+          "outdoor_sensor": "Outdoor temperature sensor",
+          "weather": "Weather entity",
+          "cutoff_enabled": "Turn heating off when it is warm outside",
+          "cutoff_temp": "Outdoor cutoff temperature",
+          "cutoff_hysteresis": "Cutoff hysteresis",
+          "cutoff_avg_hours": "Average over",
+          "forecast_enabled": "Use the forecast",
+          "forecast_hours": "Forecast hours",
+          "season_mode": "Heating season",
+          "season_start": "Season start (MM-DD)",
+          "season_end": "Season end (MM-DD)",
+          "season_days": "Automatic season: consecutive days",
+          "season_temp": "Automatic season threshold",
+          "compensation_enabled": "Outdoor compensation",
+          "compensation_below": "Compensate below",
+          "compensation_offset": "Compensation",
+          "window_ignore_above": "Ignore windows above"
+        },
+        "data_description": {
+          "cutoff_temp": "Above this average outdoor temperature heating is turned off.",
+          "forecast_enabled": "Delay heating when the forecast reaches the cutoff temperature in the next hours.",
+          "season_start": "Month and day, e.g. 10-15.",
+          "season_end": "Month and day, e.g. 10-15.",
+          "season_days": "The season starts after this many days with an average below the threshold and ends after this many days above it.",
+          "window_ignore_above": "Opening windows does not lower heating when it is this warm outside. Leave empty to always react."
+        }
+      },
+      "energy": {
+        "title": "Energy",
+        "data": {
+          "price_sensor": "Energy price sensor",
+          "price_high": "High price from",
+          "price_high_offset": "Adjustment at high price",
+          "price_low": "Low price up to",
+          "price_low_offset": "Adjustment at low price",
+          "pv_sensor": "PV surplus sensor",
+          "pv_threshold": "Surplus from",
+          "pv_offset": "Adjustment with surplus"
+        },
+        "data_description": {
+          "pv_sensor": "Power exported to the grid (W)."
+        }
+      },
+      "boiler": {
+        "title": "Boiler and heat demand",
+        "data": {
+          "boiler_entity": "Boiler",
+          "boiler_min_rooms": "Rooms needed to start the boiler",
+          "boiler_min_on": "Boiler minimum on time",
+          "boiler_min_off": "Boiler minimum off time",
+          "room_diff_alert": "Alert when a room stays colder than",
+          "reference_room": "Reference room"
+        },
+        "data_description": {
+          "boiler_entity": "Turned on when rooms ask for heat. Leave empty when the thermostats control the boiler (e.g. Generic Thermostat).",
+          "room_diff_alert": "Degrees below target while other rooms are warm. 0 = off.",
+          "reference_room": "If set, only this room decides whether the boiler runs."
+        }
+      },
+      "behavior": {
+        "title": "Overrides, vacation and limits",
+        "data": {
+          "override_mode": "Manual changes are kept",
+          "override_hours": "Fixed duration",
+          "override_scope": "Manual change applies to",
+          "vacation_preheat_hours": "Preheat before the end of a vacation",
+          "auto_vacation_hours": "Automatic vacation after far away for",
+          "frost_temp": "Frost protection",
+          "max_temp": "Maximum temperature",
+          "reevaluation_minutes": "Periodic check every"
+        },
+        "data_description": {
+          "override_mode": "One rule for every manual change, including turning the thermostat off. 'Until next reevaluation' ends when the schedule, presence, a window or the mode changes; the periodic check does not end it.",
+          "override_scope": "Use 'whole house' only when every room has its own valves.",
+          "auto_vacation_hours": "0 = off.",
+          "frost_temp": "For rooms without Generic Thermostat. With Generic Thermostat its minimum temperature is used."
+        }
+      },
+      "alerts": {
+        "title": "Alerts",
+        "data": {
+          "notify_service": "Notification service",
+          "alert_window_minutes": "Alert when a window is open longer than",
+          "alert_unavailable_minutes": "Alert when a device is unavailable longer than",
+          "battery_threshold": "Low battery below",
+          "verify_commands": "Verify commands"
+        },
+        "data_description": {
+          "notify_service": "e.g. notify.mobile_app_phone. Empty = persistent notifications.",
+          "verify_commands": "Check after 2 minutes that the device accepted the command, retry once, then alert."
+        }
+      }
+    },
+    "error": {
+      "invalid_month_day": "Use the MM-DD format, e.g. 10-15."
+    }
+  },
+  "config_subentries": {
+    "room": {
+      "entry_type": "Room",
+      "initiate_flow": {
+        "user": "Add room",
+        "reconfigure": "Reconfigure room"
+      },
+      "step": {
+        "basics": {
+          "title": "Room",
+          "data": {
+            "name": "Name",
+            "area": "Area",
+            "source": "Heated by"
+          },
+          "data_description": {
+            "source": "Generic Thermostat keeps its own presets and temperatures; the integration only selects them."
+          }
+        },
+        "devices": {
+          "title": "Devices",
+          "data": {
+            "climates": "Thermostats",
+            "switches": "Switches (relays)",
+            "command_mode": "Command",
+            "hysteresis": "Hysteresis",
+            "min_on_minutes": "Minimum on time",
+            "min_off_minutes": "Minimum off time"
+          },
+          "data_description": {
+            "command_mode": "How the thermostats are controlled.",
+            "hysteresis": "Used for on/off control (relays or hvac mode)."
+          }
+        },
+        "levels": {
+          "title": "Levels",
+          "description": "The levels have fixed roles: home, sleep, eco (nearby), away (far / vacation), comfort and activity.",
+          "data": {
+            "nearby_mode": "When nobody is home but someone is nearby",
+            "nearby_temp": "Fixed temperature when nearby",
+            "name_home": "Name of the 'home' level",
+            "name_sleep": "Name of the 'sleep' level",
+            "name_eco": "Name of the 'eco' level",
+            "name_away": "Name of the 'away' level",
+            "name_comfort": "Name of the 'comfort' level",
+            "name_activity": "Name of the 'activity' level"
+          },
+          "data_description": {
+            "nearby_mode": "Use the eco preset or a fixed temperature."
+          }
+        },
+        "sensors": {
+          "title": "Sensors",
+          "data": {
+            "temperature_sensors": "Temperature sensors",
+            "temperature_aggregation": "Several sensors",
+            "calibration_mode": "TRV calibration",
+            "calibration_entities": "Calibration entities",
+            "occupancy_sensors": "Occupancy sensors",
+            "occupancy_minutes": "Eco after no occupancy for"
+          },
+          "data_description": {
+            "temperature_sensors": "Used instead of the thermostat sensor.",
+            "calibration_entities": "Number entities of the TRVs (offset or external temperature input).",
+            "occupancy_minutes": "Only while someone is home."
+          }
+        },
+        "windows": {
+          "title": "Windows and doors",
+          "data": {
+            "window_sensors": "Window sensors",
+            "linked_window_sensors": "Windows of other rooms",
+            "window_open_delay": "Open delay",
+            "window_close_delay": "Close delay",
+            "window_action": "When a window is open",
+            "window_drop_detect": "Detect open windows from the temperature",
+            "window_drop_degrees": "Temperature drop",
+            "window_drop_minutes": "Within"
+          },
+          "data_description": {
+            "linked_window_sensors": "e.g. the balcony door of the living room also cools the hall.",
+            "window_drop_detect": "A quick temperature drop counts as an open window for 15 minutes."
+          }
+        },
+        "schedule": {
+          "title": "Schedule",
+          "description": "One profile per line: `profile: HH:MM preset, HH:MM preset`. Profiles: workday, weekend, mon…sun or any name (manual or calendar). {error}",
+          "data": {
+            "schedule_source": "Schedule source",
+            "schedule": "Schedule",
+            "schedule_helper": "Schedule helper",
+            "helper_on_preset": "Level while the helper is on",
+            "helper_off_preset": "Level while the helper is off",
+            "optimal_start": "Optimal start",
+            "optimal_start_max_minutes": "Maximum early start",
+            "optimal_stop": "Optimal stop",
+            "optimal_stop_minutes": "Lower early by"
+          },
+          "data_description": {
+            "schedule": "e.g. `workday: 00:00 sleep, 06:00 home, 22:00 sleep`",
+            "optimal_start": "Start heating early so the next level is reached on time (learned heating rate).",
+            "optimal_stop": "Lower the temperature early and use the thermal inertia."
+          }
+        },
+        "extras": {
+          "title": "Extras",
+          "data": {
+            "solar_offset": "Solar gain",
+            "valve_exercise": "Valve exercise",
+            "valve_exercise_day": "Day",
+            "valve_exercise_time": "Time"
+          },
+          "data_description": {
+            "solar_offset": "Negative adjustment while the sun shines (only rooms facing the sun). 0 = off.",
+            "valve_exercise": "Open the TRVs fully for 5 minutes once a week against limescale."
+          }
+        }
+      },
+      "error": {
+        "no_devices": "Select at least one device.",
+        "duplicate_names": "Two levels have the same name.",
+        "invalid_schedule": "Invalid schedule.",
+        "helper_required": "Select the schedule helper."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "presence": {
+        "name": "Presence",
+        "state": {
+          "home": "Home",
+          "nearby": "Nearby",
+          "far": "Far"
+        }
+      },
+      "outdoor_average": {
+        "name": "Outdoor average"
+      },
+      "heating_runtime": {
+        "name": "Heating runtime"
+      },
+      "decision": {
+        "name": "Decision",
+        "state": {
+          "starting": "Starting",
+          "frost_protection": "Frost protection",
+          "pause": "Paused",
+          "mode_off": "Off",
+          "summer": "Summer",
+          "out_of_season": "Out of season",
+          "valve_exercise": "Valve exercise",
+          "window_open": "Window open",
+          "manual_override": "Manual change",
+          "vacation": "Vacation",
+          "presence_far": "Far away",
+          "presence_nearby": "Nearby",
+          "room_unoccupied": "Room unoccupied",
+          "sensor_fallback": "Sensor fallback",
+          "schedule": "Schedule",
+          "optimal_start": "Optimal start",
+          "optimal_stop": "Optimal stop",
+          "outdoor_cutoff": "Warm outside"
+        }
+      },
+      "target_temperature": {
+        "name": "Target temperature"
+      },
+      "room_temperature": {
+        "name": "Room temperature"
+      },
+      "next_change": {
+        "name": "Next change"
+      },
+      "heating_rate": {
+        "name": "Heating rate"
+      }
+    },
+    "binary_sensor": {
+      "heating_season": {
+        "name": "Heating season"
+      },
+      "outdoor_cutoff": {
+        "name": "Outdoor cutoff"
+      },
+      "heat_demand": {
+        "name": "Heat demand"
+      },
+      "window_open": {
+        "name": "Window open"
+      },
+      "manual_override": {
+        "name": "Manual change"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Mode",
+        "state": {
+          "auto": "Auto",
+          "vacation": "Vacation",
+          "off": "Off",
+          "summer": "Summer"
+        }
+      },
+      "profile": {
+        "name": "Profile",
+        "state": {
+          "auto": "Auto"
+        }
+      }
+    },
+    "switch": {
+      "pause": {
+        "name": "Pause"
+      },
+      "guest_mode": {
+        "name": "Guest mode"
+      },
+      "child_lock": {
+        "name": "Child lock"
+      }
+    },
+    "number": {
+      "level_home": {
+        "name": "Level Home"
+      },
+      "level_sleep": {
+        "name": "Level Sleep"
+      },
+      "level_eco": {
+        "name": "Level Eco"
+      },
+      "level_away": {
+        "name": "Level Away"
+      },
+      "level_comfort": {
+        "name": "Level Comfort"
+      },
+      "level_activity": {
+        "name": "Level Activity"
+      },
+      "level_nearby": {
+        "name": "Nearby temperature"
+      },
+      "level_custom": {
+        "name": "Level {name}"
+      }
+    },
+    "datetime": {
+      "vacation_start": {
+        "name": "Vacation start"
+      },
+      "vacation_end": {
+        "name": "Vacation end"
+      }
+    },
+    "button": {
+      "clear_overrides": {
+        "name": "Clear manual changes"
+      },
+      "reevaluate": {
+        "name": "Reevaluate"
+      },
+      "clear_vacation": {
+        "name": "Clear vacation"
+      },
+      "clear_override": {
+        "name": "Clear manual change"
+      }
+    }
+  },
+  "selector": {
+    "home_rule": {
+      "options": {
+        "any": "At least one person is home",
+        "all": "Everybody is home"
+      }
+    },
+    "season_mode": {
+      "options": {
+        "always": "Always",
+        "dates": "Between dates",
+        "auto": "Automatic (outdoor temperature)"
+      }
+    },
+    "override_mode": {
+      "options": {
+        "fixed": "Fixed duration",
+        "until_next_reevaluation": "Until next reevaluation"
+      }
+    },
+    "override_scope": {
+      "options": {
+        "room": "Only that room",
+        "house": "Whole house"
+      }
+    },
+    "source": {
+      "options": {
+        "generic_thermostat": "Generic Thermostat",
+        "climate": "Other thermostats / TRVs",
+        "switch": "Switch (relay)"
+      }
+    },
+    "command_mode": {
+      "options": {
+        "temperature": "Temperature",
+        "preset": "Preset",
+        "hvac_mode": "On / off (hvac mode)"
+      }
+    },
+    "nearby_mode": {
+      "options": {
+        "preset": "Eco preset",
+        "temperature": "Fixed temperature"
+      }
+    },
+    "aggregation": {
+      "options": {
+        "mean": "Average",
+        "min": "Minimum",
+        "median": "Median"
+      }
+    },
+    "calibration": {
+      "options": {
+        "off": "Off",
+        "offset": "Offset",
+        "external": "External temperature input"
+      }
+    },
+    "window_action": {
+      "options": {
+        "frost": "Frost protection",
+        "off": "Turn off"
+      }
+    },
+    "schedule_source": {
+      "options": {
+        "internal": "Internal schedule",
+        "helper": "Schedule helper"
+      }
+    },
+    "preset": {
+      "options": {
+        "home": "Home",
+        "sleep": "Sleep",
+        "eco": "Eco",
+        "away": "Away",
+        "comfort": "Comfort",
+        "activity": "Activity"
+      }
+    },
+    "weekday": {
+      "options": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
+      }
+    }
+  },
+  "services": {
+    "set_override": {
+      "name": "Set manual change",
+      "description": "Set a level or a temperature and keep it as a manual change.",
+      "fields": {
+        "room": {
+          "name": "Room",
+          "description": "Room name or id."
+        },
+        "entity_id": {
+          "name": "Entities",
+          "description": "Any entity of the room (or its thermostat)."
+        },
+        "preset": {
+          "name": "Preset",
+          "description": "Level to set."
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "Temperature to set."
+        },
+        "duration_hours": {
+          "name": "Duration",
+          "description": "Hours; empty = the configured rule for manual changes."
+        }
+      }
+    },
+    "clear_override": {
+      "name": "Clear manual change",
+      "description": "Return to automatic control (all rooms when none is given).",
+      "fields": {
+        "room": {
+          "name": "Room",
+          "description": "Room name or id."
+        },
+        "entity_id": {
+          "name": "Entities",
+          "description": "Any entity of the room (or its thermostat)."
+        }
+      }
+    },
+    "set_vacation": {
+      "name": "Set vacation",
+      "description": "Set the vacation period; empty values clear it.",
+      "fields": {
+        "config_entry_id": {
+          "name": "House",
+          "description": "Needed only with several houses."
+        },
+        "start": {
+          "name": "Vacation start",
+          "description": "Start of the vacation."
+        },
+        "end": {
+          "name": "Vacation end",
+          "description": "End of the vacation (preheating starts earlier)."
+        }
+      }
+    },
+    "reevaluate": {
+      "name": "Reevaluate",
+      "description": "Evaluate all rooms now.",
+      "fields": {
+        "config_entry_id": {
+          "name": "House",
+          "description": "Needed only with several houses."
+        }
+      }
+    },
+    "set_schedule": {
+      "name": "Set schedule",
+      "description": "Replace the schedule of a room.",
+      "fields": {
+        "room": {
+          "name": "Room",
+          "description": "Room name or id."
+        },
+        "entity_id": {
+          "name": "Entities",
+          "description": "Any entity of the room (or its thermostat)."
+        },
+        "schedule": {
+          "name": "Schedule",
+          "description": "e.g. `workday: 00:00 sleep, 06:00 home, 22:00 sleep`"
+        },
+        "profiles": {
+          "name": "Profiles",
+          "description": "Profiles as an object: {\"workday\": [{\"time\": \"06:00\", \"preset\": \"home\"}]}"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "house_not_found": {
+      "message": "No Advanced Climate house with id {entry}."
+    },
+    "house_ambiguous": {
+      "message": "Several houses are configured; give config_entry_id."
+    },
+    "room_not_found": {
+      "message": "No matching room."
+    },
+    "preset_or_temperature": {
+      "message": "Give either a preset or a temperature."
+    },
+    "unknown_preset": {
+      "message": "Unknown preset {preset}."
+    },
+    "vacation_order": {
+      "message": "The end must be after the start."
+    },
+    "schedule_or_profiles": {
+      "message": "Give either schedule or profiles."
+    },
+    "schedule_external": {
+      "message": "This room uses a schedule helper; edit the helper instead."
+    },
+    "invalid_schedule": {
+      "message": "Invalid schedule: {error}"
+    }
+  }
+}

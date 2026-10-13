@@ -1,0 +1,24 @@
+{
+  "domain": "advanced_climate",
+  "name": "Advanced Climate",
+  "after_dependencies": [
+    "calendar",
+    "frontend",
+    "generic_thermostat",
+    "http",
+    "proximity",
+    "schedule",
+    "weather",
+    "workday"
+  ],
+  "codeowners": [
+    "@sandreialexandru"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/sandreialexandru/Advanced-Climate",
+  "integration_type": "hub",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/sandreialexandru/Advanced-Climate/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

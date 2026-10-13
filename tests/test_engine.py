@@ -1,0 +1,185 @@
+"""Tests for the decision engine."""
+
+from __future__ import annotations
+
+from dataclasses import replace
+from datetime import datetime, timedelta, timezone
+import unittest
+
+from tests.pure import const, engine
+
+TZ = timezone.utc
+NOW = datetime(2026, 10, 12, 12, 0, tzinfo=TZ)
+LEVELS = {"home": 22.0, "sleep": 19.0, "eco": 17.0, "away": 10.0, "comfort": 23.0, "activity": 20.0}
+
+
+def inputs(**kwargs) -> engine.RoomInputs:
+    base = engine.RoomInputs(
+        now=NOW,
+        mode=const.MODE_AUTO,
+        paused=False,
+        season_active=True,
+        cutoff_active=False,
+        valve_exercise=False,
+        window_open=False,
+        window_action=const.WINDOW_ACTION_FROST,
+        override_active=False,
+        vacation_active=False,
+        presence=const.PRESENCE_HOME,
+        arriving=False,
+        room_unoccupied=False,
+        sensor_failed=False,
+        schedule_preset="home",
+        schedule_rule=const.RULE_SCHEDULE,
+        current_temp=21.0,
+        frost_temp=7.0,
+        max_temp=25.0,
+        nearby_mode=const.NEARBY_PRESET,
+        nearby_temp=None,
+        level_temp=LEVELS.get,
+    )
+    return replace(base, **kwargs)
+
+
+class RuleOrderTest(unittest.TestCase):
+    def check(self, rule, kind, preset=None, temperature=None, **kwargs):
+        decision = engine.decide(inputs(**kwargs))
+        self.assertEqual(decision.rule, rule, decision.description)
+        self.assertEqual(decision.target.kind, kind)
+        if preset is not None:
+            self.assertEqual(decision.target.preset, preset)
+        if temperature is not None:
+            self.assertAlmostEqual(decision.target.temperature, temperature)
+        return decision
+
+    def test_schedule(self) -> None:
+        self.check(const.RULE_SCHEDULE, "preset", "home")
+
+    def test_presence(self) -> None:
+        self.check(const.RULE_NEARBY, "preset", "eco", presence="nearby")
+        self.check(const.RULE_FAR, "preset", "away", presence="far")
+        self.check(
+            const.RULE_NEARBY,
+            "temperature",
+            temperature=16.5,
+            presence="nearby",
+            nearby_mode=const.NEARBY_TEMPERATURE,
+            nearby_temp=16.5,
+        )
+
+    def test_arriving_uses_schedule(self) -> None:
+        d = self.check(const.RULE_SCHEDULE, "preset", "home", presence="far", arriving=True)
+        self.assertIn("on the way", d.description)
+
+    def test_vacation_over_presence(self) -> None:
+        self.check(const.RULE_VACATION, "preset", "away", vacation_active=True)
+        self.check(const.RULE_VACATION, "preset", "away", mode=const.MODE_VACATION)
+
+    def test_override_over_vacation(self) -> None:
+        self.check(const.RULE_OVERRIDE, "none", override_active=True, vacation_active=True)
+
+    def test_window_over_override(self) -> None:
+        self.check(
+            const.RULE_WINDOW, "temperature", temperature=7.0, window_open=True, override_active=True
+        )
+        self.check(
+            const.RULE_WINDOW,
+            "off",
+            window_open=True,
+            window_action=const.WINDOW_ACTION_OFF,
+        )
+
+    def test_modes(self) -> None:
+        self.check(const.RULE_MODE_OFF, "temperature", temperature=7.0, mode=const.MODE_OFF)
+        self.check(const.RULE_SUMMER, "off", mode=const.MODE_SUMMER)
+        self.check(const.RULE_OUT_OF_SEASON, "off", season_active=False)
+        self.check(const.RULE_PAUSE, "none", paused=True, window_open=True)
+
+    def test_off_not_supported(self) -> None:
+        self.check(
+            const.RULE_SUMMER, "temperature", temperature=7.0, mode=const.MODE_SUMMER, supports_off=False
+        )
+
+    def test_unoccupied_and_fallback(self) -> None:
+        self.check(const.RULE_UNOCCUPIED, "preset", "eco", room_unoccupied=True)
+        self.check(const.RULE_SCHEDULE, "preset", "away", room_unoccupied=True, schedule_preset="away")
+        self.check(const.RULE_SENSOR_FALLBACK, "preset", "eco", sensor_failed=True)
+
+
+class AdjustmentTest(unittest.TestCase):
+    def test_cutoff(self) -> None:
+        d = engine.decide(inputs(cutoff_active=True))
+        self.assertEqual((d.rule, d.target.kind), (const.RULE_CUTOFF, "off"))
+        # The cutoff does not hide an open window.
+        d = engine.decide(inputs(cutoff_active=True, window_open=True))
+        self.assertEqual(d.rule, const.RULE_WINDOW)
+
+    def test_offsets_convert_preset(self) -> None:
+        d = engine.decide(inputs(offsets=[("compensation", 0.5), ("tariff", -1.0)]))
+        self.assertEqual(d.target.kind, "temperature")
+        self.assertAlmostEqual(d.target.temperature, 21.5)
+        self.assertEqual(d.target.preset, "home")
+        self.assertEqual(d.rule, const.RULE_SCHEDULE)
+
+    def test_offsets_unknown_level(self) -> None:
+        d = engine.decide(inputs(offsets=[("pv", 0.5)], level_temp=lambda p: None))
+        self.assertEqual((d.target.kind, d.target.preset), ("preset", "home"))
+
+    def test_offsets_ignored_for_override(self) -> None:
+        d = engine.decide(inputs(override_active=True, offsets=[("pv", 0.5)]))
+        self.assertEqual(d.target.kind, "none")
+
+
+class SafetyTest(unittest.TestCase):
+    def test_clamp(self) -> None:
+        d = engine.decide(
+            inputs(presence="nearby", nearby_mode=const.NEARBY_TEMPERATURE, nearby_temp=30)
+        )
+        self.assertAlmostEqual(d.target.temperature, 25.0)
+
+    def test_frost_when_off(self) -> None:
+        d = engine.decide(inputs(mode=const.MODE_SUMMER, current_temp=5.0))
+        self.assertEqual((d.rule, d.target.temperature), (const.RULE_SAFETY, 7.0))
+        d = engine.decide(inputs(paused=True, current_temp=6.0))
+        self.assertEqual(d.rule, const.RULE_SAFETY)
+
+    def test_preset_below_frost(self) -> None:
+        levels = dict(LEVELS, away=5.0)
+        d = engine.decide(inputs(presence="far", level_temp=levels.get))
+        self.assertEqual((d.rule, d.target.temperature), (const.RULE_SAFETY, 7.0))
+
+    def test_valve_exercise_not_clamped(self) -> None:
+        d = engine.decide(inputs(valve_exercise=True, max_temp=25.0))
+        self.assertEqual(d.rule, const.RULE_VALVE_EXERCISE)
+
+
+class OptimalTest(unittest.TestCase):
+    def test_start(self) -> None:
+        change = NOW + timedelta(minutes=50)
+        preset, rule = engine.optimal_schedule(
+            NOW, "sleep", change, "home", 20.5, LEVELS.get, 2.0, True, 120, False, 30
+        )
+        # 1.5 °C at 2 °C/h needs 45 minutes; 50 minutes remain -> not yet.
+        self.assertEqual((preset, rule), ("sleep", const.RULE_SCHEDULE))
+        preset, rule = engine.optimal_schedule(
+            NOW, "sleep", change, "home", 20.0, LEVELS.get, 2.0, True, 120, False, 30
+        )
+        self.assertEqual((preset, rule), ("home", const.RULE_OPTIMAL_START))
+
+    def test_start_capped(self) -> None:
+        change = NOW + timedelta(minutes=90)
+        preset, _ = engine.optimal_schedule(
+            NOW, "away", change, "home", 10.0, LEVELS.get, 1.0, True, 60, False, 30
+        )
+        self.assertEqual(preset, "away")
+
+    def test_stop(self) -> None:
+        change = NOW + timedelta(minutes=20)
+        preset, rule = engine.optimal_schedule(
+            NOW, "home", change, "sleep", 22.0, LEVELS.get, 1.0, False, 120, True, 30
+        )
+        self.assertEqual((preset, rule), ("sleep", const.RULE_OPTIMAL_STOP))
+
+
+if __name__ == "__main__":
+    unittest.main()
