@@ -199,6 +199,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "preset_names": room.preset_names,
             "levels": {p: room.level_temp(p) for p in PRESETS},
             "climate_entities": room.climates,
+            "device_preset": room.device_preset(),
             "heat_demand": room.heat_demand,
             "day_boundary": room.house.day_boundary_minutes,
             "source": room.source,
