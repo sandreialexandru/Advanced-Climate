@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
@@ -66,6 +67,15 @@ SET_SCHEDULE_SCHEMA = vol.Schema(
         vol.Optional(ATTR_PROFILES): dict,
     }
 )
+
+
+def _local(value: datetime | None) -> datetime | None:
+    """Naive datetimes are local time (the card sends local time)."""
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=dt_util.get_default_time_zone())
+    return dt_util.as_local(value)
 
 
 def _houses(hass: HomeAssistant) -> list[House]:
@@ -161,8 +171,8 @@ def async_setup_services(hass: HomeAssistant) -> None:
         house = _house(hass, call.data.get(ATTR_ENTRY))
         start = call.data.get(ATTR_START)
         end = call.data.get(ATTR_END)
-        start = dt_util.as_local(start) if start else None
-        end = dt_util.as_local(end) if end else None
+        start = _local(start)
+        end = _local(end)
         if start and end and end <= start:
             raise ServiceValidationError(
                 translation_domain=DOMAIN, translation_key="vacation_order"

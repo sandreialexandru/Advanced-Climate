@@ -16,7 +16,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import AdvancedClimateConfigEntry
 from .const import PRESENCE_STATES, PRESETS, RULES
-from .entity import HouseEntity, RoomEntity
+from .entity import HOUSE_ENTITY_KEYS, ROOM_ENTITY_KEYS, HouseEntity, RoomEntity, entity_map
 from .house import House
 from .room import Room
 from .schedule import profiles_to_dict
@@ -143,6 +143,11 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "schedule_editable",
             "entry_id",
             "room_id",
+            "entities",
+            "house_entities",
+            "house_name",
+            "source",
+            "custom_levels",
         }
     )
 
@@ -187,6 +192,13 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "climate_entities": room.climates,
             "heat_demand": room.heat_demand,
             "day_boundary": room.house.day_boundary_minutes,
+            "source": room.source,
+            "custom_levels": room.uses_custom_levels,
+            "house_name": room.house.entry.title,
+            "entities": entity_map(self.hass, room.id, ROOM_ENTITY_KEYS),
+            "house_entities": entity_map(
+                self.hass, room.house.entry.entry_id, HOUSE_ENTITY_KEYS
+            ),
         }
 
 
