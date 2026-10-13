@@ -1,0 +1,252 @@
+# Advanced Climate – specification
+
+Advanced Climate computes **one target per room** from the schedule, presence,
+windows, weather and manual changes, and applies it to the heating devices.
+Everything is configured from the UI (config flow, options flow and room
+subentries); no YAML is needed.
+
+The integration is built around **Generic Thermostat (GT)**: it uses the same
+preset names and never changes how GT works – it only selects the preset that
+fits. Rooms heated by other thermostats, TRVs or plain relays are supported too.
+
+## Principles
+
+- **One decision per room, recalculated continuously.** Any relevant change
+  (person, zone, window, time, weather) triggers a reevaluation, not only the
+  start of a time slot. A periodic check (default every 5 minutes) catches
+  anything missed.
+- **A fixed and explicit rule hierarchy** (section 13), so two rules never fight.
+- **Every decision has a visible reason**: the *Decision* sensor of the room
+  shows the winning rule and a text explaining it.
+- **State survives restarts**: overrides, vacation, learned heating rates.
+- **Safe defaults**: without extra configuration the integration can neither let
+  the house freeze nor overheat it.
+- **Advanced options are optional** and stay off until enabled.
+
+## 1. What is controlled
+
+The unit is the **room** (heating zone). The configuration has two levels: one
+entry for the **house** (people, zones, global mode, shared settings) and one
+**room subentry** per room (devices, sensors, windows, schedule).
+
+| Option | Default | Description |
+| --- | --- | --- |
+| Heated by | Generic Thermostat | Generic Thermostat, other `climate` entities (TRVs, thermostats) or `switch` / `input_boolean` relays |
+| Command (other thermostats) | temperature | Temperature / preset / on-off via `hvac_mode` |
+| External temperature sensors | none | Used instead of the device sensor; several sensors → mean, minimum or median |
+| TRV calibration | off | Offset calculated from the external sensor, or the external temperature written to the TRV input |
+| Boiler | none | Switched on when enough rooms ask for heat (with minimum on/off times) |
+| Rooms needed | 1 | Number of rooms that must ask for heat to start the boiler |
+| Reference room | none | Only this room decides for the boiler |
+| Room difference alert | off | Alert when a room stays colder than the target while others are warm |
+
+## 2. Levels (presets)
+
+The integration uses the **Generic Thermostat preset names**, each with a fixed
+role in the rules:
+
+| Preset | Applied automatically when |
+| --- | --- |
+| `home` | Someone is home and the schedule says `home` |
+| `sleep` | Sleep slot of the schedule with someone home |
+| `eco` | Nobody home, at least one person in the nearby zone |
+| `away` | Everyone outside the nearby zones, or vacation |
+| `comfort`, `activity` | No automatic role in the rules |
+| `min_temp` of GT (not a preset) | Frost protection: window open, mode Off |
+
+All GT presets remain available as presets: they can be chosen manually or used
+in the schedule. The integration only selects the preset; it does not change any
+functionality of GT.
+
+For *nearby* the default is the `eco` preset. Instead of the preset a **fixed
+temperature** can be configured; the integration sends it to GT, which switches
+to preset `none` by itself.
+
+Without Generic Thermostat the **names of the levels are configurable** and each
+level has its own temperature (number entities); the roles in the rules stay the
+same.
+
+## 3. Schedule
+
+The schedule says which level is wanted while someone is home. Presence and the
+other rules can lower it but never raise it.
+
+```
+workday: 00:00 sleep, 06:00 home, 22:00 sleep
+weekend: 00:00 sleep, 08:00 home, 23:00 sleep
+fri:     00:00 sleep, 06:00 home, 23:30 sleep
+home_office: 00:00 sleep, 07:00 comfort, 23:00 sleep
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| Profiles | workday + weekend | `workday`, `weekend`, weekday profiles `mon` … `sun`, or any name |
+| Profile selection | auto | Manual (select entity) → calendar event → weekday profile → workday / weekend |
+| Workdays | Workday integration | Holidays come from the Workday integration (including future days) |
+| Calendar | none | An event titled with a profile name selects that profile; a preset name selects that level |
+| Schedule source | internal | Internal schedule or an existing HA **Schedule helper** |
+| Optimal start | off | Start heating early so the next level is reached on time |
+| Learned heating rate | on with optimal start | °C/h per room, by outdoor temperature bucket |
+| Maximum early start | 2 h | Limit of the optimal start |
+| Optimal stop | off | Lower the target earlier, using the thermal inertia |
+| Day boundary | 00:00 | For night shifts: when the schedule day changes |
+
+## 4. Presence
+
+The house presence has three states: **home / nearby / far**, plus optional
+per-room occupancy.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| People | – | Which `person` entities count |
+| Home rule | at least one | "At least one" or "everybody" home |
+| Nearby zones | none | Zones (e.g. Bucharest) where the house is *nearby* instead of *far* |
+| Zones inside a nearby zone | automatic | A zone in the city (e.g. Office) also counts as nearby, computed from coordinates |
+| Proximity | off | Distance and direction; preheat only when someone is coming home |
+| Arrival threshold | 10 km or 20 min | Distance or travel time from which preheating starts |
+| Departure delay | 10 min | Wait before the house counts as empty |
+| Arrival delay | 0 min | Wait before someone counts as arrived |
+| Presence sensors | none | mmWave / motion / switches keep the house *home* |
+| Room occupancy | off | The room goes to eco after X minutes without occupancy |
+| Guest mode | off | Forces *home*, with optional automatic expiry |
+
+`unknown` / `unavailable` person states are treated as "no change", never as a
+departure.
+
+## 5. Windows and doors
+
+An open window lowers the room to frost protection or turns it off; when it
+closes the room returns to whatever the rules say at that moment.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| Window sensors | none | Any of them open = open |
+| Open delay | 60 s | Ignore very short airing |
+| Close delay | 30 s | Wait before resuming |
+| Action | frost protection | Frost protection or off |
+| Detect from temperature | off | A quick drop (e.g. 1 °C in 3 min) counts as an open window |
+| Windows of other rooms | none | e.g. the balcony door of the living room also affects the hall |
+| Alert after | 30 min | Notification while heating is relevant |
+| Ignore above outdoor temperature | off | In spring/autumn airing does not lower heating |
+
+## 6. Weather and season
+
+Weather can turn heating off or adjust the target; it can never raise it above
+what the schedule asks.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| Outdoor temperature | `weather` | Local sensor or the weather entity |
+| Cutoff | 18 °C | Heating off above the average (1 °C hysteresis) |
+| Average over | 6 h | Average, not the instantaneous value |
+| Heating season | always | Always, between dates (e.g. 10-15 → 04-15) or automatic |
+| Automatic season | 3 days / 15 °C | Starts/ends after X consecutive days below/above the threshold |
+| Outdoor compensation | off | Small adjustment, e.g. +0.5 °C below −5 °C |
+| Forecast | off | Delay heating if the forecast reaches the cutoff soon |
+| Solar gain per room | off | Negative offset while the sun shines |
+
+## 7. Manual changes
+
+A change made by a person (app, TRV, HA) is respected for a defined time; then
+the integration takes control again.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| Detection | on | Changes made by the integration are told apart by their context |
+| Duration | configurable, universal | One rule for every manual change, including turning GT off: **fixed duration** (X hours) or **until the next reevaluation** triggered by a change (slot, presence, window, mode). The periodic check does not end it |
+| Scope | room | Whole house only when rooms have their own valves |
+| Pause | – | Switch: no commands at all (frost protection still applies) |
+| Child lock | off | Manual changes are reverted immediately |
+| Clear | – | Button per room and for the house |
+
+## 8. Global modes
+
+One select for the house: **Auto / Vacation / Off / Summer**.
+
+| Mode | What it does | Options |
+| --- | --- | --- |
+| Auto | Schedule + presence + every rule | – |
+| Vacation | `away` in every room | Start and end dates, preheat X hours before the end (default 4 h), automatic vacation after Y hours far away |
+| Off | Frost protection only (`min_temp` of GT) | – |
+| Summer | Heating off | Automatic switch with the season (section 6) |
+
+## 9. Energy and boiler protection
+
+| Option | Default | Description |
+| --- | --- | --- |
+| Hysteresis | 0.3 °C | Relays only (not with GT, which has its own tolerances) |
+| Minimum on / off time | 5 / 5 min | Relays only (not with GT) |
+| Dynamic tariff | off | Lower by X °C above a price, preheat below a price |
+| PV surplus | off | Raise by X °C with surplus |
+| Statistics | on | Heating hours per room and for the house |
+
+## 10. Safety and resilience
+
+| Option | Default | Description |
+| --- | --- | --- |
+| Frost protection | on | Lower limit, also in Off and Pause (GT: its minimum temperature) |
+| Sensor unavailable | device sensor | External sensor down → device sensor → eco, with alert |
+| Device unavailable | alert after 15 min | The other rooms keep working |
+| Command verification | on | Retry once after 2 min, then alert |
+| Valve exercise | off | Weekly full opening of the TRVs |
+| Low battery | alert below 20 % | TRVs and sensors of the room |
+| Restart | restore | Overrides, vacation and learned data are kept |
+| Periodic reevaluation | 5 min | In addition to events |
+
+## 12. Visibility
+
+| Entity / interface | Shows |
+| --- | --- |
+| `sensor.<room>_decision` | Winning rule (enum) + reason, preset, schedule, next change |
+| `sensor.<room>_target_temperature` | Target temperature |
+| `sensor.<room>_next_change` | Next scheduled change |
+| `binary_sensor.<room>_heat_demand` | Whether the room asks for heat |
+| `sensor.<house>_presence` | home / nearby / far |
+| `select.<house>_mode`, `select.<room>_profile` | Global mode and active profile |
+| `number.*`, `button.*`, `switch.*` | Levels, clear overrides, guest mode, pause, child lock |
+| Services | `set_override`, `clear_override`, `set_vacation`, `reevaluate`, `set_schedule` |
+| Events | `advanced_climate_decision_changed` with room, old and new target and reason |
+| Lovelace card | Editable schedule, room state and decision |
+| Diagnostics | Configuration and the last 100 decisions |
+
+## 13. Rule hierarchy
+
+Rules are evaluated from the top down for every room; the first rule that
+applies sets the level.
+
+1. **Safety** – frost protection and maximum temperature, always applied
+2. **Mode Off / Pause / Summer / out of season**
+3. **Window open**
+4. **Manual change**
+5. **Vacation**
+6. **Presence** – far → `away`, nearby → `eco` (or the fixed temperature), home → schedule
+7. **Schedule** – with optimal start / stop and room occupancy
+
+Final adjustments (outdoor cutoff, compensation, tariff, PV, solar gain) only
+correct a heating target by a few tenths of a degree, and the result always goes
+through the safety limits. The reason shown by the decision sensor is the
+winning rule.
+
+## 14. Glossary RO → EN
+
+| Română | English |
+| --- | --- |
+| Casă / cameră | house / room |
+| Program / profil / interval | schedule / profile / time slot |
+| Prezență: acasă / aproape / departe | presence: home / nearby / far |
+| Zonă apropiată | nearby zone |
+| Fereastră deschisă | window open |
+| Intervenție manuală | manual override |
+| Durată fixă / până la următoarea reevaluare | fixed duration / until next reevaluation |
+| Mod global: Auto / Vacanță / Oprit / Vară | global mode: auto / vacation / off / summer |
+| Pauză | pause |
+| Antiîngheț | frost protection |
+| Pornire / oprire anticipată | optimal start / optimal stop |
+| Sezon de încălzire | heating season |
+| Prag de oprire (temperatură exterioară) | outdoor cutoff |
+| Câștig solar | solar gain |
+| Cererea către centrală | heat demand |
+| Mod oaspeți | guest mode |
+| Motiv curent | decision reason |
+| Mișcarea robinetelor | valve exercise |
+| Reevaluare | reevaluation |

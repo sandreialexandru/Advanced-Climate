@@ -1,0 +1,661 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Advanced Climate",
+        "description": "Creează casa. Camerele se adaugă apoi cu „Adaugă cameră”; restul opțiunilor sunt în opțiunile integrării.",
+        "data": {
+          "name": "Nume",
+          "persons": "Persoane",
+          "nearby_zones": "Zone apropiate",
+          "home_rule": "Casa e „acasă” când"
+        },
+        "data_description": {
+          "nearby_zones": "Zone (de ex. orașul) în care casa e „aproape”, nu „departe”.",
+          "home_rule": "Dacă ajunge o persoană acasă sau trebuie să fie toți."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opțiuni Advanced Climate",
+        "menu_options": {
+          "presence": "Prezență",
+          "calendar": "Zile lucrătoare și calendar",
+          "weather": "Vreme și sezon",
+          "energy": "Energie",
+          "boiler": "Centrală și cerere de căldură",
+          "behavior": "Modificări manuale, vacanță și limite",
+          "alerts": "Alerte"
+        }
+      },
+      "presence": {
+        "title": "Prezență",
+        "data": {
+          "persons": "Persoane",
+          "home_rule": "Casa e „acasă” când",
+          "nearby_zones": "Zone apropiate",
+          "nearby_geometric": "Folosește coordonatele pentru zonele apropiate",
+          "departure_delay": "Întârziere la plecare",
+          "arrival_delay": "Întârziere la sosire",
+          "presence_sensors": "Senzori de prezență",
+          "guest_expire_hours": "Modul oaspeți se oprește după",
+          "proximity_distance": "Senzor de distanță (Proximity)",
+          "proximity_direction": "Senzor de direcție (Proximity)",
+          "travel_time": "Senzor de timp de deplasare",
+          "arrival_distance": "Preîncălzește sub distanța",
+          "arrival_minutes": "Preîncălzește sub timpul"
+        },
+        "data_description": {
+          "nearby_zones": "Zone (de ex. orașul) în care casa e „aproape”, nu „departe”.",
+          "nearby_geometric": "Clasifică persoanele după coordonate și tratează zonele din interiorul zonei apropiate (de ex. Birou) ca „aproape”.",
+          "presence_sensors": "Senzori sau comutatoare care țin casa „acasă” (mmWave, mișcare, persoane fără telefon).",
+          "guest_expire_hours": "0 = niciodată.",
+          "proximity_distance": "Senzorul de distanță minimă al integrării Proximity.",
+          "proximity_direction": "Dacă e setat, preîncălzirea pornește doar când cineva se îndreaptă spre casă.",
+          "travel_time": "Timpul până acasă (de ex. Waze)."
+        }
+      },
+      "calendar": {
+        "title": "Zile lucrătoare și calendar",
+        "data": {
+          "workday_sensor": "Senzor Workday",
+          "calendar": "Calendar",
+          "day_boundary": "Ziua programului începe la"
+        },
+        "data_description": {
+          "workday_sensor": "Senzorul binar al integrării Workday (include sărbătorile).",
+          "calendar": "Un eveniment cu numele unui profil alege profilul; numele unui preset alege acel nivel.",
+          "day_boundary": "Pentru ture de noapte: momentul în care programul trece la ziua următoare."
+        }
+      },
+      "weather": {
+        "title": "Vreme și sezon",
+        "data": {
+          "outdoor_sensor": "Senzor de temperatură exterioară",
+          "weather": "Entitate meteo",
+          "cutoff_enabled": "Oprește încălzirea când e cald afară",
+          "cutoff_temp": "Prag de oprire (exterior)",
+          "cutoff_hysteresis": "Histerezis prag",
+          "cutoff_avg_hours": "Medie pe",
+          "forecast_enabled": "Folosește prognoza",
+          "forecast_hours": "Ore de prognoză",
+          "season_mode": "Sezon de încălzire",
+          "season_start": "Început sezon (LL-ZZ)",
+          "season_end": "Sfârșit sezon (LL-ZZ)",
+          "season_days": "Sezon automat: zile consecutive",
+          "season_temp": "Prag sezon automat",
+          "compensation_enabled": "Compensare exterioară",
+          "compensation_below": "Compensează sub",
+          "compensation_offset": "Compensare",
+          "window_ignore_above": "Ignoră ferestrele peste"
+        },
+        "data_description": {
+          "cutoff_temp": "Peste această medie a temperaturii exterioare încălzirea se oprește.",
+          "forecast_enabled": "Amână încălzirea dacă prognoza atinge pragul în orele următoare.",
+          "season_start": "Luna și ziua, de ex. 10-15.",
+          "season_end": "Luna și ziua, de ex. 10-15.",
+          "season_days": "Sezonul începe după atâtea zile cu media sub prag și se termină după atâtea zile peste prag.",
+          "window_ignore_above": "Deschiderea ferestrelor nu mai coboară încălzirea când afară e atât de cald. Gol = reacționează mereu."
+        }
+      },
+      "energy": {
+        "title": "Energie",
+        "data": {
+          "price_sensor": "Senzor preț energie",
+          "price_high": "Preț mare de la",
+          "price_high_offset": "Ajustare la preț mare",
+          "price_low": "Preț mic până la",
+          "price_low_offset": "Ajustare la preț mic",
+          "pv_sensor": "Senzor surplus fotovoltaic",
+          "pv_threshold": "Surplus de la",
+          "pv_offset": "Ajustare cu surplus"
+        },
+        "data_description": {
+          "pv_sensor": "Puterea injectată în rețea (W)."
+        }
+      },
+      "boiler": {
+        "title": "Centrală și cerere de căldură",
+        "data": {
+          "boiler_entity": "Centrală",
+          "boiler_min_rooms": "Camere necesare pentru pornirea centralei",
+          "boiler_min_on": "Timp minim pornită",
+          "boiler_min_off": "Timp minim oprită",
+          "room_diff_alert": "Alertă când o cameră rămâne mai rece cu",
+          "reference_room": "Cameră de referință"
+        },
+        "data_description": {
+          "boiler_entity": "Pornită când camerele cer căldură. Lasă gol dacă termostatele comandă centrala (de ex. Generic Thermostat).",
+          "room_diff_alert": "Grade sub țintă în timp ce alte camere sunt calde. 0 = oprit.",
+          "reference_room": "Dacă e setată, doar această cameră decide pornirea centralei."
+        }
+      },
+      "behavior": {
+        "title": "Modificări manuale, vacanță și limite",
+        "data": {
+          "override_mode": "Modificările manuale se păstrează",
+          "override_hours": "Durată fixă",
+          "override_scope": "Modificarea manuală se aplică",
+          "vacation_preheat_hours": "Preîncălzire înainte de sfârșitul vacanței",
+          "auto_vacation_hours": "Vacanță automată după departe timp de",
+          "frost_temp": "Antiîngheț",
+          "max_temp": "Temperatură maximă",
+          "reevaluation_minutes": "Verificare periodică la"
+        },
+        "data_description": {
+          "override_mode": "O singură regulă pentru toate modificările manuale, inclusiv oprirea termostatului. „Până la următoarea reevaluare” se termină când se schimbă programul, prezența, o fereastră sau modul; verificarea periodică nu o anulează.",
+          "override_scope": "Folosește „toată casa” doar dacă fiecare cameră are robinete proprii.",
+          "auto_vacation_hours": "0 = oprit.",
+          "frost_temp": "Pentru camere fără Generic Thermostat. Cu Generic Thermostat se folosește temperatura lui minimă."
+        }
+      },
+      "alerts": {
+        "title": "Alerte",
+        "data": {
+          "notify_service": "Serviciu de notificare",
+          "alert_window_minutes": "Alertă când o fereastră e deschisă mai mult de",
+          "alert_unavailable_minutes": "Alertă când un dispozitiv e indisponibil mai mult de",
+          "battery_threshold": "Baterie descărcată sub",
+          "verify_commands": "Verifică comenzile"
+        },
+        "data_description": {
+          "notify_service": "de ex. notify.mobile_app_telefon. Gol = notificări persistente.",
+          "verify_commands": "După 2 minute verifică dacă dispozitivul a preluat comanda, retrimite o dată, apoi alertă."
+        }
+      }
+    },
+    "error": {
+      "invalid_month_day": "Folosește formatul LL-ZZ, de ex. 10-15."
+    }
+  },
+  "config_subentries": {
+    "room": {
+      "entry_type": "Cameră",
+      "initiate_flow": {
+        "user": "Adaugă cameră",
+        "reconfigure": "Reconfigurează camera"
+      },
+      "step": {
+        "basics": {
+          "title": "Cameră",
+          "data": {
+            "name": "Nume",
+            "area": "Zonă",
+            "source": "Încălzită prin"
+          },
+          "data_description": {
+            "source": "Generic Thermostat își păstrează preseturile și temperaturile; integrarea doar le alege."
+          }
+        },
+        "devices": {
+          "title": "Dispozitive",
+          "data": {
+            "climates": "Termostate",
+            "switches": "Comutatoare (relee)",
+            "command_mode": "Comandă",
+            "hysteresis": "Histerezis",
+            "min_on_minutes": "Timp minim pornit",
+            "min_off_minutes": "Timp minim oprit"
+          },
+          "data_description": {
+            "command_mode": "Cum sunt comandate termostatele.",
+            "hysteresis": "Pentru comanda on/off (relee sau hvac mode)."
+          }
+        },
+        "levels": {
+          "title": "Niveluri",
+          "description": "Nivelurile au roluri fixe: home, sleep, eco (aproape), away (departe / vacanță), comfort și activity.",
+          "data": {
+            "nearby_mode": "Când nimeni nu e acasă, dar cineva e aproape",
+            "nearby_temp": "Temperatură fixă pentru „aproape”",
+            "name_home": "Numele nivelului „home”",
+            "name_sleep": "Numele nivelului „sleep”",
+            "name_eco": "Numele nivelului „eco”",
+            "name_away": "Numele nivelului „away”",
+            "name_comfort": "Numele nivelului „comfort”",
+            "name_activity": "Numele nivelului „activity”"
+          },
+          "data_description": {
+            "nearby_mode": "Presetul eco sau o temperatură fixă."
+          }
+        },
+        "sensors": {
+          "title": "Senzori",
+          "data": {
+            "temperature_sensors": "Senzori de temperatură",
+            "temperature_aggregation": "Mai mulți senzori",
+            "calibration_mode": "Calibrare TRV",
+            "calibration_entities": "Entități de calibrare",
+            "occupancy_sensors": "Senzori de ocupare",
+            "occupancy_minutes": "Eco după lipsă de ocupare de"
+          },
+          "data_description": {
+            "temperature_sensors": "Folosiți în locul senzorului din termostat.",
+            "calibration_entities": "Entitățile number ale TRV-urilor (offset sau temperatură externă).",
+            "occupancy_minutes": "Doar cât timp cineva e acasă."
+          }
+        },
+        "windows": {
+          "title": "Ferestre și uși",
+          "data": {
+            "window_sensors": "Senzori de fereastră",
+            "linked_window_sensors": "Ferestre din alte camere",
+            "window_open_delay": "Întârziere la deschidere",
+            "window_close_delay": "Întârziere la închidere",
+            "window_action": "Când o fereastră e deschisă",
+            "window_drop_detect": "Detectează ferestrele deschise din temperatură",
+            "window_drop_degrees": "Scădere de temperatură",
+            "window_drop_minutes": "În"
+          },
+          "data_description": {
+            "linked_window_sensors": "de ex. ușa de balcon din living răcește și holul.",
+            "window_drop_detect": "O scădere bruscă a temperaturii contează ca fereastră deschisă timp de 15 minute."
+          }
+        },
+        "schedule": {
+          "title": "Program",
+          "description": "Un profil pe linie: `profil: HH:MM preset, HH:MM preset`. Profiluri: workday, weekend, mon…sun sau orice nume (manual sau din calendar). {error}",
+          "data": {
+            "schedule_source": "Sursa programului",
+            "schedule": "Program",
+            "schedule_helper": "Helper Program",
+            "helper_on_preset": "Nivel cât helperul e pornit",
+            "helper_off_preset": "Nivel cât helperul e oprit",
+            "optimal_start": "Pornire anticipată",
+            "optimal_start_max_minutes": "Anticipare maximă",
+            "optimal_stop": "Oprire anticipată",
+            "optimal_stop_minutes": "Coboară mai devreme cu"
+          },
+          "data_description": {
+            "schedule": "de ex. `workday: 00:00 sleep, 06:00 home, 22:00 sleep`",
+            "optimal_start": "Pornește încălzirea mai devreme ca nivelul următor să fie atins la timp (viteză învățată).",
+            "optimal_stop": "Coboară temperatura mai devreme, folosind inerția termică."
+          }
+        },
+        "extras": {
+          "title": "Extra",
+          "data": {
+            "solar_offset": "Câștig solar",
+            "valve_exercise": "Mișcarea robinetelor",
+            "valve_exercise_day": "Ziua",
+            "valve_exercise_time": "Ora"
+          },
+          "data_description": {
+            "solar_offset": "Ajustare negativă cât e soare (doar camerele însorite). 0 = oprit.",
+            "valve_exercise": "Deschide TRV-urile complet 5 minute o dată pe săptămână, contra calcarului."
+          }
+        }
+      },
+      "error": {
+        "no_devices": "Alege cel puțin un dispozitiv.",
+        "duplicate_names": "Două niveluri au același nume.",
+        "invalid_schedule": "Program invalid.",
+        "helper_required": "Alege helperul de program."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "presence": {
+        "name": "Prezență",
+        "state": {
+          "home": "Acasă",
+          "nearby": "Aproape",
+          "far": "Departe"
+        }
+      },
+      "outdoor_average": {
+        "name": "Medie exterioară"
+      },
+      "heating_runtime": {
+        "name": "Timp de încălzire"
+      },
+      "decision": {
+        "name": "Decizie",
+        "state": {
+          "starting": "Pornire",
+          "frost_protection": "Antiîngheț",
+          "pause": "Pauză",
+          "mode_off": "Oprit",
+          "summer": "Vară",
+          "out_of_season": "În afara sezonului",
+          "valve_exercise": "Mișcarea robinetelor",
+          "window_open": "Fereastră deschisă",
+          "manual_override": "Modificare manuală",
+          "vacation": "Vacanță",
+          "presence_far": "Departe",
+          "presence_nearby": "Aproape",
+          "room_unoccupied": "Cameră neocupată",
+          "sensor_fallback": "Senzor indisponibil",
+          "schedule": "Program",
+          "optimal_start": "Pornire anticipată",
+          "optimal_stop": "Oprire anticipată",
+          "outdoor_cutoff": "Cald afară"
+        }
+      },
+      "target_temperature": {
+        "name": "Temperatură țintă"
+      },
+      "room_temperature": {
+        "name": "Temperatura camerei"
+      },
+      "next_change": {
+        "name": "Următoarea schimbare"
+      },
+      "heating_rate": {
+        "name": "Viteză de încălzire"
+      }
+    },
+    "binary_sensor": {
+      "heating_season": {
+        "name": "Sezon de încălzire"
+      },
+      "outdoor_cutoff": {
+        "name": "Oprire de la exterior"
+      },
+      "heat_demand": {
+        "name": "Cerere de căldură"
+      },
+      "window_open": {
+        "name": "Fereastră deschisă"
+      },
+      "manual_override": {
+        "name": "Modificare manuală"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Mod",
+        "state": {
+          "auto": "Auto",
+          "vacation": "Vacanță",
+          "off": "Oprit",
+          "summer": "Vară"
+        }
+      },
+      "profile": {
+        "name": "Profil",
+        "state": {
+          "auto": "Auto"
+        }
+      }
+    },
+    "switch": {
+      "pause": {
+        "name": "Pauză"
+      },
+      "guest_mode": {
+        "name": "Mod oaspeți"
+      },
+      "child_lock": {
+        "name": "Blocare modificări"
+      }
+    },
+    "number": {
+      "level_home": {
+        "name": "Nivel Home"
+      },
+      "level_sleep": {
+        "name": "Nivel Sleep"
+      },
+      "level_eco": {
+        "name": "Nivel Eco"
+      },
+      "level_away": {
+        "name": "Nivel Away"
+      },
+      "level_comfort": {
+        "name": "Nivel Comfort"
+      },
+      "level_activity": {
+        "name": "Nivel Activity"
+      },
+      "level_nearby": {
+        "name": "Temperatură „aproape”"
+      },
+      "level_custom": {
+        "name": "Nivel {name}"
+      }
+    },
+    "datetime": {
+      "vacation_start": {
+        "name": "Început vacanță"
+      },
+      "vacation_end": {
+        "name": "Sfârșit vacanță"
+      }
+    },
+    "button": {
+      "clear_overrides": {
+        "name": "Anulează modificările manuale"
+      },
+      "reevaluate": {
+        "name": "Reevaluează"
+      },
+      "clear_vacation": {
+        "name": "Șterge vacanța"
+      },
+      "clear_override": {
+        "name": "Anulează modificarea manuală"
+      }
+    }
+  },
+  "selector": {
+    "home_rule": {
+      "options": {
+        "any": "Cel puțin o persoană e acasă",
+        "all": "Toți sunt acasă"
+      }
+    },
+    "season_mode": {
+      "options": {
+        "always": "Mereu",
+        "dates": "Între date",
+        "auto": "Automat (temperatura exterioară)"
+      }
+    },
+    "override_mode": {
+      "options": {
+        "fixed": "Durată fixă",
+        "until_next_reevaluation": "Până la următoarea reevaluare"
+      }
+    },
+    "override_scope": {
+      "options": {
+        "room": "Doar acea cameră",
+        "house": "Toată casa"
+      }
+    },
+    "source": {
+      "options": {
+        "generic_thermostat": "Generic Thermostat",
+        "climate": "Alte termostate / TRV-uri",
+        "switch": "Comutator (releu)"
+      }
+    },
+    "command_mode": {
+      "options": {
+        "temperature": "Temperatură",
+        "preset": "Preset",
+        "hvac_mode": "Pornit / oprit (hvac mode)"
+      }
+    },
+    "nearby_mode": {
+      "options": {
+        "preset": "Preset eco",
+        "temperature": "Temperatură fixă"
+      }
+    },
+    "aggregation": {
+      "options": {
+        "mean": "Medie",
+        "min": "Minim",
+        "median": "Mediană"
+      }
+    },
+    "calibration": {
+      "options": {
+        "off": "Oprit",
+        "offset": "Offset",
+        "external": "Temperatură externă"
+      }
+    },
+    "window_action": {
+      "options": {
+        "frost": "Antiîngheț",
+        "off": "Oprire"
+      }
+    },
+    "schedule_source": {
+      "options": {
+        "internal": "Program intern",
+        "helper": "Helper Program"
+      }
+    },
+    "preset": {
+      "options": {
+        "home": "Home",
+        "sleep": "Sleep",
+        "eco": "Eco",
+        "away": "Away",
+        "comfort": "Comfort",
+        "activity": "Activity"
+      }
+    },
+    "weekday": {
+      "options": {
+        "mon": "Luni",
+        "tue": "Marți",
+        "wed": "Miercuri",
+        "thu": "Joi",
+        "fri": "Vineri",
+        "sat": "Sâmbătă",
+        "sun": "Duminică"
+      }
+    }
+  },
+  "services": {
+    "set_override": {
+      "name": "Setează modificare manuală",
+      "description": "Setează un nivel sau o temperatură și o păstrează ca modificare manuală.",
+      "fields": {
+        "room": {
+          "name": "Cameră",
+          "description": "Numele sau id-ul camerei."
+        },
+        "entity_id": {
+          "name": "Entități",
+          "description": "Orice entitate a camerei (sau termostatul ei)."
+        },
+        "preset": {
+          "name": "Preset",
+          "description": "Nivelul de setat."
+        },
+        "temperature": {
+          "name": "Temperatură",
+          "description": "Temperatura de setat."
+        },
+        "duration_hours": {
+          "name": "Durată",
+          "description": "Ore; gol = regula configurată pentru modificări manuale."
+        }
+      }
+    },
+    "clear_override": {
+      "name": "Anulează modificarea manuală",
+      "description": "Revine la controlul automat (toate camerele dacă nu e dată niciuna).",
+      "fields": {
+        "room": {
+          "name": "Cameră",
+          "description": "Numele sau id-ul camerei."
+        },
+        "entity_id": {
+          "name": "Entități",
+          "description": "Orice entitate a camerei (sau termostatul ei)."
+        }
+      }
+    },
+    "set_vacation": {
+      "name": "Setează vacanța",
+      "description": "Setează perioada de vacanță; valorile goale o șterg.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Casă",
+          "description": "Necesar doar cu mai multe case."
+        },
+        "start": {
+          "name": "Început vacanță",
+          "description": "Începutul vacanței."
+        },
+        "end": {
+          "name": "Sfârșit vacanță",
+          "description": "Sfârșitul vacanței (preîncălzirea începe mai devreme)."
+        }
+      }
+    },
+    "reevaluate": {
+      "name": "Reevaluează",
+      "description": "Evaluează acum toate camerele.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Casă",
+          "description": "Necesar doar cu mai multe case."
+        }
+      }
+    },
+    "set_schedule": {
+      "name": "Setează programul",
+      "description": "Înlocuiește programul unei camere.",
+      "fields": {
+        "room": {
+          "name": "Cameră",
+          "description": "Numele sau id-ul camerei."
+        },
+        "entity_id": {
+          "name": "Entități",
+          "description": "Orice entitate a camerei (sau termostatul ei)."
+        },
+        "schedule": {
+          "name": "Program",
+          "description": "de ex. `workday: 00:00 sleep, 06:00 home, 22:00 sleep`"
+        },
+        "profiles": {
+          "name": "Profiluri",
+          "description": "Profiluri ca obiect: {\"workday\": [{\"time\": \"06:00\", \"preset\": \"home\"}]}"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "house_not_found": {
+      "message": "Nu există o casă Advanced Climate cu id-ul {entry}."
+    },
+    "house_ambiguous": {
+      "message": "Sunt configurate mai multe case; dă config_entry_id."
+    },
+    "room_not_found": {
+      "message": "Nicio cameră potrivită."
+    },
+    "preset_or_temperature": {
+      "message": "Dă fie un preset, fie o temperatură."
+    },
+    "unknown_preset": {
+      "message": "Preset necunoscut: {preset}."
+    },
+    "vacation_order": {
+      "message": "Sfârșitul trebuie să fie după început."
+    },
+    "schedule_or_profiles": {
+      "message": "Dă fie schedule, fie profiles."
+    },
+    "schedule_external": {
+      "message": "Camera folosește un helper de program; editează helperul."
+    },
+    "invalid_schedule": {
+      "message": "Program invalid: {error}"
+    }
+  }
+}
