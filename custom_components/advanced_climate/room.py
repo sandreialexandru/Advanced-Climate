@@ -1038,7 +1038,7 @@ class Room:
         if self.source == SOURCE_SWITCH:
             for entity_id in self.switches:
                 ok &= await self._call(
-                    "homeassistant",
+                    entity_id.split(".", 1)[0],
                     SERVICE_TURN_ON if want else SERVICE_TURN_OFF,
                     {ATTR_ENTITY_ID: entity_id},
                 )
