@@ -1,0 +1,67 @@
+name: Release
+
+# Creates a GitHub release (and tag) whenever the version in manifest.json
+# changes on main. Run it manually from the Actions tab to (re)check.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "custom_components/advanced_climate/**"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        run: |
+          version=$(python3 -c "import json; print(json.load(open('custom_components/advanced_climate/manifest.json'))['version'])")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          if git rev-parse "v$version" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release v$version already exists, nothing to do."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.version.outputs.exists == 'false'
+        with:
+          python-version: "3.13"
+
+      - name: Test the logic before releasing
+        if: steps.version.outputs.exists == 'false'
+        run: python -m unittest discover -s tests -t .
+
+      - name: Build the zip
+        if: steps.version.outputs.exists == 'false'
+        run: |
+          cd custom_components/advanced_climate
+          zip -r "$GITHUB_WORKSPACE/advanced_climate.zip" . -x "*/__pycache__/*"
+
+      - name: Create the release
+        if: steps.version.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release create "$TAG" advanced_climate.zip \
+            --target "$GITHUB_SHA" \
+            --title "Advanced Climate $TAG" \
+            --generate-notes \
+            --latest

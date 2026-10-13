@@ -163,6 +163,13 @@ type: custom:advanced-climate-card
 Every room also shows its decision, the reason, heating / window / manual change
 badges, the *Profile* select, the *Child lock* switch and *Back to automatic*.
 
+## Releases
+
+A release is created automatically when the `version` in
+`custom_components/advanced_climate/manifest.json` changes on `main`
+(workflow *Release*). Each release has `advanced_climate.zip` for a manual
+install; HACS offers the new version as an update.
+
 ## Translations
 
 English and Romanian.
