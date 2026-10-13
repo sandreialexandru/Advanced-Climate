@@ -63,7 +63,7 @@ Requires Home Assistant **2025.7** or newer.
 
 1. **Create the house**: name, people, nearby zones and the home rule, then the
    **heating of the whole house** (e.g. your Generic Thermostat). That is enough
-   for a house heated by one thermostat: it becomes a zone named like the house
+   for a house heated by one thermostat: it becomes the zone *Whole house*
    and uses every option. It can be changed later in *Configure → Heating of the
    whole house*.
 2. Optionally **add rooms** with *Add room* on the integration page, for rooms

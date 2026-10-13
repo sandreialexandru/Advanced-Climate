@@ -350,6 +350,7 @@ def _alerts_schema(v: dict[str, Any]) -> vol.Schema:
 # Whole-house heating (a zone created together with the house)
 # ---------------------------------------------------------------------------
 HOUSE_ZONE_ID = "whole_house"
+HOUSE_ZONE_TITLE = "Whole house"
 SOURCE_NONE = "none"
 
 
@@ -435,7 +436,7 @@ class AdvancedClimateConfigFlow(ConfigFlow, domain=DOMAIN):
                         {
                             "data": _zone_data(user_input),
                             "subentry_type": SUBENTRY_ROOM,
-                            "title": name,
+                            "title": HOUSE_ZONE_TITLE,
                             "unique_id": HOUSE_ZONE_ID,
                         }
                     )
@@ -447,7 +448,7 @@ class AdvancedClimateConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="heating",
             data_schema=_heating_schema(values, True),
             errors=errors,
-            description_placeholders={"zone": str(self._house.get(CONF_NAME, ""))},
+            description_placeholders={"zone": HOUSE_ZONE_TITLE},
         )
 
     @staticmethod
@@ -513,7 +514,7 @@ class AdvancedClimateOptionsFlow(OptionsFlow):
                         ConfigSubentry(
                             data=MappingProxyType(_zone_data(user_input)),
                             subentry_type=SUBENTRY_ROOM,
-                            title=self.config_entry.title,
+                            title=HOUSE_ZONE_TITLE,
                             unique_id=HOUSE_ZONE_ID,
                         ),
                     )
@@ -529,7 +530,7 @@ class AdvancedClimateOptionsFlow(OptionsFlow):
             step_id="heating",
             data_schema=_heating_schema(values, True),
             errors=errors,
-            description_placeholders={"zone": zone.title if zone else self.config_entry.title},
+            description_placeholders={"zone": zone.title if zone else HOUSE_ZONE_TITLE},
         )
 
     @property
