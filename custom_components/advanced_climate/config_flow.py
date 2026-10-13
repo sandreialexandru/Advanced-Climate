@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import Any
 
 import voluptuous as vol
@@ -10,6 +11,7 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
+    ConfigSubentry,
     ConfigSubentryFlow,
     OptionsFlow,
     SubentryFlowResult,
@@ -345,6 +347,50 @@ def _alerts_schema(v: dict[str, Any]) -> vol.Schema:
 
 
 # ---------------------------------------------------------------------------
+# Whole-house heating (a zone created together with the house)
+# ---------------------------------------------------------------------------
+HOUSE_ZONE_ID = "whole_house"
+SOURCE_NONE = "none"
+
+
+def _heating_schema(v: dict[str, Any], allow_none: bool) -> vol.Schema:
+    sources = [SOURCE_GT, SOURCE_CLIMATE, SOURCE_SWITCH]
+    if allow_none:
+        sources = [*sources, SOURCE_NONE]
+    return vol.Schema(
+        {
+            vol.Required(CONF_SOURCE, default=v.get(CONF_SOURCE, SOURCE_GT)): _select(
+                sources, "house_source"
+            ),
+            _opt(CONF_CLIMATES, v): _entity("climate", multiple=True),
+            _opt(CONF_SWITCHES, v): _entity(["switch", "input_boolean"], multiple=True),
+            vol.Required(
+                CONF_COMMAND_MODE, default=v.get(CONF_COMMAND_MODE, COMMAND_TEMPERATURE)
+            ): _select([COMMAND_TEMPERATURE, COMMAND_PRESET, COMMAND_HVAC], "command_mode"),
+        }
+    )
+
+
+def _heating_errors(user_input: dict[str, Any]) -> dict[str, str]:
+    source = user_input[CONF_SOURCE]
+    if source == SOURCE_NONE:
+        return {}
+    key = CONF_SWITCHES if source == SOURCE_SWITCH else CONF_CLIMATES
+    if not user_input.get(key):
+        return {key: "no_devices"}
+    return {}
+
+
+def _zone_data(user_input: dict[str, Any], base: dict[str, Any] | None = None) -> dict[str, Any]:
+    data = {**ROOM_DEFAULTS, **(base or {})}
+    data[CONF_SOURCE] = user_input[CONF_SOURCE]
+    data[CONF_CLIMATES] = list(user_input.get(CONF_CLIMATES) or [])
+    data[CONF_SWITCHES] = list(user_input.get(CONF_SWITCHES) or [])
+    data[CONF_COMMAND_MODE] = user_input[CONF_COMMAND_MODE]
+    return data
+
+
+# ---------------------------------------------------------------------------
 # Main config flow
 # ---------------------------------------------------------------------------
 
@@ -354,11 +400,15 @@ class AdvancedClimateConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    def __init__(self) -> None:
+        """Initialize."""
+        self._house: dict[str, Any] = {}
+
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """First step: name, people and nearby zones."""
         if user_input is not None:
-            name = user_input.pop(CONF_NAME)
-            return self.async_create_entry(title=name, data={}, options=user_input)
+            self._house = dict(user_input)
+            return await self.async_step_heating()
         schema = vol.Schema(
             {
                 vol.Required(CONF_NAME, default="Home"): _text(),
@@ -370,6 +420,35 @@ class AdvancedClimateConfigFlow(ConfigFlow, domain=DOMAIN):
             }
         )
         return self.async_show_form(step_id="user", data_schema=schema)
+
+    async def async_step_heating(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """How the whole house is heated (rooms can be added later)."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            errors = _heating_errors(user_input)
+            if not errors:
+                options = dict(self._house)
+                name = options.pop(CONF_NAME)
+                subentries = []
+                if user_input[CONF_SOURCE] != SOURCE_NONE:
+                    subentries.append(
+                        {
+                            "data": _zone_data(user_input),
+                            "subentry_type": SUBENTRY_ROOM,
+                            "title": name,
+                            "unique_id": HOUSE_ZONE_ID,
+                        }
+                    )
+                return self.async_create_entry(
+                    title=name, data={}, options=options, subentries=subentries
+                )
+        values = {**(user_input or {})}
+        return self.async_show_form(
+            step_id="heating",
+            data_schema=_heating_schema(values, True),
+            errors=errors,
+            description_placeholders={"zone": str(self._house.get(CONF_NAME, ""))},
+        )
 
     @staticmethod
     @callback
@@ -394,6 +473,7 @@ class AdvancedClimateOptionsFlow(OptionsFlow):
         return self.async_show_menu(
             step_id="init",
             menu_options=[
+                "heating",
                 "presence",
                 "calendar",
                 "weather",
@@ -402,6 +482,54 @@ class AdvancedClimateOptionsFlow(OptionsFlow):
                 "behavior",
                 "alerts",
             ],
+        )
+
+    def _house_zone(self) -> ConfigSubentry | None:
+        """The whole-house zone, or the only room if there is just one."""
+        rooms = [
+            sub
+            for sub in self.config_entry.subentries.values()
+            if sub.subentry_type == SUBENTRY_ROOM
+        ]
+        for sub in rooms:
+            if sub.unique_id == HOUSE_ZONE_ID:
+                return sub
+        return rooms[0] if len(rooms) == 1 else None
+
+    async def async_step_heating(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Heating devices of the whole house (creates or edits the house zone)."""
+        zone = self._house_zone()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            errors = _heating_errors(user_input)
+            if not errors:
+                entries = self.hass.config_entries
+                if user_input[CONF_SOURCE] == SOURCE_NONE:
+                    if zone is not None and zone.unique_id == HOUSE_ZONE_ID:
+                        entries.async_remove_subentry(self.config_entry, zone.subentry_id)
+                elif zone is None:
+                    entries.async_add_subentry(
+                        self.config_entry,
+                        ConfigSubentry(
+                            data=MappingProxyType(_zone_data(user_input)),
+                            subentry_type=SUBENTRY_ROOM,
+                            title=self.config_entry.title,
+                            unique_id=HOUSE_ZONE_ID,
+                        ),
+                    )
+                else:
+                    entries.async_update_subentry(
+                        self.config_entry, zone, data=_zone_data(user_input, dict(zone.data))
+                    )
+                return self.async_create_entry(data=dict(self.config_entry.options))
+        values = dict(zone.data) if zone else {}
+        if user_input:
+            values.update(user_input)
+        return self.async_show_form(
+            step_id="heating",
+            data_schema=_heating_schema(values, True),
+            errors=errors,
+            description_placeholders={"zone": zone.title if zone else self.config_entry.title},
         )
 
     @property

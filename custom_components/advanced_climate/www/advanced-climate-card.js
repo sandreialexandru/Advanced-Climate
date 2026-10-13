@@ -15,7 +15,7 @@
  *   collapsed: false             # rooms start folded (header only)
  */
 
-const CARD_VERSION = "1.1.1";
+const CARD_VERSION = "1.2.0";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -85,7 +85,7 @@ const TEXT = {
     adjustments: "Adjustments",
     none: "none",
     not_editable: "This room follows a Schedule helper; edit the helper instead.",
-    no_rooms: "Add a room to Advanced Climate to see it here.",
+    no_rooms: "No heating devices yet. Add them in Settings → Devices & services → Advanced Climate → Configure → Heating of the whole house (or add rooms).",
     error: "Could not save",
     persons: "People",
     on: "On",
@@ -139,7 +139,7 @@ const TEXT = {
     adjustments: "Ajustări",
     none: "niciuna",
     not_editable: "Camera urmează un helper de program; editează helperul.",
-    no_rooms: "Adaugă o cameră în Advanced Climate ca să apară aici.",
+    no_rooms: "Încă nu sunt dispozitive de încălzire. Adaugă-le din Setări → Dispozitive și servicii → Advanced Climate → Configurează → Încălzirea întregii case (sau adaugă camere).",
     error: "Nu s-a putut salva",
     persons: "Persoane",
     on: "Pornit",

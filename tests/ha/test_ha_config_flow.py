@@ -18,9 +18,64 @@ async def test_user_flow(hass: HomeAssistant) -> None:
         result["flow_id"],
         {"name": "Home", "persons": [], "nearby_zones": [], "home_rule": "any"},
     )
+    assert result["step_id"] == "heating"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"source": "switch", "switches": []}
+    )
+    assert result["errors"] == {"switches": "no_devices"}
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"source": "switch", "switches": ["input_boolean.heater"]}
+    )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "Home"
     assert result["options"]["home_rule"] == "any"
+    entry = result["result"]
+    zone = next(iter(entry.subentries.values()))
+    assert zone.title == "Home"
+    assert zone.unique_id == "whole_house"
+    assert zone.data["switches"] == ["input_boolean.heater"]
+
+
+async def test_user_flow_without_devices(hass: HomeAssistant) -> None:
+    """A house can be created without heating devices."""
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"name": "Home", "persons": [], "nearby_zones": []}
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "none"})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert not result["result"].subentries
+
+
+async def test_options_heating_adds_zone(hass: HomeAssistant) -> None:
+    """The options add the whole-house zone to an existing house."""
+    entry = MockConfigEntry(domain=DOMAIN, title="Home 101", options={})
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "heating"}
+    )
+    assert result["step_id"] == "heating"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"source": "switch", "switches": ["input_boolean.heater"]}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    zone = next(iter(entry.subentries.values()))
+    assert zone.title == "Home 101"
+    # Editing again updates the same zone.
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "heating"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"source": "switch", "switches": ["input_boolean.heater", "input_boolean.other"]},
+    )
+    assert len(entry.subentries) == 1
+    assert next(iter(entry.subentries.values())).data["switches"] == [
+        "input_boolean.heater",
+        "input_boolean.other",
+    ]
 
 
 async def test_options_flow_presence(hass: HomeAssistant) -> None:
