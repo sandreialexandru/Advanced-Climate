@@ -41,6 +41,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: AdvancedClimateConfigEntry) -> bool:
     """Set up a house from a config entry."""
+    # 1.2.x named the whole-house zone like the house; give it its own name so
+    # the house and the zone are not two devices with the same name.
+    for subentry in list(entry.subentries.values()):
+        if subentry.unique_id == "whole_house" and subentry.title == entry.title:
+            hass.config_entries.async_update_subentry(entry, subentry, title="Whole house")
     house = House(hass, entry)
     await house.async_setup()
     entry.runtime_data = house

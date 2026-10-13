@@ -60,7 +60,7 @@ class RoomEntity(Entity):
             identifiers={(DOMAIN, room.id)},
             name=room.name,
             manufacturer="Advanced Climate",
-            model="Room",
+            model="Whole house" if room.is_whole_house else "Room",
             entry_type=DeviceEntryType.SERVICE,
             via_device=(DOMAIN, room.house.entry.entry_id),
             suggested_area=room.area_name,

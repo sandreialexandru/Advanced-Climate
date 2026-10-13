@@ -31,7 +31,7 @@ async def test_user_flow(hass: HomeAssistant) -> None:
     assert result["options"]["home_rule"] == "any"
     entry = result["result"]
     zone = next(iter(entry.subentries.values()))
-    assert zone.title == "Home"
+    assert zone.title == "Whole house"
     assert zone.unique_id == "whole_house"
     assert zone.data["switches"] == ["input_boolean.heater"]
 
@@ -61,7 +61,7 @@ async def test_options_heating_adds_zone(hass: HomeAssistant) -> None:
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     zone = next(iter(entry.subentries.values()))
-    assert zone.title == "Home 101"
+    assert zone.title == "Whole house"
     # Editing again updates the same zone.
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(

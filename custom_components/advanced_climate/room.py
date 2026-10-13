@@ -133,6 +133,7 @@ class Room:
         self.hass = house.hass
         self.id = subentry.subentry_id
         self.name = subentry.title
+        self.unique_id = subentry.unique_id
         self.config: dict[str, Any] = {**ROOM_DEFAULTS, **subentry.data}
         self.source: str = self.config[CONF_SOURCE]
         self.climates = as_list(self.config.get(CONF_CLIMATES))
@@ -282,6 +283,11 @@ class Room:
     # ------------------------------------------------------------------
     # Properties used by entities
     # ------------------------------------------------------------------
+    @property
+    def is_whole_house(self) -> bool:
+        """True for the zone created with the house."""
+        return self.unique_id == "whole_house"
+
     @property
     def area_name(self) -> str | None:
         """Name of the configured area."""
