@@ -15,7 +15,7 @@
  *   collapsed: false             # rooms start folded (header only)
  */
 
-const CARD_VERSION = "1.3.1";
+const CARD_VERSION = "1.4.0";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -112,6 +112,7 @@ const TEXT = {
     on: "On",
     off: "Off",
     level_temps_gt: "Preset temperatures (set in Generic Thermostat)",
+    from_device: "thermostat",
     device_preset: "Thermostat preset now",
     no_preset: "none (manual temperature)",
     active: "active",
@@ -188,6 +189,7 @@ const TEXT = {
     on: "Pornit",
     off: "Oprit",
     level_temps_gt: "Temperaturile preseturilor (setate în Generic Thermostat)",
+    from_device: "din termostat",
     device_preset: "Preset în termostat acum",
     no_preset: "niciunul (temperatură manuală)",
     active: "activ",
@@ -784,21 +786,25 @@ class AdvancedClimateCard extends HTMLElement {
     const offsets =
       (a.offsets || []).map(([label, delta]) => `${label} ${delta > 0 ? "+" : ""}${delta}°`).join(", ") ||
       this._t("none");
-    const active = a.device_preset;
+    const active = a.device_level !== undefined ? a.device_level : a.device_preset;
+    const fromDevice = a.custom_levels ? a.device_levels || [] : [];
     const levelTemps = Object.entries(a.levels || {})
       .filter(([, t]) => t !== null && t !== undefined)
       .map(
         ([p, t]) =>
           `<span class="lv ${p === active ? "active" : ""}"><span class="dot" style="--c:${PRESET_COLORS[p]}"></span>${esc(
             this._presetName(a, p)
-          )} ${t}°${p === active ? ` <small>${this._t("active")}</small>` : ""}</span>`
+          )} ${t}°${fromDevice.includes(p) ? ` <small>${this._t("from_device")}</small>` : ""}${
+            p === active ? ` <small>${this._t("active")}</small>` : ""
+          }</span>`
       )
       .join("");
+    const rawPreset = a.device_preset;
     const devicePreset =
       a.climate_entities && a.climate_entities.length
-        ? !active || active === "none"
+        ? !rawPreset || rawPreset === "none"
           ? this._t("no_preset")
-          : this._presetName(a, active)
+          : rawPreset
         : null;
     const dl = (k, v) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`;
     const html = `<dl class="details">

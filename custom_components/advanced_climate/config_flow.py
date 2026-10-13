@@ -84,6 +84,9 @@ from .const import (
     CONF_OVERRIDE_SCOPE,
     CONF_PERSONS,
     CONF_PRESENCE_SENSORS,
+    CONF_LEVELS,
+    DEFAULT_LEVEL_TEMPS,
+    CONF_PRESET_MAP,
     CONF_PRESET_NAMES,
     CONF_PRICE_HIGH,
     CONF_PRICE_HIGH_OFFSET,
@@ -618,6 +621,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         """Initialize."""
         self._data: dict[str, Any] = {}
         self._reconfigure = False
+        self._subentry_id: str | None = None
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """Start a new room."""
@@ -631,6 +635,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         subentry = self._get_reconfigure_subentry()
         self._data = {**ROOM_DEFAULTS, **subentry.data, CONF_NAME: subentry.title}
         self._reconfigure = True
+        self._subentry_id = subentry.subentry_id
         return await self.async_step_basics()
 
     async def async_step_basics(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
@@ -684,36 +689,111 @@ class RoomSubentryFlow(ConfigSubentryFlow):
                 return await self.async_step_levels()
         return self.async_show_form(step_id="devices", data_schema=schema, errors=errors)
 
+    def _current_levels(self) -> dict[str, float]:
+        """Level temperatures in use now (edited from the card or numbers included)."""
+        levels = {p: float(v) for p, v in DEFAULT_LEVEL_TEMPS.items()}
+        levels.update({p: float(v) for p, v in (self._data.get(CONF_LEVELS) or {}).items()})
+        house = getattr(self._get_entry(), "runtime_data", None)
+        room = house.rooms.get(self._subentry_id) if house and self._subentry_id else None
+        if room is not None:
+            levels.update(room.levels)
+        return levels
+
+    def _device_presets(self) -> list[str]:
+        """Presets offered by the chosen thermostats."""
+        found: list[str] = []
+        for entity_id in self._data.get(CONF_CLIMATES) or []:
+            state = self.hass.states.get(entity_id)
+            if state is None:
+                continue
+            for name in state.attributes.get("preset_modes") or []:
+                if name and name != "none" and name not in found:
+                    found.append(str(name))
+        return found
+
     async def async_step_levels(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
-        """Level names (without GT) and what 'nearby' means."""
+        """Level names or thermostat presets, level temperatures and what 'nearby' means."""
         d = self._data
+        source = d[CONF_SOURCE]
+        uses_presets = source == SOURCE_CLIMATE and d.get(CONF_COMMAND_MODE) == COMMAND_PRESET
         names = dict(d.get(CONF_PRESET_NAMES) or {})
+        device_presets = self._device_presets() if uses_presets else []
+        preset_map = d.get(CONF_PRESET_MAP)
+        if preset_map is None:
+            # First time (or a room made before 1.4): same name on the thermostat.
+            preset_map = {
+                p: names.get(p) or p for p in PRESETS if (names.get(p) or p) in device_presets
+            }
+        levels = self._current_levels()
+
         fields: dict[Any, Any] = {
             vol.Required(CONF_NEARBY_MODE, default=d[CONF_NEARBY_MODE]): _select(
                 [NEARBY_PRESET, NEARBY_TEMPERATURE], "nearby_mode"
             ),
             _req(CONF_NEARBY_TEMP, d, ROOM_DEFAULTS): _number(5, 30, 0.5, "°C"),
         }
-        if d[CONF_SOURCE] != SOURCE_GT:
+        if source != SOURCE_GT:
             for preset in PRESETS:
-                fields[vol.Optional(f"name_{preset}", default=names.get(preset, preset))] = _text()
+                if uses_presets:
+                    key = vol.Optional(
+                        f"device_{preset}", description={"suggested_value": preset_map.get(preset)}
+                    )
+                    fields[key] = (
+                        selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=device_presets,
+                                custom_value=True,
+                                mode=selector.SelectSelectorMode.DROPDOWN,
+                            )
+                        )
+                        if device_presets
+                        else _text()
+                    )
+                else:
+                    fields[vol.Optional(f"name_{preset}", default=names.get(preset, preset))] = _text()
+                fields[vol.Required(f"temp_{preset}", default=levels[preset])] = _number(
+                    5, 30, 0.5, "°C"
+                )
         schema = vol.Schema(fields)
+        placeholders = {"presets": ", ".join(device_presets) or "-"}
         if user_input is not None:
-            new_names = {
-                p: str(user_input.pop(f"name_{p}", "")).strip() or p
-                for p in PRESETS
-                if d[CONF_SOURCE] != SOURCE_GT
-            }
-            lowered = [n.lower() for n in new_names.values()]
-            if len(set(lowered)) != len(lowered):
+            if uses_presets:
+                chosen = {
+                    p: str(user_input.get(f"device_{p}") or "").strip() for p in PRESETS
+                }
+                chosen = {p: v for p, v in chosen.items() if v and v != "none"}
+                values = [v.lower() for v in chosen.values()]
+                new_names: dict[str, str] = {}
+            else:
+                chosen = {}
+                new_names = {
+                    p: str(user_input.get(f"name_{p}", "")).strip() or p
+                    for p in PRESETS
+                    if source != SOURCE_GT
+                }
+                values = [n.lower() for n in new_names.values()]
+            if len(set(values)) != len(values):
                 return self.async_show_form(
-                    step_id="levels", data_schema=schema, errors={"base": "duplicate_names"}
+                    step_id="levels",
+                    data_schema=schema,
+                    errors={"base": "duplicate_names"},
+                    description_placeholders=placeholders,
                 )
             self._data[CONF_PRESET_NAMES] = new_names
+            if uses_presets:
+                self._data[CONF_PRESET_MAP] = chosen
+            else:
+                self._data.pop(CONF_PRESET_MAP, None)
+            if source != SOURCE_GT:
+                self._data[CONF_LEVELS] = {p: float(user_input[f"temp_{p}"]) for p in PRESETS}
+            else:
+                self._data.pop(CONF_LEVELS, None)
             self._data[CONF_NEARBY_MODE] = user_input[CONF_NEARBY_MODE]
             self._data[CONF_NEARBY_TEMP] = user_input[CONF_NEARBY_TEMP]
             return await self.async_step_sensors()
-        return self.async_show_form(step_id="levels", data_schema=schema)
+        return self.async_show_form(
+            step_id="levels", data_schema=schema, description_placeholders=placeholders
+        )
 
     async def async_step_sensors(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """Temperature, calibration and occupancy sensors."""
@@ -770,7 +850,11 @@ class RoomSubentryFlow(ConfigSubentryFlow):
     async def async_step_schedule(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """The schedule."""
         d = {**self._data, **(user_input or {})}
-        names = list(PRESETS) + list((self._data.get(CONF_PRESET_NAMES) or {}).values())
+        names = (
+            list(PRESETS)
+            + list((self._data.get(CONF_PRESET_NAMES) or {}).values())
+            + list((self._data.get(CONF_PRESET_MAP) or {}).values())
+        )
         schema = vol.Schema(
             {
                 _req(CONF_SCHEDULE_SOURCE, d, ROOM_DEFAULTS): _select(

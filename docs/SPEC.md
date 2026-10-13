@@ -62,9 +62,17 @@ For *nearby* the default is the `eco` preset. Instead of the preset a **fixed
 temperature** can be configured; the integration sends it to GT, which switches
 to preset `none` by itself.
 
-Without Generic Thermostat the **names of the levels are configurable** and each
-level has its own temperature (number entities); the roles in the rules stay the
-same.
+Without Generic Thermostat the roles in the rules stay the same and the room
+settings depend on the command:
+
+| Command | Levels in the room settings |
+| --- | --- |
+| Preset | Each level picks one of the **thermostat's own presets** (read from the device). The thermostat keeps that temperature; the integration learns it for display. A level without a preset is reached by sending its temperature. |
+| Temperature | Configurable **names** and a **temperature** per level; the temperature is sent to the device. |
+| On / off (`hvac_mode`) | Configurable **names** and a **temperature** per level; the device presets are not used, the integration switches it on and off around the level temperature. |
+
+The temperatures set in the room settings can also be changed later from the
+card or the number entities (one per level the integration controls).
 
 ## 3. Schedule
 

@@ -242,7 +242,7 @@
         },
         "levels": {
           "title": "Niveluri",
-          "description": "Nivelurile au roluri fixe: home, sleep, eco (aproape), away (departe / vacanță), comfort și activity.",
+          "description": "Nivelurile au roluri fixe: home, sleep, eco (aproape), away (departe / vacanță), comfort și activity. La comanda cu preset, alege presetul termostatului folosit de fiecare nivel (preseturi găsite: {presets}); temperatura rămâne cea din termostat. Un nivel fără preset e atins trimițând temperatura lui. La comanda pe temperatură sau on/off se folosesc temperaturile de mai jos, care se pot schimba și din card.",
           "data": {
             "nearby_mode": "Când nimeni nu e acasă, dar cineva e aproape",
             "nearby_temp": "Temperatură fixă pentru „aproape”",
@@ -251,10 +251,34 @@
             "name_eco": "Numele nivelului „eco”",
             "name_away": "Numele nivelului „away”",
             "name_comfort": "Numele nivelului „comfort”",
-            "name_activity": "Numele nivelului „activity”"
+            "name_activity": "Numele nivelului „activity”",
+            "device_home": "Presetul termostatului pentru „home”",
+            "device_sleep": "Presetul termostatului pentru „sleep”",
+            "device_eco": "Presetul termostatului pentru „eco”",
+            "device_away": "Presetul termostatului pentru „away”",
+            "device_comfort": "Presetul termostatului pentru „comfort”",
+            "device_activity": "Presetul termostatului pentru „activity”",
+            "temp_home": "Temperatura pentru „home”",
+            "temp_sleep": "Temperatura pentru „sleep”",
+            "temp_eco": "Temperatura pentru „eco”",
+            "temp_away": "Temperatura pentru „away”",
+            "temp_comfort": "Temperatura pentru „comfort”",
+            "temp_activity": "Temperatura pentru „activity”"
           },
           "data_description": {
-            "nearby_mode": "Presetul eco sau o temperatură fixă."
+            "nearby_mode": "Presetul eco sau o temperatură fixă.",
+            "device_home": "Gol = fără preset: se trimite temperatura de mai jos.",
+            "device_sleep": "Gol = fără preset: se trimite temperatura de mai jos.",
+            "device_eco": "Gol = fără preset: se trimite temperatura de mai jos.",
+            "device_away": "Gol = fără preset: se trimite temperatura de mai jos.",
+            "device_comfort": "Gol = fără preset: se trimite temperatura de mai jos.",
+            "device_activity": "Gol = fără preset: se trimite temperatura de mai jos.",
+            "temp_home": "Cu preset în termostat, se folosește doar dacă termostatul nu raportează temperatura presetului.",
+            "temp_sleep": "Cu preset în termostat, se folosește doar dacă termostatul nu raportează temperatura presetului.",
+            "temp_eco": "Cu preset în termostat, se folosește doar dacă termostatul nu raportează temperatura presetului.",
+            "temp_away": "Cu preset în termostat, se folosește doar dacă termostatul nu raportează temperatura presetului.",
+            "temp_comfort": "Cu preset în termostat, se folosește doar dacă termostatul nu raportează temperatura presetului.",
+            "temp_activity": "Cu preset în termostat, se folosește doar dacă termostatul nu raportează temperatura presetului."
           }
         },
         "sensors": {

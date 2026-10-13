@@ -16,7 +16,9 @@ from pytest_homeassistant_custom_component.common import (
 from custom_components.advanced_climate.const import DOMAIN, SUBENTRY_ROOM
 
 
-async def _setup(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> MockConfigEntry:
+async def _setup(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory, **extra: object
+) -> MockConfigEntry:
     await hass.config.async_set_time_zone("Europe/Bucharest")
     # Monday 12:00 local time.
     freezer.move_to("2026-10-12 09:00:00+00:00")
@@ -35,6 +37,7 @@ async def _setup(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> MockCon
                     "temperature_sensors": ["sensor.room_temp"],
                     "min_on_minutes": 0,
                     "min_off_minutes": 0,
+                    **extra,
                 },
                 "subentry_type": SUBENTRY_ROOM,
                 "title": "Bedroom",
@@ -97,6 +100,20 @@ async def test_relay_room(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -
     await hass.async_block_till_done()
     assert hass.states.get("sensor.bedroom_decision").state == "schedule"
 
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_levels_from_room_settings(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Temperatures chosen in the room settings are used and shown as numbers."""
+    entry = await _setup(hass, freezer, levels={"home": 22.5, "sleep": 18.5})
+    await _tick(hass, freezer, 15)
+    assert hass.states.get("sensor.bedroom_target_temperature").state == "22.5"
+    assert hass.states.get("number.bedroom_level_home").state == "22.5"
+    decision = hass.states.get("sensor.bedroom_decision")
+    assert decision.attributes["device_levels"] == []
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
 

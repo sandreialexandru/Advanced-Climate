@@ -168,3 +168,57 @@ async def test_room_subentry_flow(hass: HomeAssistant) -> None:
     assert result["reason"] == "reconfigure_successful"
     assert entry.subentries[subentry.subentry_id].title == "Master bedroom"
     assert SOURCE_RECONFIGURE
+
+
+async def test_room_with_thermostat_presets(hass: HomeAssistant) -> None:
+    """With preset control the levels pick thermostat presets and keep temperatures."""
+    hass.states.async_set(
+        "climate.trv",
+        "heat",
+        {"preset_modes": ["none", "comfort", "eco", "away", "boost"], "preset_mode": "none"},
+    )
+    entry = MockConfigEntry(domain=DOMAIN, title="Home", options={})
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, SUBENTRY_ROOM), context={"source": SOURCE_USER}
+    )
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"name": "Office", "source": "climate"}
+    )
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"climates": ["climate.trv"], "command_mode": "preset"}
+    )
+    assert result["step_id"] == "levels"
+    assert result["description_placeholders"]["presets"] == "comfort, eco, away, boost"
+    schema = result["data_schema"].schema
+    assert any(str(key) == "device_home" for key in schema)
+    assert not any(str(key) == "name_home" for key in schema)
+
+    # Two levels on the same preset are refused.
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"device_home": "comfort", "device_comfort": "comfort"}
+    )
+    assert result["errors"] == {"base": "duplicate_names"}
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"],
+        {
+            "device_home": "comfort",
+            "device_eco": "eco",
+            "device_comfort": "boost",
+            "temp_sleep": 18.5,
+        },
+    )
+    assert result["step_id"] == "sensors"
+    for _ in range(2):
+        result = await hass.config_entries.subentries.async_configure(result["flow_id"], {})
+    assert result["step_id"] == "schedule"
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"schedule": "workday: 00:00 sleep, 07:00 comfort, 22:00 sleep"}
+    )
+    result = await hass.config_entries.subentries.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+    subentry = next(iter(entry.subentries.values()))
+    assert subentry.data["preset_map"] == {"home": "comfort", "eco": "eco", "comfort": "boost"}
+    assert subentry.data["levels"]["sleep"] == 18.5
+    assert subentry.data["preset_names"] == {}
