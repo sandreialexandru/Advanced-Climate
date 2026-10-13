@@ -11,8 +11,10 @@
           "home_rule": "The house is home when"
         },
         "data_description": {
-          "nearby_zones": "Zones (e.g. the city) where the house is 'nearby' instead of 'far'.",
-          "home_rule": "Whether one person at home is enough or everybody has to be home."
+          "name": "Shown on the devices and in the card.",
+          "persons": "People whose location decides home / nearby / far. Leave empty only if presence should not matter: the house is then always 'home' and only the schedule decides.",
+          "nearby_zones": "Zones where the house counts as 'nearby' (eco), e.g. your city. Outside home and every zone = 'far' (away). Leave empty if you only want home / far.",
+          "home_rule": "'At least one' suits most homes. 'Everybody' lowers the heating as soon as one person leaves."
         }
       },
       "heating": {
@@ -25,9 +27,10 @@
           "command_mode": "Command"
         },
         "data_description": {
-          "source": "Choose 'No heating devices yet' to add only rooms.",
-          "climates": "For Generic Thermostat choose its climate entity (e.g. climate.climate).",
-          "command_mode": "How the thermostats are controlled."
+          "source": "What heats the whole house. Pick 'No heating devices yet' if you will only add rooms with their own valves.",
+          "climates": "The thermostat that controls the boiler, e.g. the Generic Thermostat entity (climate.climate).",
+          "switches": "Only when a relay heats the house directly, without a thermostat.",
+          "command_mode": "Only for thermostats other than Generic Thermostat. See the room settings for the difference."
         }
       }
     },
@@ -47,9 +50,10 @@
           "command_mode": "Command"
         },
         "data_description": {
-          "source": "Choose 'No heating devices yet' to add only rooms.",
-          "climates": "For Generic Thermostat choose its climate entity (e.g. climate.climate).",
-          "command_mode": "How the thermostats are controlled."
+          "source": "What heats the whole house. Pick 'No heating devices yet' if you will only add rooms with their own valves.",
+          "climates": "The thermostat that controls the boiler, e.g. the Generic Thermostat entity (climate.climate).",
+          "switches": "Only when a relay heats the house directly, without a thermostat.",
+          "command_mode": "Only for thermostats other than Generic Thermostat. See the room settings for the difference."
         }
       },
       "init": {
@@ -83,13 +87,19 @@
           "arrival_minutes": "Preheat below travel time"
         },
         "data_description": {
-          "nearby_zones": "Zones (e.g. the city) where the house is 'nearby' instead of 'far'.",
-          "nearby_geometric": "Classify people by their coordinates and treat zones inside a nearby zone (e.g. Office) as nearby.",
-          "presence_sensors": "Sensors or switches that keep the house 'home' (mmWave, motion, people without a phone).",
-          "guest_expire_hours": "0 = never.",
-          "proximity_distance": "Nearest distance sensor of the Proximity integration.",
-          "proximity_direction": "When set, preheating only starts when someone is moving towards home.",
-          "travel_time": "Travel time to home (e.g. Waze)."
+          "persons": "People whose location decides home / nearby / far. Leave empty only if presence should not matter: the house is then always 'home' and only the schedule decides.",
+          "home_rule": "'At least one' suits most homes. 'Everybody' lowers the heating as soon as one person leaves.",
+          "nearby_zones": "Zones where the house counts as 'nearby' (eco), e.g. your city. Outside home and every zone = 'far' (away). Leave empty if you only want home / far.",
+          "nearby_geometric": "Uses the GPS coordinates: someone in a zone that lies inside a nearby zone (e.g. Office in the city) counts as nearby. Turn off if people have no GPS location.",
+          "departure_delay": "How long everybody must be gone before the heating is lowered. Avoids reacting to short trips (shop, walking the dog).",
+          "arrival_delay": "Usually 0: the heating returns as soon as someone is home. Raise it only if GPS sometimes reports 'home' by mistake.",
+          "presence_sensors": "Keep the house 'home' while on (mmWave, motion, a switch for people without a phone). Leave empty if everybody has the companion app.",
+          "guest_expire_hours": "Guest mode keeps the house 'home'; it turns off by itself after this many hours. 0 = only manually.",
+          "proximity_distance": "Proximity integration distance sensor, for preheating on the way home. Leave empty without Proximity.",
+          "proximity_direction": "Proximity direction sensor. Set it so that sitting at an office near home does not start the preheating.",
+          "travel_time": "Travel time to home (Waze, Google Travel Time) for preheating. Leave empty if you do not have one.",
+          "arrival_distance": "Preheating starts when someone is closer than this (with the distance sensor).",
+          "arrival_minutes": "Preheating starts when someone is closer than this many minutes (with the travel time sensor)."
         }
       },
       "calendar": {
@@ -100,9 +110,9 @@
           "day_boundary": "Schedule day starts at"
         },
         "data_description": {
-          "workday_sensor": "Binary sensor of the Workday integration (holidays included).",
-          "calendar": "An event whose title is a profile name selects that profile; a preset name selects that level.",
-          "day_boundary": "For night shifts: the moment the schedule switches to the next day."
+          "workday_sensor": "Workday integration sensor, so holidays use the weekend profile. Without it Mon–Fri are workdays.",
+          "calendar": "Optional. An event titled with a profile name (e.g. home_office) or a level name (e.g. away) applies it while the event lasts. Leave empty if you do not plan days in a calendar.",
+          "day_boundary": "Leave 00:00. Change it only for night shifts, so a night belongs to the previous day."
         }
       },
       "weather": {
@@ -127,12 +137,23 @@
           "window_ignore_above": "Ignore windows above"
         },
         "data_description": {
-          "cutoff_temp": "Above this average outdoor temperature heating is turned off.",
-          "forecast_enabled": "Delay heating when the forecast reaches the cutoff temperature in the next hours.",
-          "season_start": "Month and day, e.g. 10-15.",
-          "season_end": "Month and day, e.g. 10-15.",
-          "season_days": "The season starts after this many days with an average below the threshold and ends after this many days above it.",
-          "window_ignore_above": "Opening windows does not lower heating when it is this warm outside. Leave empty to always react."
+          "outdoor_sensor": "Outdoor temperature for the cutoff, season and compensation. If empty, the weather entity temperature is used.",
+          "weather": "Used for the forecast, for the solar gain and as outdoor temperature when there is no sensor.",
+          "cutoff_enabled": "Stops heating when the outdoor average is above the cutoff temperature. Needs an outdoor sensor or a weather entity.",
+          "cutoff_temp": "Heating stops above this average outdoor temperature.",
+          "cutoff_hysteresis": "Heating starts again only below cutoff minus this value, so it does not flip around the cutoff.",
+          "cutoff_avg_hours": "The cutoff uses the average of the last hours, so a sunny afternoon does not stop the heating.",
+          "forecast_enabled": "Delays heating when the forecast says it will be warm soon. Needs a weather entity with an hourly forecast.",
+          "forecast_hours": "How many hours of forecast are checked.",
+          "season_mode": "'Always' if you switch the season with the Summer mode. 'Between dates' or 'Automatic' to stop heating outside the season by itself.",
+          "season_start": "Only for 'Between dates'. Month and day, e.g. 10-15.",
+          "season_end": "Only for 'Between dates'. Month and day, e.g. 04-15.",
+          "season_days": "Only for 'Automatic': days in a row below (or above) the threshold before the season starts (or ends).",
+          "season_temp": "Only for 'Automatic': daily average outdoor temperature that starts or ends the season.",
+          "compensation_enabled": "Raises the target a little when it is very cold outside (walls are colder). Leave off if the rooms keep the temperature well.",
+          "compensation_below": "Outdoor temperature below which the compensation is added.",
+          "compensation_offset": "Degrees added to the target (e.g. 0.5).",
+          "window_ignore_above": "Open windows do not lower the heating when it is this warm outside. Leave empty to always react."
         }
       },
       "energy": {
@@ -148,7 +169,14 @@
           "pv_offset": "Adjustment with surplus"
         },
         "data_description": {
-          "pv_sensor": "Power exported to the grid (W)."
+          "price_sensor": "Energy price sensor (dynamic tariff). Leave empty with a fixed price.",
+          "price_high": "At or above this price the high-price adjustment is applied.",
+          "price_high_offset": "Usually negative, e.g. -1 °C while energy is expensive.",
+          "price_low": "At or below this price the low-price adjustment is applied.",
+          "price_low_offset": "Usually positive, e.g. +1 °C while energy is cheap (electric heating, heat pump).",
+          "pv_sensor": "Power exported to the grid (W). Only useful with electric heating or a heat pump.",
+          "pv_threshold": "Surplus from which the adjustment is applied.",
+          "pv_offset": "Degrees added while there is surplus (e.g. +1)."
         }
       },
       "boiler": {
@@ -162,10 +190,14 @@
           "reference_room": "Reference room"
         },
         "data_description": {
-          "boiler_entity": "Turned on when rooms ask for heat. Leave empty when the thermostats control the boiler (e.g. Generic Thermostat).",
-          "room_diff_alert": "Degrees below target while other rooms are warm. 0 = off.",
-          "reference_room": "If set, only this room decides whether the boiler runs."
-        }
+          "boiler_entity": "Only when the rooms cannot start the boiler themselves (TRVs, zone valves). Leave empty with Generic Thermostat or a relay on the boiler, and never pick the relay Generic Thermostat already uses.",
+          "boiler_min_rooms": "With a boiler: how many rooms must ask for heat to start it. 1 = any room.",
+          "boiler_min_on": "With a boiler: minimum run time, against short cycles.",
+          "boiler_min_off": "With a boiler: minimum pause between starts.",
+          "room_diff_alert": "Alert when one room stays this much below its target while others are warm (stuck valve, open window). 0 = off; useful only with several rooms.",
+          "reference_room": "With a boiler: only this room decides when it runs, the others just open or close their valves. Leave empty to use the number of rooms."
+        },
+        "description": "Only for houses where the rooms cannot start the boiler themselves (TRVs or zone valves): the integration then starts the boiler when rooms ask for heat. With Generic Thermostat or a relay on the boiler leave the boiler empty; the alert below still works."
       },
       "behavior": {
         "title": "Overrides, vacation and limits",
@@ -180,10 +212,14 @@
           "reevaluation_minutes": "Periodic check every"
         },
         "data_description": {
-          "override_mode": "One rule for every manual change, including turning the thermostat off. 'Until next reevaluation' ends when the schedule, presence, a window or the mode changes; the periodic check does not end it.",
-          "override_scope": "Use 'whole house' only when every room has its own valves.",
-          "auto_vacation_hours": "0 = off.",
-          "frost_temp": "For rooms without Generic Thermostat. With Generic Thermostat its minimum temperature is used."
+          "override_mode": "One rule for every manual change. 'Fixed duration' keeps it for the hours below. 'Until next reevaluation' ends when the schedule, presence, a window or the mode changes; the periodic check does not end it.",
+          "override_hours": "Only for 'Fixed duration'.",
+          "override_scope": "'Only that room' suits most homes. 'Whole house' copies a manual change to every room; use it only when every room has its own valves.",
+          "vacation_preheat_hours": "The schedule returns this many hours before the vacation ends, so the house is warm when you arrive.",
+          "auto_vacation_hours": "Turns on the vacation by itself after everybody has been far away this long. 0 = only manually.",
+          "frost_temp": "Used with an open window or the Off mode. Rooms with Generic Thermostat use its minimum temperature instead.",
+          "max_temp": "No level, adjustment or manual change from the integration goes above this.",
+          "reevaluation_minutes": "Safety check that resends the decision if a device lost it. Changes are applied immediately anyway; 5–15 minutes is fine."
         }
       },
       "alerts": {
@@ -196,8 +232,11 @@
           "verify_commands": "Verify commands"
         },
         "data_description": {
-          "notify_service": "e.g. notify.mobile_app_phone. Empty = persistent notifications.",
-          "verify_commands": "Check after 2 minutes that the device accepted the command, retry once, then alert."
+          "notify_service": "e.g. notify.mobile_app_phone. Leave empty for notifications in Home Assistant only.",
+          "alert_window_minutes": "Alert when a window stays open this long while heating is needed.",
+          "alert_unavailable_minutes": "Alert when a thermostat or sensor is unavailable this long.",
+          "battery_threshold": "Alert when the battery of a room device (TRV, sensor) drops below this.",
+          "verify_commands": "After 2 minutes checks that the device accepted the command, retries once, then alerts. Turn off only if a device reports its state slowly."
         }
       }
     },
@@ -222,7 +261,9 @@
             "source": "Heated by"
           },
           "data_description": {
-            "source": "Generic Thermostat keeps its own presets and temperatures; the integration only selects them."
+            "name": "Shown on the devices and in the card.",
+            "area": "Optional; links the room to a Home Assistant area.",
+            "source": "Generic Thermostat: it keeps its own presets and temperatures, the integration only picks them. Other thermostats / TRVs: set the command in the next step. Relay: the integration switches it on and off itself."
           }
         },
         "devices": {
@@ -236,8 +277,12 @@
             "min_off_minutes": "Minimum off time"
           },
           "data_description": {
-            "command_mode": "How the thermostats are controlled.",
-            "hysteresis": "Used for on/off control (relays or hvac mode)."
+            "climates": "The thermostats or TRVs of this room. Several TRVs in one room get the same command.",
+            "switches": "The relays that heat this room.",
+            "command_mode": "Temperature: the integration sends the temperature of each level (most TRVs). Preset: each level uses a preset of the thermostat, with the thermostat's temperature. On / off: the thermostat is only switched on and off, the integration keeps the temperature.",
+            "hysteresis": "Only for relays and on / off: heating starts below target minus this value and stops above target plus this value.",
+            "min_on_minutes": "Only for relays and on / off: minimum time on. 0 for heaters that do not mind short cycles.",
+            "min_off_minutes": "Only for relays and on / off: minimum time off between two starts."
           }
         },
         "levels": {
@@ -266,19 +311,26 @@
             "temp_activity": "Temperature of 'activity'"
           },
           "data_description": {
-            "nearby_mode": "Use the eco preset or a fixed temperature.",
-            "device_home": "Empty = no preset: the temperature below is sent instead.",
-            "device_sleep": "Empty = no preset: the temperature below is sent instead.",
-            "device_eco": "Empty = no preset: the temperature below is sent instead.",
-            "device_away": "Empty = no preset: the temperature below is sent instead.",
-            "device_comfort": "Empty = no preset: the temperature below is sent instead.",
-            "device_activity": "Empty = no preset: the temperature below is sent instead.",
-            "temp_home": "With a thermostat preset, used only if the thermostat does not report the preset temperature.",
-            "temp_sleep": "With a thermostat preset, used only if the thermostat does not report the preset temperature.",
-            "temp_eco": "With a thermostat preset, used only if the thermostat does not report the preset temperature.",
-            "temp_away": "With a thermostat preset, used only if the thermostat does not report the preset temperature.",
-            "temp_comfort": "With a thermostat preset, used only if the thermostat does not report the preset temperature.",
-            "temp_activity": "With a thermostat preset, used only if the thermostat does not report the preset temperature."
+            "nearby_mode": "Eco preset: uses the eco level. Fixed temperature: sends the temperature below (Generic Thermostat then shows preset none).",
+            "nearby_temp": "Only for 'Fixed temperature'.",
+            "name_home": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",
+            "name_sleep": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",
+            "name_eco": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",
+            "name_away": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",
+            "name_comfort": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",
+            "name_activity": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",
+            "device_home": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature below is sent instead.",
+            "device_sleep": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature below is sent instead.",
+            "device_eco": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature below is sent instead.",
+            "device_away": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature below is sent instead.",
+            "device_comfort": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature below is sent instead.",
+            "device_activity": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature below is sent instead.",
+            "temp_home": "Temperature of this level. With a thermostat preset it is used only if the preset is missing or its temperature is not reported. Can be changed later from the card.",
+            "temp_sleep": "Temperature of this level. With a thermostat preset it is used only if the preset is missing or its temperature is not reported. Can be changed later from the card.",
+            "temp_eco": "Temperature of this level. With a thermostat preset it is used only if the preset is missing or its temperature is not reported. Can be changed later from the card.",
+            "temp_away": "Temperature of this level. With a thermostat preset it is used only if the preset is missing or its temperature is not reported. Can be changed later from the card.",
+            "temp_comfort": "Temperature of this level. With a thermostat preset it is used only if the preset is missing or its temperature is not reported. Can be changed later from the card.",
+            "temp_activity": "Temperature of this level. With a thermostat preset it is used only if the preset is missing or its temperature is not reported. Can be changed later from the card."
           }
         },
         "sensors": {
@@ -292,9 +344,12 @@
             "occupancy_minutes": "Eco after no occupancy for"
           },
           "data_description": {
-            "temperature_sensors": "Used instead of the thermostat sensor.",
-            "calibration_entities": "Number entities of the TRVs (offset or external temperature input).",
-            "occupancy_minutes": "Only while someone is home."
+            "temperature_sensors": "A sensor in the room is more accurate than the one in a TRV next to the radiator. Leave empty to use the thermostat's own sensor.",
+            "temperature_aggregation": "Only with several sensors: average, the coldest or the median.",
+            "calibration_mode": "Only for TRVs with a room sensor above. Offset: corrects the TRV sensor. External temperature: writes the room temperature into the TRV (if it supports it). Off otherwise.",
+            "calibration_entities": "Only with calibration: the TRV number entities (offset or external temperature).",
+            "occupancy_sensors": "Motion / presence sensors of the room: when the room is empty for a while it goes to eco even if someone is home. Leave empty for rooms that should follow only the schedule.",
+            "occupancy_minutes": "How long the room must be empty before eco."
           }
         },
         "windows": {
@@ -310,8 +365,14 @@
             "window_drop_minutes": "Within"
           },
           "data_description": {
-            "linked_window_sensors": "e.g. the balcony door of the living room also cools the hall.",
-            "window_drop_detect": "A quick temperature drop counts as an open window for 15 minutes."
+            "window_sensors": "Windows and doors of this room. Leave empty if there are none (the temperature drop detection below can help).",
+            "linked_window_sensors": "Windows of other rooms that also cool this one, e.g. the living room balcony door for the hall.",
+            "window_open_delay": "How long a window must be open before the heating reacts. Short airing below this is ignored.",
+            "window_close_delay": "How long to wait after closing before heating again.",
+            "window_action": "Frost protection keeps a minimum temperature. Turn off switches the thermostat off (if it supports it).",
+            "window_drop_detect": "Treats a quick temperature drop as an open window for 15 minutes. Useful for rooms without window sensors.",
+            "window_drop_degrees": "Drop that counts as an open window.",
+            "window_drop_minutes": "Time in which the drop must happen."
           }
         },
         "schedule": {
@@ -329,9 +390,15 @@
             "optimal_stop_minutes": "Lower early by"
           },
           "data_description": {
-            "schedule": "e.g. `workday: 00:00 sleep, 06:00 home, 22:00 sleep`",
-            "optimal_start": "Start heating early so the next level is reached on time (learned heating rate).",
-            "optimal_stop": "Lower the temperature early and use the thermal inertia."
+            "schedule_source": "Internal schedule: written here or edited from the card. Schedule helper: a Home Assistant Schedule helper decides between two levels.",
+            "schedule": "Only for the internal schedule. e.g. `workday: 00:00 sleep, 06:00 home, 22:00 sleep`. Easier to edit from the card.",
+            "schedule_helper": "Only for 'Schedule helper'.",
+            "helper_on_preset": "Only for 'Schedule helper': level while the helper is on.",
+            "helper_off_preset": "Only for 'Schedule helper': level while the helper is off.",
+            "optimal_start": "Starts heating early so the next level is reached on time. The heating speed is learned in a few days.",
+            "optimal_start_max_minutes": "Never starts earlier than this.",
+            "optimal_stop": "Lowers the temperature a little before the next colder level, using the heat already in the walls. Leave off if the rooms cool fast.",
+            "optimal_stop_minutes": "How early the lower level starts."
           }
         },
         "extras": {
@@ -343,8 +410,10 @@
             "valve_exercise_time": "Time"
           },
           "data_description": {
-            "solar_offset": "Negative adjustment while the sun shines (only rooms facing the sun). 0 = off.",
-            "valve_exercise": "Open the TRVs fully for 5 minutes once a week against limescale."
+            "solar_offset": "Negative value (e.g. -1) lowers the target while the sun shines, for rooms that get warm from the sun. 0 = off.",
+            "valve_exercise": "Only for TRVs: opens them fully 5 minutes once a week, against limescale. Leave off for Generic Thermostat and relays.",
+            "valve_exercise_day": "Day of the valve exercise.",
+            "valve_exercise_time": "Time of the valve exercise (best when nobody needs heat)."
           }
         }
       },
