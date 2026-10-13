@@ -624,7 +624,7 @@
         },
         "profiles": {
           "name": "Profiluri",
-          "description": "Profiluri ca obiect: {\"workday\": [{\"time\": \"06:00\", \"preset\": \"home\"}]}"
+          "description": "Profiluri ca obiect: nume profil -> listă de ore și preseturi (folosit de card)."
         }
       }
     }
