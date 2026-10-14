@@ -16,7 +16,7 @@
  *   compact: false               # one row per room (and the house); tap a row to open it
  */
 
-const CARD_VERSION = "1.5.2";
+const CARD_VERSION = "1.5.4";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -92,6 +92,9 @@ const TEXT = {
     override: "Manual change",
     until: "until",
     until_change: "until the next change",
+    until_reeval: "until the next reevaluation",
+    at_latest: "at the latest",
+    reeval_help: "Ends when the schedule moves to another level, presence or the house mode changes, a window opens, the profile changes or the outdoor cutoff / heating season changes. The periodic check does not end it.",
     window: "Window open",
     heating: "Heating",
     details: "Details",
@@ -183,6 +186,9 @@ const TEXT = {
     override: "Modificare manuală",
     until: "până la",
     until_change: "până la următoarea schimbare",
+    until_reeval: "până la următoarea reevaluare",
+    at_latest: "cel târziu",
+    reeval_help: "Se termină când programul trece la alt nivel, se schimbă prezența sau modul casei, se deschide o fereastră, se schimbă profilul ori pragul exterior / sezonul. Verificarea periodică nu o încheie.",
     window: "Fereastră deschisă",
     heating: "Încălzește",
     details: "Detalii",
@@ -640,11 +646,11 @@ class AdvancedClimateCard extends HTMLElement {
     if (a.heat_demand) badges.push(`<span class="pill hot">${this._t("heating")}</span>`);
     if (a.window_open) badges.push(`<span class="pill warn">${this._t("window")}</span>`);
     if (a.override) {
-      const until = a.override.until
-        ? `${this._t("until")} ${this._fmtTime(a.override.until)}`
-        : this._t("until_change");
+      const until = this._overrideUntil(a);
       const prefix = stateObj.state === "manual_override" ? "" : `${this._t("override")} `;
-      badges.push(`<span class="pill">${esc(prefix + until)}</span>`);
+      badges.push(`<span class="pill" title="${esc(a.override.until ? "" : this._t("reeval_help"))}">${esc(
+        prefix + until
+      )}</span>`);
     }
 
     const head = `
@@ -672,13 +678,25 @@ class AdvancedClimateCard extends HTMLElement {
     return `<section class="block room">${head}${parts.join("")}</section>`;
   }
 
+  /** When a manual change ends, in words. */
+  _overrideUntil(a) {
+    if (!a.override) return "";
+    if (a.override.until) return `${this._t("until")} ${this._fmtTime(a.override.until)}`;
+    const latest = a.next_change
+      ? ` (${this._t("at_latest")} ${this._fmtTime(a.next_change)}${
+          a.next_preset ? `, ${this._presetName(a, a.next_preset)}` : ""
+        })`
+      : "";
+    return `${this._t("until_reeval")}${latest}`;
+  }
+
   /** One line per room: name, rule, now and target; a tap opens the room. */
   _compactRow(stateObj, color) {
     const a = stateObj.attributes;
     const icons = [];
     if (a.heat_demand) icons.push(`<span class="cicon hot" title="${esc(this._t("heating"))}">${this._icon("fire")}</span>`);
     if (a.window_open) icons.push(`<span class="cicon warn" title="${esc(this._t("window"))}">${this._icon("window-open-variant")}</span>`);
-    if (a.override) icons.push(`<span class="cicon" title="${esc(this._t("override"))}">${this._icon("hand-back-right-outline")}</span>`);
+    if (a.override) icons.push(`<span class="cicon" title="${esc(`${this._t("override")} ${this._overrideUntil(a)}`)}">${this._icon("hand-back-right-outline")}</span>`);
     return `<button class="crow" data-action="fold" data-key="room-${esc(a.room_id)}" aria-expanded="false" style="--c:${color}">
         <span class="cbar"></span>
         <span class="ctext"><span class="cname">${esc(a.room_name)}</span>
