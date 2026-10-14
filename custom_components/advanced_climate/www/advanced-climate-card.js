@@ -16,7 +16,7 @@
  *   compact: false               # one row per room (and the house); tap a row to open it
  */
 
-const CARD_VERSION = "1.5.1";
+const CARD_VERSION = "1.5.2";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -26,6 +26,8 @@ const PRESET_COLORS = {
   sleep: "#5f6fd1",
   away: "#8a96a3",
 };
+
+const MIN_ZOOM_SPAN = 20 * 60 * 1000; // closest zoom: 20 minutes
 
 const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
@@ -127,6 +129,11 @@ const TEXT = {
     drag_hint: "Drag the handles on the bar to move a start time in 5-minute steps (arrow keys: 5 min, Shift: 1 h). Levels are chosen in the list.",
     copy_to: "Copy over…",
     new_profile: "new",
+    zoom_in: "Zoom in",
+    zoom_out: "Zoom out",
+    zoom_reset: "Whole period",
+    zoom_1h: "Last hour",
+    zoom_6h: "Last 6 hours",
   },
   ro: {
     title: "Încălzire",
@@ -213,6 +220,11 @@ const TEXT = {
     drag_hint: "Trage de mânerele de pe bară ca să muți o oră de început din 5 în 5 minute (săgeți: 5 min, Shift: 1 h). Nivelurile se aleg în listă.",
     copy_to: "Copiază peste…",
     new_profile: "nou",
+    zoom_in: "Mărește",
+    zoom_out: "Micșorează",
+    zoom_reset: "Toată perioada",
+    zoom_1h: "Ultima oră",
+    zoom_6h: "Ultimele 6 ore",
   },
 };
 
@@ -262,8 +274,10 @@ class AdvancedClimateCard extends HTMLElement {
     this.shadowRoot.addEventListener("toggle", (ev) => this._onToggle(ev), true);
     this.shadowRoot.addEventListener("pointerdown", (ev) => this._pointerDown(ev));
     this.shadowRoot.addEventListener("pointermove", (ev) => this._pointerMove(ev));
-    this.shadowRoot.addEventListener("pointerup", () => this._pointerUp());
-    this.shadowRoot.addEventListener("pointercancel", () => this._pointerUp());
+    this.shadowRoot.addEventListener("pointerup", (ev) => this._pointerUp(ev));
+    this.shadowRoot.addEventListener("pointercancel", (ev) => this._pointerUp(ev));
+    this.shadowRoot.addEventListener("wheel", (ev) => this._chartWheel(ev), { passive: false });
+    this.shadowRoot.addEventListener("dblclick", (ev) => this._chartDblClick(ev));
     this.shadowRoot.addEventListener("pointerleave", (ev) => this._chartHover(ev), true);
     this.shadowRoot.addEventListener("keydown", (ev) => this._keyDown(ev));
   }
@@ -299,7 +313,7 @@ class AdvancedClimateCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this.style.colorScheme = hass?.themes?.darkMode ? "dark" : "light";
-    if (this._editing) return;
+    if (this._editing || this._pan) return;
     const active = this.shadowRoot.activeElement;
     if (active && ["INPUT", "SELECT"].includes(active.tagName)) return;
     const key = this._watched()
@@ -840,16 +854,72 @@ class AdvancedClimateCard extends HTMLElement {
     return { t0, t1, now, segs, temp, heat, lo, hi, loading: !hist };
   }
 
-  _timelineHtml(a) {
+  /** Visible time window of a chart (zoom); the whole range when not zoomed. */
+  _viewOf(room, d) {
+    const v = this._view?.[room];
+    if (!v) return { v0: d.t0, v1: d.t1, zoomed: false };
+    const span = Math.min(d.t1 - d.t0, Math.max(MIN_ZOOM_SPAN, v.v1 - v.v0));
+    const v0 = Math.min(d.t1 - span, Math.max(d.t0, v.v0));
+    return { v0, v1: v0 + span, zoomed: span < d.t1 - d.t0 - 1000 };
+  }
+
+  _setView(room, v0, v1) {
+    const d = this._charts?.[room];
+    if (!d) return;
+    this._view = this._view || {};
+    const span = Math.min(d.t1 - d.t0, Math.max(MIN_ZOOM_SPAN, v1 - v0));
+    if (span >= d.t1 - d.t0 - 1000) {
+      delete this._view[room];
+    } else {
+      const start = Math.min(d.t1 - span, Math.max(d.t0, v0));
+      this._view[room] = { v0: start, v1: start + span };
+    }
+    this._redrawChart(room);
+  }
+
+  /** Zoom by ``factor`` (< 1 = closer) keeping ``center`` in place. */
+  _zoom(room, factor, center) {
+    const d = this._charts?.[room];
+    if (!d) return;
+    const { v0, v1 } = this._viewOf(room, d);
+    const c = center ?? (Math.min(Math.max(d.now, v0), v1) === d.now ? d.now : (v0 + v1) / 2);
+    this._setView(room, c - (c - v0) * factor, c + (v1 - c) * factor);
+  }
+
+  _redrawChart(room) {
+    const card = this.shadowRoot.querySelector(`[data-chartcard="${CSS.escape(room)}"]`);
+    const stateObj = this._rooms().find((s) => s.attributes.room_id === room);
+    if (!card || !stateObj) return;
+    card.innerHTML = this._timelineHtml(stateObj.attributes, true);
+  }
+
+  _timelineHtml(a, innerOnly = false) {
     const d = this._chartData(a);
     if (!d.segs.length && !d.temp.length) return "";
     this._charts = this._charts || {};
     this._charts[a.room_id] = d;
+    const view = this._viewOf(a.room_id, d);
+    d.v0 = view.v0;
+    d.v1 = view.v1;
+    if (view.zoomed) {
+      // Zoomed in: the temperature scale follows what is visible, for detail.
+      const vis = [
+        ...d.temp.filter(([t]) => t >= view.v0 - 3600000 && t <= view.v1 + 3600000).map((p) => p[1]),
+        ...d.segs.filter((sg) => sg.e >= view.v0 && sg.s <= view.v1).map((sg) => sg.v),
+      ].filter((v) => v !== null);
+      if (vis.length) {
+        let lo = Math.floor((Math.min(...vis) - 0.3) * 2) / 2;
+        let hi = Math.ceil((Math.max(...vis) + 0.3) * 2) / 2;
+        if (hi - lo < 1) hi = lo + 1;
+        d.lo = lo;
+        d.hi = hi;
+      }
+    }
     const W = 1000;
     const H = 100;
     const TOP = 8;
     const BOTTOM = H - 6;
-    const x = (t) => ((t - d.t0) / (d.t1 - d.t0)) * W;
+    const x = (t) => ((t - view.v0) / (view.v1 - view.v0)) * W;
     const y = (v) => BOTTOM - ((v - d.lo) / (d.hi - d.lo)) * (BOTTOM - TOP);
     const pct = (t) => (x(t) / W) * 100;
     const gid = `g-${String(a.room_id).replace(/[^a-z0-9]/gi, "")}`;
@@ -894,10 +964,15 @@ class AdvancedClimateCard extends HTMLElement {
     const last = d.temp.length ? d.temp[d.temp.length - 1] : null;
 
     // Labels of the levels (HTML, so the text is not stretched).
+    const visible = (sg) => [Math.max(0, x(sg.s)), Math.min(W, x(sg.e))];
     const labels = d.segs
-      .filter((sg) => x(sg.e) - x(sg.s) >= 85)
+      .filter((sg) => {
+        const [xs, xe] = visible(sg);
+        return xe - xs >= 85;
+      })
       .map((sg) => {
-        const mid = Math.min(0.92, Math.max(0.08, (x(sg.s) + x(sg.e)) / 2 / W));
+        const [xs, xe] = visible(sg);
+        const mid = Math.min(0.92, Math.max(0.08, (xs + xe) / 2 / W));
         return `<span class="lvl ${sg.future ? "future" : ""}" style="left:${mid * 100}%;top:${
           (y(sg.v) / H) * 100
         }%">${esc(this._presetName(a, sg.preset) || "")} ${sg.v}°</span>`;
@@ -907,33 +982,55 @@ class AdvancedClimateCard extends HTMLElement {
       .map((v) => `<span style="top:${(y(v) / H) * 100}%">${v}°</span>`)
       .join("");
 
+    // Ticks adapt to the zoom: from every 6 hours down to every 5 minutes.
+    const span = view.v1 - view.v0;
+    const stepMin = [5, 10, 15, 30, 60, 120, 180, 360].find((m) => span / (m * 60000) <= 7) || 360;
     const ticks = [];
-    const first = new Date(d.t0);
-    first.setMinutes(0, 0, 0);
-    for (let t = first.getTime(); t <= d.t1; t += 3600 * 1000) {
-      const h = new Date(t).getHours();
-      if (t < d.t0 || h % 6 !== 0) continue;
+    const first = new Date(view.v0);
+    first.setSeconds(0, 0);
+    first.setMinutes(Math.ceil(first.getMinutes() / Math.min(stepMin, 60)) * Math.min(stepMin, 60));
+    for (let t = first.getTime(); t <= view.v1; t += 60000 * Math.min(stepMin, 60)) {
+      const dt = new Date(t);
+      const minutes = dt.getHours() * 60 + dt.getMinutes();
+      if (minutes % stepMin !== 0) continue;
       const label =
-        h === 0
-          ? new Date(t).toLocaleDateString(this._lang(), { weekday: "short" })
-          : `${String(h).padStart(2, "0")}:00`;
+        minutes === 0
+          ? dt.toLocaleDateString(this._lang(), { weekday: "short" })
+          : dt.toLocaleTimeString(this._lang(), { hour: "2-digit", minute: "2-digit" });
       ticks.push(`<span style="left:${pct(t)}%">${esc(label)}</span>`);
     }
+    const fmt = (t) => new Date(t).toLocaleTimeString(this._lang(), { hour: "2-digit", minute: "2-digit" });
+    const zoomBtn = (zoom, label, title, active = false) =>
+      `<button class="zbtn ${active ? "active" : ""}" data-action="zoom" data-zoom="${zoom}" data-room="${esc(
+        a.room_id
+      )}" title="${esc(title)}" aria-label="${esc(title)}">${label}</button>`;
+    const spanH = Math.round(span / 3600000);
+    const zoombar = `<div class="zoombar">
+        <span class="zrange">${view.zoomed ? `${esc(fmt(view.v0))} – ${esc(fmt(view.v1))}` : esc(this._t("chart_label"))}</span>
+        <span class="zbtns">
+          ${zoomBtn("1h", "1h", this._t("zoom_1h"), view.zoomed && spanH === 1)}
+          ${zoomBtn("6h", "6h", this._t("zoom_6h"), view.zoomed && spanH === 6)}
+          ${zoomBtn("out", "−", this._t("zoom_out"))}
+          ${zoomBtn("in", "+", this._t("zoom_in"))}
+          ${view.zoomed ? zoomBtn("reset", "⤢", this._t("zoom_reset")) : ""}
+        </span>
+      </div>`;
 
     const next = a.next_change
       ? `<span>${this._t("next")}: <b>${esc(this._fmtTime(a.next_change))}</b> → ${esc(
           this._presetName(a, a.next_preset)
         )}</span>`
       : "";
-    return `
-      <div class="chart-card">
-        <div class="hchart" data-chart="${esc(a.room_id)}">
+    const nowIn = d.now >= view.v0 && d.now <= view.v1;
+    const inner = `
+        ${zoombar}
+        <div class="hchart ${view.zoomed ? "zoomed" : ""}" data-chart="${esc(a.room_id)}">
           <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(this._t("chart_label"))}">
             <defs><linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0" stop-color="var(--ac-accent)" stop-opacity="0.22"></stop>
               <stop offset="1" stop-color="var(--ac-accent)" stop-opacity="0"></stop>
             </linearGradient></defs>
-            <rect x="${nowX}" y="0" width="${W - nowX}" height="${H}" class="futurebg"></rect>
+            <rect x="${Math.min(W, Math.max(0, nowX))}" y="0" width="${W - Math.min(W, Math.max(0, nowX))}" height="${H}" class="futurebg"></rect>
             ${grid}${heat}${segs}${steps}
             ${tempArea ? `<path d="${tempArea}" fill="url(#${gid})" class="tempfill"></path>` : ""}
             ${tempPath ? `<path d="${tempPath}" class="templine"></path>` : ""}
@@ -942,9 +1039,9 @@ class AdvancedClimateCard extends HTMLElement {
           <div class="overlay">
             ${labels}
             <div class="ylabels">${yLabels}</div>
-            <span class="nowlabel" style="left:${pct(d.now)}%">${this._t("now_tag")}</span>
+            ${nowIn ? `<span class="nowlabel" style="left:${pct(d.now)}%">${this._t("now_tag")}</span>` : ""}
             ${
-              last
+              last && last[0] >= view.v0 && last[0] <= view.v1
                 ? `<span class="nowdot" style="left:${pct(last[0])}%;top:${(y(last[1]) / H) * 100}%"></span>`
                 : ""
             }
@@ -959,8 +1056,9 @@ class AdvancedClimateCard extends HTMLElement {
           <span class="lg"><i class="lg-heat"></i>${this._t("legend_heat")}</span>
           ${d.loading ? `<span class="muted">${this._t("loading")}</span>` : ""}
         </div>
-        <div class="meta"><span>${this._t("today")}: <b>${esc(a.profile || "–")}</b></span>${next}</div>
-      </div>`;
+        <div class="meta"><span>${this._t("today")}: <b>${esc(a.profile || "–")}</b></span>${next}</div>`;
+    if (innerOnly) return inner;
+    return `<div class="chart-card" data-chartcard="${esc(a.room_id)}">${inner}</div>`;
   }
 
   /** Crosshair and values under the pointer (the legend stays visible). */
@@ -982,7 +1080,7 @@ class AdvancedClimateCard extends HTMLElement {
     const a = stateObj?.attributes || {};
     const rect = chart.getBoundingClientRect();
     const f = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width));
-    const t = d.t0 + f * (d.t1 - d.t0);
+    const t = d.v0 + f * (d.v1 - d.v0);
     let temp = null;
     for (const [pt, v] of d.temp) {
       if (pt <= t) temp = v;
@@ -1313,7 +1411,103 @@ class AdvancedClimateCard extends HTMLElement {
     return true;
   }
 
+  _chartPointerDown(ev) {
+    const chart = ev.target.closest?.(".hchart");
+    if (!chart) return false;
+    const room = chart.dataset.chart;
+    this._ptrs = this._ptrs || new Map();
+    this._ptrs.set(ev.pointerId, ev.clientX);
+    const d = this._charts?.[room];
+    if (!d) return true;
+    const card = chart.closest(".chart-card");
+    try {
+      card.setPointerCapture(ev.pointerId);
+    } catch (err) {
+      /* ignore */
+    }
+    const xs = [...this._ptrs.values()];
+    this._pan = {
+      room,
+      card,
+      startX: xs.length > 1 ? (xs[0] + xs[1]) / 2 : ev.clientX,
+      dist: xs.length > 1 ? Math.abs(xs[0] - xs[1]) : 0,
+      v0: d.v0,
+      v1: d.v1,
+      moved: false,
+    };
+    return true;
+  }
+
+  _chartPointerMove(ev) {
+    const p = this._pan;
+    if (!p || !this._ptrs?.has(ev.pointerId)) return false;
+    this._ptrs.set(ev.pointerId, ev.clientX);
+    const d = this._charts?.[p.room];
+    const chart = p.card.querySelector(".hchart");
+    if (!d || !chart) return true;
+    const rect = chart.getBoundingClientRect();
+    const span = p.v1 - p.v0;
+    const xs = [...this._ptrs.values()];
+    if (xs.length > 1 && p.dist > 10) {
+      // Pinch: zoom around the middle of the two fingers.
+      const dist = Math.abs(xs[0] - xs[1]);
+      const factor = p.dist / Math.max(dist, 10);
+      const center = p.v0 + ((p.startX - rect.left) / rect.width) * span;
+      p.moved = true;
+      this._setView(p.room, center - (center - p.v0) * factor, center + (p.v1 - center) * factor);
+      return true;
+    }
+    const dx = ev.clientX - p.startX;
+    if (Math.abs(dx) > 4) p.moved = true;
+    if (p.moved && this._view?.[p.room]) {
+      const shift = (-dx / rect.width) * span;
+      this._setView(p.room, p.v0 + shift, p.v1 + shift);
+      return true;
+    }
+    return false;
+  }
+
+  _chartPointerUp(ev) {
+    if (!this._ptrs) return;
+    this._ptrs.delete(ev.pointerId);
+    const p = this._pan;
+    if (!this._ptrs.size) this._pan = null;
+    else if (p) {
+      // One finger left after a pinch: start a new pan from here.
+      const d = this._charts?.[p.room];
+      const [x] = [...this._ptrs.values()];
+      this._pan = { ...p, startX: x, dist: 0, v0: d?.v0 ?? p.v0, v1: d?.v1 ?? p.v1 };
+    }
+    const chart = p?.card?.querySelector(".hchart");
+    if (p && !p.moved && chart) this._chartHover({ type: "pointermove", clientX: ev.clientX, target: chart });
+  }
+
+  _chartWheel(ev) {
+    const chart = ev.target.closest?.(".hchart");
+    // Only pinch on a touchpad or Ctrl + wheel zoom, so the page still scrolls normally.
+    if (!chart || !(ev.ctrlKey || ev.metaKey)) return;
+    ev.preventDefault();
+    const d = this._charts?.[chart.dataset.chart];
+    if (!d) return;
+    const rect = chart.getBoundingClientRect();
+    const center = d.v0 + ((ev.clientX - rect.left) / rect.width) * (d.v1 - d.v0);
+    this._zoom(chart.dataset.chart, ev.deltaY > 0 ? 1.25 : 0.8, center);
+  }
+
+  _chartDblClick(ev) {
+    // With the pointer captured by the chart card the event target is the card itself.
+    const chart = ev.target.closest?.(".hchart") || ev.target.closest?.(".chart-card")?.querySelector(".hchart");
+    if (ev.target.closest?.(".zoombar")) return;
+    if (!chart) return;
+    const d = this._charts?.[chart.dataset.chart];
+    if (!d) return;
+    const rect = chart.getBoundingClientRect();
+    const center = d.v0 + ((ev.clientX - rect.left) / rect.width) * (d.v1 - d.v0);
+    this._zoom(chart.dataset.chart, 0.4, center);
+  }
+
   _pointerDown(ev) {
+    if (this._chartPointerDown(ev)) return;
     const handle = ev.target.closest?.("[data-handle]");
     if (!handle || !this._draft) return;
     ev.preventDefault();
@@ -1329,7 +1523,13 @@ class AdvancedClimateCard extends HTMLElement {
 
   _pointerMove(ev) {
     if (!this._drag) {
-      if (ev.target.closest?.(".hchart")) this._chartHover(ev);
+      if (this._chartPointerMove(ev)) {
+        const tip = this._pan?.card?.querySelector(".tip");
+        if (tip) tip.hidden = true;
+        return;
+      }
+      const chart = ev.target.closest?.(".hchart") || this._pan?.card?.querySelector(".hchart");
+      if (chart) this._chartHover({ type: ev.type, clientX: ev.clientX, target: chart });
       return;
     }
     const { profile, index, bar } = this._drag;
@@ -1342,7 +1542,8 @@ class AdvancedClimateCard extends HTMLElement {
     }
   }
 
-  _pointerUp() {
+  _pointerUp(ev) {
+    if (ev) this._chartPointerUp(ev);
     if (!this._drag) return;
     this._drag = null;
     this._render();
@@ -1422,6 +1623,20 @@ class AdvancedClimateCard extends HTMLElement {
       case "fold":
         this._open[key] = el.getAttribute("aria-expanded") !== "true";
         break;
+      case "zoom": {
+        const d = this._charts?.[room];
+        if (!d) return;
+        const z = el.dataset.zoom;
+        if (z === "in") this._zoom(room, 0.5);
+        else if (z === "out") this._zoom(room, 2);
+        else if (z === "reset") this._setView(room, d.t0, d.t1);
+        else {
+          const span = (z === "1h" ? 1 : 6) * 3600000;
+          const end = Math.min(d.t1, Math.max(d.now + span * 0.15, d.t0 + span));
+          this._setView(room, end - span, end);
+        }
+        return;
+      }
       case "toggle":
         await this._call(entity.split(".")[0], "toggle", { entity_id: entity });
         return;
@@ -1623,8 +1838,18 @@ const STYLE = `
   .reason { margin: 0; color: var(--ac-muted); font-size: 0.9em; }
   .chart-card { border-radius: 14px; background: var(--ac-surface); padding: 12px 12px 10px;
     box-shadow: inset 0 0 0 1px var(--ac-line); display: flex; flex-direction: column; gap: 4px; }
-  .hchart { position: relative; height: 150px; touch-action: pan-y; cursor: crosshair; }
-  .hchart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .hchart { position: relative; height: 150px; touch-action: pan-y; cursor: crosshair; user-select: none; }
+  .hchart svg { width: 100%; height: 100%; display: block; overflow: hidden; }
+  .hchart.zoomed { cursor: grab; }
+  .hchart.zoomed:active { cursor: grabbing; }
+  .zoombar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: -2px 0 10px; }
+  .zrange { font-size: 0.78em; color: var(--ac-muted); font-variant-numeric: tabular-nums; }
+  .zbtns { display: inline-flex; gap: 2px; padding: 2px; border-radius: 9px; background: var(--ac-surface-2); }
+  .zbtn { font: inherit; font-size: 0.78em; min-width: 30px; height: 26px; padding: 0 8px; border: none; border-radius: 7px;
+    background: none; color: var(--primary-text-color); cursor: pointer; font-variant-numeric: tabular-nums; }
+  .zbtn:hover { background: var(--card-background-color); }
+  .zbtn.active { background: var(--card-background-color); color: var(--ac-accent); font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0,0,0,.15); }
   .hchart .grid { stroke: var(--ac-line); stroke-width: 1; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; }
   .hchart .futurebg { fill: var(--primary-text-color); opacity: 0.035; }
   .hchart .heatband { fill: var(--ac-hot); opacity: 0.09; }
