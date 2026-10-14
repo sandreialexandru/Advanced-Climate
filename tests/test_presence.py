@@ -92,6 +92,32 @@ class DebounceTest(unittest.TestCase):
         self.assertEqual((again.current, again.changed_at), ("far", t0))
 
 
+    def test_pending_survives_restart(self) -> None:
+        deb = presence.PresenceDebouncer()
+        t0 = datetime(2026, 10, 12, 8, tzinfo=TZ)
+        arrive, depart = timedelta(0), timedelta(minutes=10)
+        deb.update("home", t0, arrive, depart)
+        deb.update("nearby", t0 + timedelta(minutes=2), arrive, depart)
+        again = presence.PresenceDebouncer.from_dict(deb.as_dict())
+        self.assertEqual(again.pending, "nearby")
+        again.update("nearby", t0 + timedelta(minutes=12), arrive, depart)
+        self.assertEqual(again.current, "nearby")
+
+    def test_departure_counts_from_real_change(self) -> None:
+        deb = presence.PresenceDebouncer()
+        t0 = datetime(2026, 10, 12, 8, tzinfo=TZ)
+        arrive, depart = timedelta(0), timedelta(minutes=10)
+        deb.update("home", t0, arrive, depart)
+        # The last person left 11 minutes ago (e.g. noticed only after a restart).
+        now = t0 + timedelta(minutes=30)
+        deb.update("nearby", now, arrive, depart, now - timedelta(minutes=11))
+        self.assertEqual(deb.current, "nearby")
+        # Unknown values keep the pending change.
+        deb.update("far", now, arrive, depart)
+        deb.update(None, now + timedelta(minutes=1), arrive, depart)
+        self.assertEqual(deb.pending, "far")
+
+
 class ArrivingTest(unittest.TestCase):
     def test_arriving(self) -> None:
         arr = presence.is_arriving

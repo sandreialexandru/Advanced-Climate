@@ -454,11 +454,22 @@ class House:
         )
         if raw is None and self.presence.current is None:
             raw = PRESENCE_HOME  # no information at all: assume home (safe for comfort)
+        # A departure counts from when the last person really moved, so a restart
+        # or a change of the settings does not start the departure delay again.
+        raw_since = None
+        if raw is not None and raw != PRESENCE_HOME:
+            changes = [
+                st.last_changed
+                for entity_id in as_list(opts.get(CONF_PERSONS))
+                if (st := self.hass.states.get(entity_id)) is not None
+            ]
+            raw_since = max(changes) if changes else None
         self._presence_due = self.presence.update(
             raw,
             now,
             timedelta(minutes=float(opts[CONF_ARRIVAL_DELAY])),
             timedelta(minutes=float(opts[CONF_DEPARTURE_DELAY])),
+            raw_since,
         )
 
         # On the way home (preheat).

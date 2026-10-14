@@ -132,11 +132,15 @@ class PresenceDebouncer:
         now: datetime,
         arrival_delay: timedelta,
         departure_delay: timedelta,
+        raw_since: datetime | None = None,
     ) -> datetime | None:
-        """Feed a raw value. Returns when the next check is needed, if any."""
+        """Feed a raw value. Returns when the next check is needed, if any.
+
+        ``raw_since`` is when the raw value really started (e.g. when the last
+        person left), so a restart or a settings change does not restart the
+        delay. Unknown values keep the pending change.
+        """
         if raw is None:
-            self.pending = None
-            self.pending_since = None
             return None
         if self.current is None:
             self._set(raw, now)
@@ -147,7 +151,7 @@ class PresenceDebouncer:
             return None
         if raw != self.pending:
             self.pending = raw
-            self.pending_since = now
+            self.pending_since = min(raw_since, now) if raw_since else now
         delay = (
             arrival_delay
             if _RANK[raw] > _RANK[self.current]
@@ -179,6 +183,8 @@ class PresenceDebouncer:
         return {
             "current": self.current,
             "changed_at": self.changed_at.isoformat() if self.changed_at else None,
+            "pending": self.pending,
+            "pending_since": self.pending_since.isoformat() if self.pending_since else None,
         }
 
     @classmethod
@@ -188,11 +194,13 @@ class PresenceDebouncer:
         if not data:
             return obj
         obj.current = data.get("current")
-        if data.get("changed_at"):
-            try:
-                obj.changed_at = datetime.fromisoformat(data["changed_at"])
-            except ValueError:
-                obj.changed_at = None
+        for key in ("changed_at", "pending_since"):
+            if data.get(key):
+                try:
+                    setattr(obj, key, datetime.fromisoformat(data[key]))
+                except ValueError:
+                    setattr(obj, key, None)
+        obj.pending = data.get("pending") if obj.pending_since else None
         return obj
 
 
