@@ -13,6 +13,7 @@ from homeassistant.components.sensor import (
 from homeassistant.const import EntityCategory, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from . import AdvancedClimateConfigEntry
 from .const import PRESENCE_STATES, PRESETS, RULES
@@ -158,6 +159,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "source",
             "custom_levels",
             "device_levels",
+            "plan",
         }
     )
 
@@ -193,6 +195,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "profile_select": room.profile_select,
             "next_change": iso(state.next_change) if state else None,
             "next_preset": state.next_preset if state else None,
+            "plan": room.plan(dt_util.now()),
             "schedule": profiles_to_dict(room.schedule.profiles),
             "schedule_error": room.schedule_error,
             "schedule_editable": room.config.get("schedule_source", "internal") == "internal",
