@@ -13,9 +13,10 @@
  *   show_details: true           # temperatures, heating rate, runtime, adjustments
  *   show_schedule_editor: true
  *   collapsed: false             # rooms start folded (header only)
+ *   compact: false               # one row per room (and the house); tap a row to open it
  */
 
-const CARD_VERSION = "1.4.2";
+const CARD_VERSION = "1.5.0";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -37,6 +38,7 @@ const DEFAULTS = {
   show_details: true,
   show_schedule_editor: true,
   collapsed: false,
+  compact: false,
 };
 
 const TEXT = {
@@ -116,6 +118,15 @@ const TEXT = {
     device_preset: "Thermostat preset now",
     no_preset: "none (manual temperature)",
     active: "active",
+    chart_label: "Last 24 hours and the next 12",
+    legend_temp: "Temperature",
+    legend_target: "Target / plan",
+    legend_heat: "Heating",
+    planned: "Planned",
+    loading: "loading history…",
+    drag_hint: "Drag the handles on the bar to move a start time (arrow keys: 15 min, Shift: 1 h). Levels are chosen in the list.",
+    copy_to: "Copy over…",
+    new_profile: "new",
   },
   ro: {
     title: "Încălzire",
@@ -193,6 +204,15 @@ const TEXT = {
     device_preset: "Preset în termostat acum",
     no_preset: "niciunul (temperatură manuală)",
     active: "activ",
+    chart_label: "Ultimele 24 de ore și următoarele 12",
+    legend_temp: "Temperatură",
+    legend_target: "Țintă / program",
+    legend_heat: "Încălzire",
+    planned: "Programat",
+    loading: "se încarcă istoricul…",
+    drag_hint: "Trage de mânerele de pe bară ca să muți o oră de început (săgeți: 15 min, Shift: 1 h). Nivelurile se aleg în listă.",
+    copy_to: "Copiază peste…",
+    new_profile: "nou",
   },
 };
 
@@ -240,6 +260,12 @@ class AdvancedClimateCard extends HTMLElement {
     this.shadowRoot.addEventListener("click", (ev) => this._onClick(ev));
     this.shadowRoot.addEventListener("change", (ev) => this._onChange(ev));
     this.shadowRoot.addEventListener("toggle", (ev) => this._onToggle(ev), true);
+    this.shadowRoot.addEventListener("pointerdown", (ev) => this._pointerDown(ev));
+    this.shadowRoot.addEventListener("pointermove", (ev) => this._pointerMove(ev));
+    this.shadowRoot.addEventListener("pointerup", () => this._pointerUp());
+    this.shadowRoot.addEventListener("pointercancel", () => this._pointerUp());
+    this.shadowRoot.addEventListener("pointerleave", (ev) => this._chartHover(ev), true);
+    this.shadowRoot.addEventListener("keydown", (ev) => this._keyDown(ev));
   }
 
   static getConfigForm() {
@@ -289,6 +315,7 @@ class AdvancedClimateCard extends HTMLElement {
   }
 
   getCardSize() {
+    if (this._config?.compact) return 2 + this._rooms().length;
     return 4 + this._rooms().length * 4;
   }
 
@@ -416,14 +443,16 @@ class AdvancedClimateCard extends HTMLElement {
             (cfg.show_house ? this._houseHtml(house) : "") +
             (cfg.show_rooms
               ? house.rooms.length
-                ? house.rooms.map((r) => this._roomHtml(r)).join("")
+                ? cfg.compact
+                  ? `<div class="rooms-list">${house.rooms.map((r) => this._roomHtml(r)).join("")}</div>`
+                  : house.rooms.map((r) => this._roomHtml(r)).join("")
                 : `<p class="empty">${this._t("no_rooms")}</p>`
               : "")
         )
         .join("");
     }
     this.shadowRoot.innerHTML = `<style>${STYLE}</style>
-      <ha-card>
+      <ha-card class="${cfg.compact ? "compact" : ""}">
         ${title ? `<h2 class="title">${esc(title)}</h2>` : ""}
         ${body}
       </ha-card>`;
@@ -502,11 +531,26 @@ class AdvancedClimateCard extends HTMLElement {
       ? `${esc(this._fmtTime(vStart.state))} – ${esc(this._fmtTime(vEnd?.state))}`
       : this._t("vacation_none");
 
+    const houseKey = `house-${house.id}`;
+    if (this._config.compact && !this._open[houseKey]) {
+      return `<button class="crow house-row" data-action="fold" data-key="${esc(houseKey)}" aria-expanded="false">
+          ${this._icon("home-thermometer-outline")}
+          <span class="cname">${esc(house.name || "")}</span>
+          <span class="pill presence-state ${esc(presence?.state)}">${esc(this._label(presence))}</span>
+          <span class="pill">${esc(this._label(mode))}</span>
+          ${demand?.state === "on" ? `<span class="cicon hot" title="${esc(this._t("heating"))}">${this._icon("fire")}</span>` : ""}
+          <span class="ctemp muted">${this._t("outdoor")} ${esc(this._temp(outdoor?.state))}</span>
+          <span class="chev"></span>
+        </button>`;
+    }
+    const foldBack = this._config.compact
+      ? `<button class="room-title" data-action="fold" data-key="${esc(houseKey)}" aria-expanded="true"><span class="chev open"></span></button>`
+      : "";
     return `
       <section class="block house">
         <div class="house-head">
           <div>
-            <div class="name">${esc(house.name || "")}</div>
+            <div class="name">${foldBack}${esc(house.name || "")}</div>
             <div class="presence">
               <span class="pill presence-state ${esc(presence?.state)}">${esc(this._label(presence))}</span>
               ${presence?.attributes?.arriving ? `<span class="pill">${this._t("arriving")}</span>` : ""}
@@ -573,8 +617,10 @@ class AdvancedClimateCard extends HTMLElement {
     const a = stateObj.attributes;
     const e = a.entities || {};
     const key = a.room_id;
-    const folded = this._open[`room-${key}`] === undefined ? cfg.collapsed : !this._open[`room-${key}`];
+    const folded =
+      this._open[`room-${key}`] === undefined ? cfg.collapsed || cfg.compact : !this._open[`room-${key}`];
     const color = PRESET_COLORS[a.preset] || "var(--secondary-text-color)";
+    if (cfg.compact && folded) return this._compactRow(stateObj, color);
 
     const badges = [];
     if (a.heat_demand) badges.push(`<span class="pill hot">${this._t("heating")}</span>`);
@@ -612,6 +658,25 @@ class AdvancedClimateCard extends HTMLElement {
     return `<section class="block room">${head}${parts.join("")}</section>`;
   }
 
+  /** One line per room: name, rule, now and target; a tap opens the room. */
+  _compactRow(stateObj, color) {
+    const a = stateObj.attributes;
+    const icons = [];
+    if (a.heat_demand) icons.push(`<span class="cicon hot" title="${esc(this._t("heating"))}">${this._icon("fire")}</span>`);
+    if (a.window_open) icons.push(`<span class="cicon warn" title="${esc(this._t("window"))}">${this._icon("window-open-variant")}</span>`);
+    if (a.override) icons.push(`<span class="cicon" title="${esc(this._t("override"))}">${this._icon("hand-back-right-outline")}</span>`);
+    return `<button class="crow" data-action="fold" data-key="room-${esc(a.room_id)}" aria-expanded="false" style="--c:${color}">
+        <span class="cbar"></span>
+        <span class="ctext"><span class="cname">${esc(a.room_name)}</span>
+          <span class="crule">${esc(this._label(stateObj))}</span></span>
+        ${icons.join("")}
+        <span class="ctemp"><span class="cnow">${this._temp(a.current_temperature)}</span><span class="carrow">→</span><b>${this._temp(
+          a.target_temperature
+        )}</b></span>
+        <span class="chev"></span>
+      </button>`;
+  }
+
   /** Segments of a profile over one day (the last slot continues past midnight). */
   _segments(slots) {
     const sorted = [...slots].sort((x, y) => toMinutes(x.time) - toMinutes(y.time));
@@ -642,50 +707,219 @@ class AdvancedClimateCard extends HTMLElement {
     });
   }
 
-  _timelineHtml(a) {
-    const profile = a.profile && a.schedule && a.schedule[a.profile];
-    if (!profile || !profile.length) return "";
-    const segments = this._segments(profile);
+  // ------------------------------------------------------------------ history chart
+  /** Cached history of the room (fetched in the background, refreshed every 5 minutes). */
+  _history(a) {
+    const key = a.room_id;
+    this._hist = this._hist || {};
+    const cached = this._hist[key];
+    if (!cached || (!cached.loading && Date.now() - cached.at > 5 * 60 * 1000)) {
+      this._fetchHistory(a);
+    }
+    return cached && cached.temp ? cached : null;
+  }
+
+  async _fetchHistory(a) {
+    const key = a.room_id;
+    const e = a.entities || {};
+    const ids = [e.room_temperature, e.target_temperature, e.heat_demand].filter(Boolean);
+    const previous = this._hist[key];
+    if (!ids.length || !this._hass?.callWS) {
+      this._hist[key] = { at: Date.now(), loading: false, temp: [], target: [], heat: [] };
+      return;
+    }
+    this._hist[key] = { ...(previous || {}), at: Date.now(), loading: true };
+    const end = new Date();
+    const start = new Date(end.getTime() - 24 * 3600 * 1000);
+    try {
+      const res = await this._hass.callWS({
+        type: "history/history_during_period",
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        entity_ids: ids,
+        minimal_response: false,
+        no_attributes: false,
+        significant_changes_only: false,
+      });
+      const rows = (id) =>
+        ((id && res[id]) || [])
+          .map((p) => ({ t: (p.lu ?? p.lc) * 1000, s: p.s, a: p.a || {} }))
+          .filter((p) => Number.isFinite(p.t));
+      this._hist[key] = {
+        at: Date.now(),
+        loading: false,
+        temp: rows(e.room_temperature)
+          .map((p) => [p.t, num(p.s)])
+          .filter((p) => p[1] !== null),
+        target: rows(e.target_temperature).map((p) => ({ t: p.t, v: num(p.s), preset: p.a.preset })),
+        heat: rows(e.heat_demand).map((p) => [p.t, p.s === "on"]),
+      };
+    } catch (err) {
+      this._hist[key] = { at: Date.now(), loading: false, temp: [], target: [], heat: [], failed: true };
+    }
+    const active = this.shadowRoot.activeElement;
+    if (this._editing || this._drag || (active && ["INPUT", "SELECT"].includes(active.tagName))) return;
+    this._lastKey = "";
+    this._render();
+  }
+
+  /** Everything drawn by the chart, in time order. */
+  _chartData(a) {
+    const HOUR = 3600 * 1000;
+    const now = Date.now();
+    const t0 = now - 24 * HOUR;
+    const t1 = now + 12 * HOUR;
+    const hist = this._history(a);
     const levels = a.levels || {};
-    const temps = segments.map((s) => num(levels[s.preset])).filter((t) => t !== null);
-    const lo = temps.length ? Math.min(...temps) : 0;
-    const hi = temps.length ? Math.max(...temps) : 1;
-    const W = 1440;
-    const H = 56;
-    const height = (preset) => {
-      const t = num(levels[preset]);
-      if (t === null || hi === lo) return H * 0.6;
-      return H * (0.25 + (0.7 * (t - lo)) / (hi - lo));
-    };
-    let path = `M0 ${H}`;
-    const labels = [];
-    const blocks = segments
-      .map((s) => {
-        const h = height(s.preset);
-        path += ` L${s.start} ${H - h} L${s.end} ${H - h}`;
-        const t = num(levels[s.preset]);
-        if (s.end - s.start >= 120) {
-          const pct = ((s.start + s.end) / 2 / W) * 100;
-          const align =
-            s.start === 0 ? "left:0;transform:none" : s.end >= W ? "right:0;transform:none" : `left:${pct}%`;
-          labels.push(
-            `<span style="${align};bottom:${((h + 4) / (H + 14)) * 100}%">${esc(
-              this._presetName(a, s.preset)
-            )}${t !== null ? ` ${t}°` : ""}</span>`
-          );
+
+    // Target: history for the past, the plan for the future.
+    const segs = [];
+    if (hist && hist.target.length) {
+      const points = hist.target.filter((p) => p.v !== null);
+      points.forEach((p, i) => {
+        const s = Math.max(t0, p.t);
+        const e = i + 1 < points.length ? Math.min(points[i + 1].t, now) : now;
+        if (e > s) segs.push({ s, e, v: p.v, preset: p.preset, future: false });
+      });
+    }
+    const plan = (a.plan || [])
+      .map((p) => ({ t: Date.parse(p.at), preset: p.preset }))
+      .filter((p) => Number.isFinite(p.t))
+      .sort((x, y) => x.t - y.t);
+    const upcoming = plan.filter((p) => p.t > now && p.t < t1);
+    let cursor = now;
+    let preset = a.preset;
+    let value = num(a.target_temperature);
+    for (const change of upcoming) {
+      if (value !== null) segs.push({ s: cursor, e: change.t, v: value, preset, future: true });
+      cursor = change.t;
+      preset = change.preset;
+      value = num(levels[preset]);
+    }
+    if (value !== null) segs.push({ s: cursor, e: t1, v: value, preset, future: true });
+    // Neighbours with the same level form one segment.
+    const merged = [];
+    for (const sg of segs) {
+      const prev = merged[merged.length - 1];
+      if (prev && prev.v === sg.v && prev.preset === sg.preset && prev.future === sg.future && prev.e >= sg.s - 1000) {
+        prev.e = sg.e;
+      } else {
+        merged.push({ ...sg });
+      }
+    }
+    segs.length = 0;
+    segs.push(...merged);
+
+    const temp = hist ? hist.temp.filter((p) => p[0] >= t0 - HOUR) : [];
+    const current = num(a.current_temperature);
+    if (current !== null) temp.push([now, current]);
+
+    const heat = [];
+    if (hist) {
+      let on = null;
+      for (const [t, state] of hist.heat) {
+        if (state && on === null) on = Math.max(t, t0);
+        if (!state && on !== null) {
+          heat.push([on, t]);
+          on = null;
         }
-        return `<rect x="${s.start}" y="${H - h}" width="${s.end - s.start}" height="${h}" rx="0"
-          fill="${PRESET_COLORS[s.preset] || "var(--primary-color)"}"><title>${esc(
-          this._presetName(a, s.preset)
-        )} ${hhmm(s.start)}–${hhmm(s.end % 1440)}</title></rect>`;
+      }
+      if (on !== null) heat.push([on, now]);
+    } else if (a.heat_demand) {
+      heat.push([now - 5 * 60 * 1000, now]);
+    }
+
+    const values = [...segs.map((x) => x.v), ...temp.map((p) => p[1])].filter((v) => v !== null);
+    let lo = values.length ? Math.floor(Math.min(...values) - 0.5) : 15;
+    let hi = values.length ? Math.ceil(Math.max(...values) + 0.5) : 23;
+    if (hi - lo < 4) {
+      const mid = (hi + lo) / 2;
+      lo = Math.floor(mid - 2);
+      hi = lo + 4;
+    }
+    return { t0, t1, now, segs, temp, heat, lo, hi, loading: !hist };
+  }
+
+  _timelineHtml(a) {
+    const d = this._chartData(a);
+    if (!d.segs.length && !d.temp.length) return "";
+    this._charts = this._charts || {};
+    this._charts[a.room_id] = d;
+    const W = 1000;
+    const H = 100;
+    const TOP = 8;
+    const BOTTOM = H - 6;
+    const x = (t) => ((t - d.t0) / (d.t1 - d.t0)) * W;
+    const y = (v) => BOTTOM - ((v - d.lo) / (d.hi - d.lo)) * (BOTTOM - TOP);
+    const pct = (t) => (x(t) / W) * 100;
+    const gid = `g-${String(a.room_id).replace(/[^a-z0-9]/gi, "")}`;
+    const nowX = x(d.now);
+
+    const grid = [d.lo, (d.lo + d.hi) / 2, d.hi]
+      .map((v) => `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" class="grid"></line>`)
+      .join("");
+    const heat = d.heat
+      .map(
+        ([s, e]) => `<rect x="${x(s)}" y="0" width="${Math.max(1.5, x(e) - x(s))}" height="${H}" class="heatband"></rect>
+          <rect x="${x(s)}" y="${H - 3}" width="${Math.max(1.5, x(e) - x(s))}" height="3" class="heatbar"></rect>`
+      )
+      .join("");
+    const segs = d.segs
+      .map((sg) => {
+        const c = PRESET_COLORS[sg.preset] || "var(--ac-accent)";
+        const x0 = x(sg.s);
+        const x1 = x(sg.e);
+        const yy = y(sg.v);
+        return `<rect x="${x0}" y="${yy}" width="${Math.max(0, x1 - x0)}" height="${H - yy}" fill="${c}"
+            class="tarea ${sg.future ? "future" : ""}"></rect>
+          <line x1="${x0}" x2="${x1}" y1="${yy}" y2="${yy}" stroke="${c}" class="tline ${sg.future ? "future" : ""}"></line>`;
       })
       .join("");
-    path += ` L${W} ${H}`;
-    const now = new Date();
-    const nowMin = now.getHours() * 60 + now.getMinutes();
-    const ticks = [0, 6, 12, 18, 24]
-      .map((h) => `<span style="left:${(h / 24) * 100}%">${String(h).padStart(2, "0")}:00</span>`)
+    const steps = d.segs
+      .slice(1)
+      .map((sg, i) => {
+        const prev = d.segs[i];
+        return `<line x1="${x(sg.s)}" x2="${x(sg.s)}" y1="${y(prev.v)}" y2="${y(sg.v)}" class="tstep"></line>`;
+      })
       .join("");
+    let tempPath = "";
+    let tempArea = "";
+    if (d.temp.length > 1) {
+      const pts = d.temp.map(([t, v]) => `${x(Math.max(t, d.t0)).toFixed(1)} ${y(v).toFixed(1)}`);
+      tempPath = `M${pts.join(" L")}`;
+      tempArea = `${tempPath} L${x(d.temp[d.temp.length - 1][0]).toFixed(1)} ${H} L${x(
+        Math.max(d.temp[0][0], d.t0)
+      ).toFixed(1)} ${H} Z`;
+    }
+    const last = d.temp.length ? d.temp[d.temp.length - 1] : null;
+
+    // Labels of the levels (HTML, so the text is not stretched).
+    const labels = d.segs
+      .filter((sg) => x(sg.e) - x(sg.s) >= 85)
+      .map((sg) => {
+        const mid = Math.min(0.92, Math.max(0.08, (x(sg.s) + x(sg.e)) / 2 / W));
+        return `<span class="lvl ${sg.future ? "future" : ""}" style="left:${mid * 100}%;top:${
+          (y(sg.v) / H) * 100
+        }%">${esc(this._presetName(a, sg.preset) || "")} ${sg.v}°</span>`;
+      })
+      .join("");
+    const yLabels = [d.lo, d.hi]
+      .map((v) => `<span style="top:${(y(v) / H) * 100}%">${v}°</span>`)
+      .join("");
+
+    const ticks = [];
+    const first = new Date(d.t0);
+    first.setMinutes(0, 0, 0);
+    for (let t = first.getTime(); t <= d.t1; t += 3600 * 1000) {
+      const h = new Date(t).getHours();
+      if (t < d.t0 || h % 6 !== 0) continue;
+      const label =
+        h === 0
+          ? new Date(t).toLocaleDateString(this._lang(), { weekday: "short" })
+          : `${String(h).padStart(2, "0")}:00`;
+      ticks.push(`<span style="left:${pct(t)}%">${esc(label)}</span>`);
+    }
+
     const next = a.next_change
       ? `<span>${this._t("next")}: <b>${esc(this._fmtTime(a.next_change))}</b> → ${esc(
           this._presetName(a, a.next_preset)
@@ -693,18 +927,83 @@ class AdvancedClimateCard extends HTMLElement {
       : "";
     return `
       <div class="chart-card">
-        <div class="profile-chart">
-          <svg viewBox="0 -14 ${W} ${H + 14}" preserveAspectRatio="none" role="img"
-            aria-label="${esc(this._t("schedule"))}">
-            ${blocks}
-            <path d="${path}" class="edge"></path>
-            <line x1="${nowMin}" x2="${nowMin}" y1="-14" y2="${H}" class="now"></line>
+        <div class="hchart" data-chart="${esc(a.room_id)}">
+          <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(this._t("chart_label"))}">
+            <defs><linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="var(--ac-accent)" stop-opacity="0.22"></stop>
+              <stop offset="1" stop-color="var(--ac-accent)" stop-opacity="0"></stop>
+            </linearGradient></defs>
+            <rect x="${nowX}" y="0" width="${W - nowX}" height="${H}" class="futurebg"></rect>
+            ${grid}${heat}${segs}${steps}
+            ${tempArea ? `<path d="${tempArea}" fill="url(#${gid})" class="tempfill"></path>` : ""}
+            ${tempPath ? `<path d="${tempPath}" class="templine"></path>` : ""}
+            <line x1="${nowX}" x2="${nowX}" y1="0" y2="${H}" class="now"></line>
           </svg>
-          <div class="chart-labels">${labels.join("")}</div>
-          <div class="ticks">${ticks}</div>
+          <div class="overlay">
+            ${labels}
+            <div class="ylabels">${yLabels}</div>
+            <span class="nowlabel" style="left:${pct(d.now)}%">${this._t("now_tag")}</span>
+            ${
+              last
+                ? `<span class="nowdot" style="left:${pct(last[0])}%;top:${(y(last[1]) / H) * 100}%"></span>`
+                : ""
+            }
+            <div class="cross" hidden></div>
+          </div>
+        </div>
+        <div class="ticks">${ticks.join("")}</div>
+        <div class="readout" data-readout="${esc(a.room_id)}">
+          <span class="lg"><i class="lg-temp"></i>${this._t("legend_temp")}</span>
+          <span class="lg"><i class="lg-target"></i>${this._t("legend_target")}</span>
+          <span class="lg"><i class="lg-heat"></i>${this._t("legend_heat")}</span>
+          ${d.loading ? `<span class="muted">${this._t("loading")}</span>` : ""}
         </div>
         <div class="meta"><span>${this._t("today")}: <b>${esc(a.profile || "–")}</b></span>${next}</div>
       </div>`;
+  }
+
+  /** Crosshair and values under the pointer. */
+  _chartHover(ev) {
+    const chart = ev.target.closest?.(".hchart");
+    if (!chart) return;
+    const room = chart.dataset.chart;
+    const d = this._charts?.[room];
+    const readout = this.shadowRoot.querySelector(`[data-readout="${CSS.escape(room)}"]`);
+    const cross = chart.querySelector(".cross");
+    if (!d || !readout || !cross) return;
+    const stateObj = this._rooms().find((s) => s.attributes.room_id === room);
+    const a = stateObj?.attributes || {};
+    if (ev.type === "pointerleave" && ev.target !== chart) return;
+    if (ev.type === "pointerleave") {
+      cross.hidden = true;
+      readout.classList.remove("live");
+      readout.innerHTML = readout.dataset.legend || readout.innerHTML;
+      return;
+    }
+    if (!readout.dataset.legend) readout.dataset.legend = readout.innerHTML;
+    const rect = chart.getBoundingClientRect();
+    const f = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width));
+    const t = d.t0 + f * (d.t1 - d.t0);
+    cross.hidden = false;
+    cross.style.left = `${f * 100}%`;
+    let temp = null;
+    for (const [pt, v] of d.temp) {
+      if (pt <= t) temp = v;
+      else break;
+    }
+    const seg = d.segs.find((sg) => sg.s <= t && t < sg.e);
+    const heating = d.heat.some(([s, e]) => s <= t && t <= e);
+    const time = new Date(t).toLocaleTimeString(this._lang(), { hour: "2-digit", minute: "2-digit" });
+    const parts = [`<b>${esc(time)}</b>`];
+    if (t <= d.now && temp !== null) parts.push(`${this._t("legend_temp")} ${temp.toFixed(1)}°`);
+    if (seg) {
+      parts.push(
+        `${seg.future ? this._t("planned") : this._t("target_tag")} ${seg.v}° · ${esc(this._presetName(a, seg.preset) || "")}`
+      );
+    }
+    if (heating) parts.push(`<span class="hotword">${this._t("heating")}</span>`);
+    readout.classList.add("live");
+    readout.innerHTML = parts.join(" &nbsp;·&nbsp; ");
   }
 
   _controlsHtml(a, e) {
@@ -869,6 +1168,7 @@ class AdvancedClimateCard extends HTMLElement {
               <div class="phead"><b>${esc(name)}</b>${
             a.profile === name ? `<span class="pill">${this._t("today")}</span>` : ""
           }<span class="muted">${esc(this._profileDays(name))}</span></div>
+              <div class="sbar ro">${this._barInner(a, name, slots, false)}</div>
               <ul class="intervals">${rows}</ul></div>`;
         })
         .join("");
@@ -911,10 +1211,13 @@ class AdvancedClimateCard extends HTMLElement {
           .join("");
         return `<div class="profile edit">
             <div class="phead"><b>${esc(name)}</b><span class="muted">${esc(this._profileDays(name))}</span>
+              ${this._copySelect(name)}
               ${this._btn(this._t("remove_profile"), `data-action="del-profile" data-profile="${esc(name)}"`, {
                 icon: "delete-outline",
                 kind: "danger",
               })}</div>
+            <div class="sbar" data-bar="${esc(name)}">${this._barInner(a, name, slots, true)}</div>
+            <div class="bar-ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
             <div class="slot-head"><span></span><span>${this._t("starts")}</span><span>${this._t("ends")}</span><span>${this._t(
               "level"
             )}</span><span></span></div>
@@ -926,6 +1229,7 @@ class AdvancedClimateCard extends HTMLElement {
     return `<div class="editor">
         <div class="ehead"><b>${this._t("schedule")}</b></div>
         ${intro}
+        <p class="hint">${this._t("drag_hint")}</p>
         ${blocks}
         <div class="row wrap">
           <label class="textfield"><span>${this._t("profile_name")}</span>
@@ -941,6 +1245,120 @@ class AdvancedClimateCard extends HTMLElement {
           })}
         </div>
       </div>`;
+  }
+
+  /** Day bar of a profile; in the editor every start time has a handle that can be dragged. */
+  _barInner(a, name, slots, editable) {
+    if (!slots || !slots.length) return "";
+    const segs = this._segments(slots)
+      .map((sg) => {
+        const w = ((sg.end - sg.start) / 1440) * 100;
+        const label = w >= 14 ? esc(this._presetName(a, sg.preset)) : "";
+        return `<div class="sseg" style="left:${(sg.start / 1440) * 100}%;width:${w}%;--c:${
+          PRESET_COLORS[sg.preset] || "var(--ac-accent)"
+        }" title="${esc(this._presetName(a, sg.preset))} ${hhmm(sg.start)}–${hhmm(sg.end % 1440)}"><span>${label}</span></div>`;
+      })
+      .join("");
+    if (!editable) return segs;
+    const handles = slots
+      .map((slot, i) => {
+        const m = toMinutes(slot.time);
+        const dragging = this._drag && this._drag.profile === name && this._drag.index === i;
+        return `<div class="handle ${dragging ? "dragging" : ""}" style="left:${(m / 1440) * 100}%" tabindex="0" role="slider"
+            aria-label="${esc(this._t("starts"))} ${esc(this._presetName(a, slot.preset))}" aria-valuemin="0" aria-valuemax="1439"
+            aria-valuenow="${m}" aria-valuetext="${esc(slot.time)}" data-handle="1" data-profile="${esc(name)}" data-index="${i}">
+            <span class="htime">${esc(slot.time)}</span></div>`;
+      })
+      .join("");
+    return segs + handles;
+  }
+
+  /** "Copy over…" select of the schedule editor. */
+  _copySelect(name) {
+    const existing = Object.keys(this._draft || {});
+    const targets = [...existing, ...["workday", "weekend", ...WEEKDAY_KEYS].filter((p) => !existing.includes(p))]
+      .filter((p) => p !== name);
+    const label = (p) => {
+      const day = WEEKDAY_KEYS.indexOf(p);
+      const suffix = day >= 0 ? ` (${this._weekdayName(day)})` : "";
+      return `${p}${suffix}${existing.includes(p) ? "" : ` – ${this._t("new_profile")}`}`;
+    };
+    return `<select class="copysel" data-copy="${esc(name)}" aria-label="${esc(this._t("copy_to"))}">
+        <option value="">${esc(this._t("copy_to"))}</option>
+        ${targets.map((p) => `<option value="${esc(p)}">${esc(label(p))}</option>`).join("")}
+      </select>`;
+  }
+
+  /** Limits of a handle: it stays between its neighbours (15 minutes apart). */
+  _handleLimits(slots, index) {
+    const order = slots
+      .map((slot, i) => ({ i, m: toMinutes(slot.time) }))
+      .sort((x, y) => x.m - y.m);
+    const pos = order.findIndex((o) => o.i === index);
+    const min = pos > 0 ? order[pos - 1].m + 15 : 0;
+    const max = pos + 1 < order.length ? order[pos + 1].m - 15 : 1425;
+    return [min, max];
+  }
+
+  _moveHandle(profile, index, minutes) {
+    const slots = this._draft?.[profile];
+    if (!slots || !slots[index]) return false;
+    const [min, max] = this._handleLimits(slots, index);
+    const value = Math.min(max, Math.max(min, minutes));
+    if (hhmm(value) === slots[index].time) return false;
+    slots[index].time = hhmm(value);
+    return true;
+  }
+
+  _pointerDown(ev) {
+    const handle = ev.target.closest?.("[data-handle]");
+    if (!handle || !this._draft) return;
+    ev.preventDefault();
+    const bar = handle.closest(".sbar");
+    this._drag = { profile: handle.dataset.profile, index: Number(handle.dataset.index), bar };
+    try {
+      bar.setPointerCapture(ev.pointerId);
+    } catch (err) {
+      /* ignore */
+    }
+    handle.classList.add("dragging");
+  }
+
+  _pointerMove(ev) {
+    if (!this._drag) {
+      if (ev.target.closest?.(".hchart")) this._chartHover(ev);
+      return;
+    }
+    const { profile, index, bar } = this._drag;
+    const rect = bar.getBoundingClientRect();
+    const f = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width));
+    const minutes = Math.round((f * 1440) / 15) * 15;
+    if (this._moveHandle(profile, index, minutes)) {
+      const stateObj = this._rooms().find((s) => s.attributes.room_id === this._editing);
+      bar.innerHTML = this._barInner(stateObj?.attributes || {}, profile, this._draft[profile], true);
+    }
+  }
+
+  _pointerUp() {
+    if (!this._drag) return;
+    this._drag = null;
+    this._render();
+  }
+
+  _keyDown(ev) {
+    const handle = ev.target.closest?.("[data-handle]");
+    if (!handle || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(ev.key)) return;
+    ev.preventDefault();
+    const { profile } = handle.dataset;
+    const index = Number(handle.dataset.index);
+    const step = (ev.shiftKey ? 60 : 15) * (["ArrowLeft", "ArrowDown"].includes(ev.key) ? -1 : 1);
+    const current = toMinutes(this._draft[profile][index].time);
+    if (this._moveHandle(profile, index, current + step)) {
+      this._render();
+      this.shadowRoot
+        .querySelector(`[data-handle][data-profile="${CSS.escape(profile)}"][data-index="${index}"]`)
+        ?.focus();
+    }
   }
 
   _fold(key, title, content) {
@@ -975,6 +1393,9 @@ class AdvancedClimateCard extends HTMLElement {
     } else if (d.action === "number") {
       const value = num(el.value);
       if (value !== null) await this._call("number", "set_value", { entity_id: d.entity, value });
+    } else if (d.copy !== undefined && this._draft?.[d.copy]) {
+      if (el.value) this._draft[el.value] = JSON.parse(JSON.stringify(this._draft[d.copy]));
+      this._render();
     } else if (d.field && this._draft?.[d.profile]) {
       this._draft[d.profile][Number(d.index)][d.field] = el.value;
       this._render();
@@ -1197,18 +1618,46 @@ const STYLE = `
   .tval.target .tnum { font-weight: 600; }
   .decision { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .reason { margin: 0; color: var(--ac-muted); font-size: 0.9em; }
-  .chart-card { border-radius: 12px; background: var(--ac-surface); padding: 10px 10px 8px; }
-  .profile-chart { position: relative; }
-  .profile-chart svg { width: 100%; height: 72px; display: block; overflow: visible; }
-  .profile-chart rect { opacity: 0.85; }
-  .profile-chart .edge { fill: none; stroke: var(--primary-text-color); stroke-width: 2; opacity: 0.3; vector-effect: non-scaling-stroke; }
-  .profile-chart .now { stroke: var(--primary-text-color); stroke-width: 2; vector-effect: non-scaling-stroke; }
-  .chart-labels { position: absolute; left: 0; right: 0; top: 0; height: 72px; pointer-events: none; }
-  .chart-labels span { position: absolute; transform: translateX(-50%); font-size: 0.75em; white-space: nowrap; }
-  .ticks { position: relative; height: 16px; font-size: 0.7em; color: var(--ac-muted); margin-top: 2px; }
-  .ticks span { position: absolute; transform: translateX(-50%); }
-  .ticks span:first-child { transform: none; }
-  .ticks span:last-child { transform: translateX(-100%); }
+  .chart-card { border-radius: 14px; background: var(--ac-surface); padding: 12px 12px 10px;
+    box-shadow: inset 0 0 0 1px var(--ac-line); display: flex; flex-direction: column; gap: 4px; }
+  .hchart { position: relative; height: 150px; touch-action: pan-y; cursor: crosshair; }
+  .hchart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .hchart .grid { stroke: var(--ac-line); stroke-width: 1; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; }
+  .hchart .futurebg { fill: var(--primary-text-color); opacity: 0.035; }
+  .hchart .heatband { fill: var(--ac-hot); opacity: 0.09; }
+  .hchart .heatbar { fill: var(--ac-hot); opacity: 0.85; }
+  .hchart .tarea { opacity: 0.11; }
+  .hchart .tarea.future { opacity: 0.06; }
+  .hchart .tline { stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-linecap: round; }
+  .hchart .tline.future { stroke-dasharray: 5 4; opacity: 0.8; }
+  .hchart .tstep { stroke: var(--primary-text-color); opacity: 0.18; stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .hchart .templine { fill: none; stroke: var(--ac-accent); stroke-width: 2.25; vector-effect: non-scaling-stroke;
+    stroke-linejoin: round; stroke-linecap: round; }
+  .hchart .now { stroke: var(--primary-text-color); stroke-width: 1.25; opacity: 0.55; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+  .overlay { position: absolute; inset: 0; pointer-events: none; }
+  .overlay .lvl { position: absolute; transform: translate(-50%, calc(-100% - 3px)); font-size: 0.72em; white-space: nowrap;
+    padding: 1px 6px; border-radius: 6px; background: color-mix(in srgb, var(--card-background-color) 75%, transparent);
+    color: var(--primary-text-color); }
+  .overlay .lvl.future { color: var(--ac-muted); }
+  .ylabels span { position: absolute; right: 0; transform: translateY(-50%); font-size: 0.68em; color: var(--ac-muted);
+    font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--card-background-color) 70%, transparent);
+    padding: 0 3px; border-radius: 4px; }
+  .nowlabel { position: absolute; top: -2px; transform: translate(-50%, -100%); font-size: 0.65em; color: var(--ac-muted);
+    text-transform: uppercase; letter-spacing: 0.06em; }
+  .nowdot { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: var(--ac-accent);
+    transform: translate(-50%, -50%); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ac-accent) 25%, transparent); }
+  .cross { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid var(--primary-text-color); opacity: 0.45; }
+  .ticks { position: relative; height: 14px; font-size: 0.68em; color: var(--ac-muted); }
+  .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .readout { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 0.78em; color: var(--ac-muted);
+    min-height: 20px; font-variant-numeric: tabular-nums; }
+  .readout.live { color: var(--primary-text-color); }
+  .readout .hotword { color: var(--ac-hot); font-weight: 600; }
+  .lg { display: inline-flex; align-items: center; gap: 6px; }
+  .lg i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+  .lg-temp { background: var(--ac-accent); }
+  .lg-target { background: linear-gradient(90deg, #f08c00, #5f6fd1); }
+  .lg-heat { background: var(--ac-hot); height: 8px !important; opacity: 0.8; }
   .meta { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 0.85em; margin-top: 4px; }
   .presets { display: flex; flex-wrap: wrap; gap: 8px; }
   .preset { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 0.85em; padding: 6px 12px;
@@ -1262,6 +1711,50 @@ const STYLE = `
     .slot-row .until { grid-column: 2 / 4; order: 5; }
     .slot-row select { grid-column: 2 / 3; }
   }
+  /* schedule bars */
+  .sbar { position: relative; height: 26px; border-radius: 8px; background: var(--ac-surface-2); overflow: visible; touch-action: none; }
+  .sbar.ro { height: 10px; border-radius: 5px; overflow: hidden; }
+  .sseg { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--c) 70%, transparent);
+    display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .sseg:first-child { border-radius: 8px 0 0 8px; }
+  .sseg span { font-size: 0.7em; color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,.35); white-space: nowrap; }
+  .handle { position: absolute; top: -5px; bottom: -5px; width: 22px; transform: translateX(-50%); cursor: ew-resize;
+    display: flex; justify-content: center; z-index: 2; outline: none; }
+  .handle::before { content: ""; width: 6px; border-radius: 3px; background: var(--card-background-color);
+    box-shadow: 0 0 0 1.5px var(--primary-text-color), 0 1px 4px rgba(0,0,0,.3); }
+  .handle .htime { position: absolute; bottom: calc(100% + 4px); font-size: 0.72em; padding: 2px 6px; border-radius: 6px;
+    background: var(--primary-text-color); color: var(--card-background-color); white-space: nowrap; opacity: 0;
+    transition: opacity .12s; pointer-events: none; font-variant-numeric: tabular-nums; }
+  .handle:hover .htime, .handle:focus-visible .htime, .handle.dragging .htime { opacity: 1; }
+  .handle:focus-visible::before, .handle.dragging::before { box-shadow: 0 0 0 2px var(--ac-accent), 0 1px 6px rgba(0,0,0,.35); }
+  .bar-ticks { display: flex; justify-content: space-between; font-size: 0.66em; color: var(--ac-muted); margin-top: -2px; }
+  .copysel { font-size: 0.85em; min-height: 32px; padding: 4px 8px; }
+
+  /* compact */
+  ha-card.compact { gap: 8px; }
+  .rooms-list { display: flex; flex-direction: column; gap: 6px; }
+  .crow { display: flex; align-items: center; gap: 10px; width: 100%; font: inherit; color: var(--primary-text-color);
+    background: var(--ac-surface); border: none; border-radius: 12px; padding: 10px 12px; cursor: pointer; text-align: left;
+    transition: background .15s; min-height: 48px; box-sizing: border-box; }
+  .crow:hover { background: var(--ac-surface-2); }
+  .crow ha-icon { --mdc-icon-size: 20px; color: var(--ac-muted); }
+  .crow .cbar { width: 4px; align-self: stretch; border-radius: 2px; background: var(--c); flex: none; }
+  .crow .ctext { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+  .crow .cname { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .house-row .cname { flex: 0 1 auto; }
+  .crow .crule { font-size: 0.78em; color: var(--ac-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .crow .ctemp { margin-left: auto; display: inline-flex; align-items: baseline; gap: 5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .crow .cnow { font-size: 1.15em; font-weight: 300; }
+  .crow .carrow { color: var(--ac-muted); font-size: 0.85em; }
+  .crow .chev { margin-left: 2px; }
+  .cicon ha-icon { --mdc-icon-size: 18px; }
+  .cicon.hot ha-icon { color: var(--ac-hot); }
+  .cicon.warn ha-icon { color: var(--ac-warn); }
+  .house-row .pill { flex: none; }
+  .house-row .ctemp { font-size: 0.85em; }
+  .compact .block.room { border-color: color-mix(in srgb, var(--ac-accent) 35%, var(--ac-line)); }
+  @media (max-width: 420px) { .house-row .pill + .pill { display: none; } }
+
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 `;
 
@@ -1284,6 +1777,7 @@ const EDITOR_SCHEMA = [
       { name: "show_details", selector: { boolean: {} } },
       { name: "show_schedule_editor", selector: { boolean: {} } },
       { name: "collapsed", selector: { boolean: {} } },
+      { name: "compact", selector: { boolean: {} } },
     ],
   },
 ];
@@ -1300,6 +1794,7 @@ const EDITOR_LABELS = {
     show_details: "Details",
     show_schedule_editor: "Schedule editor",
     collapsed: "Rooms start folded",
+    compact: "Compact: one row per room, tap to open",
   },
   ro: {
     title: "Titlu",
@@ -1312,6 +1807,7 @@ const EDITOR_LABELS = {
     show_details: "Detalii",
     show_schedule_editor: "Editor de program",
     collapsed: "Camerele pornesc pliate",
+    compact: "Compact: un rând pe cameră, se deschide la atingere",
   },
 };
 

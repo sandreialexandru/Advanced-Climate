@@ -749,6 +749,24 @@ class Room:
             )
         return self.schedule.lookup(now, self._day_info)
 
+    def plan(self, now: datetime, hours: float = 12) -> list[dict[str, Any]]:
+        """Schedule levels for the next hours (shown by the card)."""
+        state = self.schedule_state
+        if state is None:
+            return []
+        result = [{"at": now.isoformat(), "preset": state.preset}]
+        cfg = self.config
+        if cfg.get(CONF_SCHEDULE_SOURCE) == SCHEDULE_HELPER and cfg.get(CONF_SCHEDULE_HELPER):
+            if state.next_change and state.next_preset:
+                result.append({"at": state.next_change.isoformat(), "preset": state.next_preset})
+            return result
+        try:
+            changes = self.schedule.upcoming(now, self._day_info, timedelta(hours=hours))
+        except Exception:  # noqa: BLE001 - the plan is only informative
+            return result
+        result += [{"at": moment.isoformat(), "preset": preset} for moment, preset in changes]
+        return result
+
     def _calendar_preset(self) -> str | None:
         message = self.house.calendar_message
         if not message:
