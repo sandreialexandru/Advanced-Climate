@@ -167,7 +167,7 @@ type: custom:advanced-climate-card
 | `show_quick_override` | `true` | Set a level or a temperature for a number of hours (empty = the configured rule) |
 | `show_levels` | `true` | Level temperatures (rooms without Generic Thermostat, fixed *nearby* temperature) |
 | `show_details` | `true` | Room and target temperature, heating rate, heating time, active adjustments, level temperatures |
-| `show_schedule_editor` | `true` | Schedule profiles with an editor: drag the start times on the day bar, copy a profile over another day |
+| `show_schedule_editor` | `true` | Schedule profiles with an editor: drag the start times on the day bar (5-minute steps), copy a profile over another day |
 | `collapsed` | `false` | Rooms start folded; tap the room name to open it |
 | `compact` | `false` | One row per room (name, rule, now → target) and one for the house; tap a row to open it |
 

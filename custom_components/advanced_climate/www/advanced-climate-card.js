@@ -16,7 +16,7 @@
  *   compact: false               # one row per room (and the house); tap a row to open it
  */
 
-const CARD_VERSION = "1.5.0";
+const CARD_VERSION = "1.5.1";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -124,7 +124,7 @@ const TEXT = {
     legend_heat: "Heating",
     planned: "Planned",
     loading: "loading history…",
-    drag_hint: "Drag the handles on the bar to move a start time (arrow keys: 15 min, Shift: 1 h). Levels are chosen in the list.",
+    drag_hint: "Drag the handles on the bar to move a start time in 5-minute steps (arrow keys: 5 min, Shift: 1 h). Levels are chosen in the list.",
     copy_to: "Copy over…",
     new_profile: "new",
   },
@@ -210,7 +210,7 @@ const TEXT = {
     legend_heat: "Încălzire",
     planned: "Programat",
     loading: "se încarcă istoricul…",
-    drag_hint: "Trage de mânerele de pe bară ca să muți o oră de început (săgeți: 15 min, Shift: 1 h). Nivelurile se aleg în listă.",
+    drag_hint: "Trage de mânerele de pe bară ca să muți o oră de început din 5 în 5 minute (săgeți: 5 min, Shift: 1 h). Nivelurile se aleg în listă.",
     copy_to: "Copiază peste…",
     new_profile: "nou",
   },
@@ -949,10 +949,11 @@ class AdvancedClimateCard extends HTMLElement {
                 : ""
             }
             <div class="cross" hidden></div>
+            <div class="tip" hidden></div>
           </div>
         </div>
         <div class="ticks">${ticks.join("")}</div>
-        <div class="readout" data-readout="${esc(a.room_id)}">
+        <div class="readout">
           <span class="lg"><i class="lg-temp"></i>${this._t("legend_temp")}</span>
           <span class="lg"><i class="lg-target"></i>${this._t("legend_target")}</span>
           <span class="lg"><i class="lg-heat"></i>${this._t("legend_heat")}</span>
@@ -962,30 +963,26 @@ class AdvancedClimateCard extends HTMLElement {
       </div>`;
   }
 
-  /** Crosshair and values under the pointer. */
+  /** Crosshair and values under the pointer (the legend stays visible). */
   _chartHover(ev) {
     const chart = ev.target.closest?.(".hchart");
     if (!chart) return;
     const room = chart.dataset.chart;
     const d = this._charts?.[room];
-    const readout = this.shadowRoot.querySelector(`[data-readout="${CSS.escape(room)}"]`);
     const cross = chart.querySelector(".cross");
-    if (!d || !readout || !cross) return;
-    const stateObj = this._rooms().find((s) => s.attributes.room_id === room);
-    const a = stateObj?.attributes || {};
+    const tip = chart.querySelector(".tip");
+    if (!d || !cross || !tip) return;
     if (ev.type === "pointerleave" && ev.target !== chart) return;
     if (ev.type === "pointerleave") {
       cross.hidden = true;
-      readout.classList.remove("live");
-      readout.innerHTML = readout.dataset.legend || readout.innerHTML;
+      tip.hidden = true;
       return;
     }
-    if (!readout.dataset.legend) readout.dataset.legend = readout.innerHTML;
+    const stateObj = this._rooms().find((s) => s.attributes.room_id === room);
+    const a = stateObj?.attributes || {};
     const rect = chart.getBoundingClientRect();
     const f = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width));
     const t = d.t0 + f * (d.t1 - d.t0);
-    cross.hidden = false;
-    cross.style.left = `${f * 100}%`;
     let temp = null;
     for (const [pt, v] of d.temp) {
       if (pt <= t) temp = v;
@@ -993,17 +990,23 @@ class AdvancedClimateCard extends HTMLElement {
     }
     const seg = d.segs.find((sg) => sg.s <= t && t < sg.e);
     const heating = d.heat.some(([s, e]) => s <= t && t <= e);
-    const time = new Date(t).toLocaleTimeString(this._lang(), { hour: "2-digit", minute: "2-digit" });
-    const parts = [`<b>${esc(time)}</b>`];
-    if (t <= d.now && temp !== null) parts.push(`${this._t("legend_temp")} ${temp.toFixed(1)}°`);
+    const time = new Date(t).toLocaleString(this._lang(), { weekday: "short", hour: "2-digit", minute: "2-digit" });
+    const rows = [`<b>${esc(time)}</b>`];
+    if (t <= d.now && temp !== null) rows.push(`<span><i class="lg-temp"></i>${temp.toFixed(1)}°</span>`);
     if (seg) {
-      parts.push(
-        `${seg.future ? this._t("planned") : this._t("target_tag")} ${seg.v}° · ${esc(this._presetName(a, seg.preset) || "")}`
+      rows.push(
+        `<span><i style="background:${PRESET_COLORS[seg.preset] || "var(--ac-accent)"}"></i>${
+          seg.future ? this._t("planned") : this._t("target_tag")
+        } ${seg.v}° · ${esc(this._presetName(a, seg.preset) || "")}</span>`
       );
     }
-    if (heating) parts.push(`<span class="hotword">${this._t("heating")}</span>`);
-    readout.classList.add("live");
-    readout.innerHTML = parts.join(" &nbsp;·&nbsp; ");
+    if (heating) rows.push(`<span class="hotword"><i class="lg-heat"></i>${this._t("heating")}</span>`);
+    cross.hidden = false;
+    cross.style.left = `${f * 100}%`;
+    tip.hidden = false;
+    tip.innerHTML = rows.join("");
+    tip.style.left = `${f * 100}%`;
+    tip.style.transform = f > 0.6 ? "translateX(calc(-100% - 10px))" : "translateX(10px)";
   }
 
   _controlsHtml(a, e) {
@@ -1198,7 +1201,7 @@ class AdvancedClimateCard extends HTMLElement {
             const it = intervals[pos];
             return `<div class="slot-row">
               <span class="dot" style="--c:${PRESET_COLORS[slot.preset]}"></span>
-              <input type="time" data-profile="${esc(name)}" data-index="${i}" data-field="time" value="${esc(slot.time)}"
+              <input type="time" step="300" data-profile="${esc(name)}" data-index="${i}" data-field="time" value="${esc(slot.time)}"
                 aria-label="${this._t("starts")}">
               <span class="until">→ ${esc(it.to)}${it.nextDay ? ` <small>${this._t("next_day")}</small>` : ""}</span>
               <select data-profile="${esc(name)}" data-index="${i}" data-field="preset">${presets
@@ -1289,14 +1292,14 @@ class AdvancedClimateCard extends HTMLElement {
       </select>`;
   }
 
-  /** Limits of a handle: it stays between its neighbours (15 minutes apart). */
+  /** Limits of a handle: it stays between its neighbours (5 minutes apart). */
   _handleLimits(slots, index) {
     const order = slots
       .map((slot, i) => ({ i, m: toMinutes(slot.time) }))
       .sort((x, y) => x.m - y.m);
     const pos = order.findIndex((o) => o.i === index);
-    const min = pos > 0 ? order[pos - 1].m + 15 : 0;
-    const max = pos + 1 < order.length ? order[pos + 1].m - 15 : 1425;
+    const min = pos > 0 ? order[pos - 1].m + 5 : 0;
+    const max = pos + 1 < order.length ? order[pos + 1].m - 5 : 1435;
     return [min, max];
   }
 
@@ -1332,7 +1335,7 @@ class AdvancedClimateCard extends HTMLElement {
     const { profile, index, bar } = this._drag;
     const rect = bar.getBoundingClientRect();
     const f = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width));
-    const minutes = Math.round((f * 1440) / 15) * 15;
+    const minutes = Math.round((f * 1440) / 5) * 5;
     if (this._moveHandle(profile, index, minutes)) {
       const stateObj = this._rooms().find((s) => s.attributes.room_id === this._editing);
       bar.innerHTML = this._barInner(stateObj?.attributes || {}, profile, this._draft[profile], true);
@@ -1351,7 +1354,7 @@ class AdvancedClimateCard extends HTMLElement {
     ev.preventDefault();
     const { profile } = handle.dataset;
     const index = Number(handle.dataset.index);
-    const step = (ev.shiftKey ? 60 : 15) * (["ArrowLeft", "ArrowDown"].includes(ev.key) ? -1 : 1);
+    const step = (ev.shiftKey ? 60 : 5) * (["ArrowLeft", "ArrowDown"].includes(ev.key) ? -1 : 1);
     const current = toMinutes(this._draft[profile][index].time);
     if (this._moveHandle(profile, index, current + step)) {
       this._render();
@@ -1651,8 +1654,13 @@ const STYLE = `
   .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
   .readout { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 0.78em; color: var(--ac-muted);
     min-height: 20px; font-variant-numeric: tabular-nums; }
-  .readout.live { color: var(--primary-text-color); }
-  .readout .hotword { color: var(--ac-hot); font-weight: 600; }
+  .tip { position: absolute; top: 4px; display: flex; flex-direction: column; gap: 2px; padding: 6px 9px; border-radius: 10px;
+    font-size: 0.75em; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--primary-text-color);
+    background: color-mix(in srgb, var(--card-background-color) 92%, transparent); box-shadow: 0 2px 10px rgba(0,0,0,.18);
+    border: 1px solid var(--ac-line); z-index: 3; }
+  .tip span { display: inline-flex; align-items: center; gap: 6px; }
+  .tip i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; }
+  .tip .hotword { color: var(--ac-hot); font-weight: 600; }
   .lg { display: inline-flex; align-items: center; gap: 6px; }
   .lg i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
   .lg-temp { background: var(--ac-accent); }
