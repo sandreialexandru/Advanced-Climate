@@ -1,3 +1,5 @@
+<img src="custom_components/advanced_climate/brand/icon@2x.png" alt="Advanced Climate" width="128" align="right">
+
 # Advanced Climate
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)

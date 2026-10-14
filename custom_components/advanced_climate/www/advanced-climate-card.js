@@ -15,7 +15,7 @@
  *   collapsed: false             # rooms start folded (header only)
  */
 
-const CARD_VERSION = "1.4.1";
+const CARD_VERSION = "1.4.2";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
