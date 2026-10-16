@@ -19,43 +19,61 @@
       },
       "heating": {
         "title": "Încălzirea întregii case",
-        "description": "Termostatul (sau releul) care încălzește toată casa. Devine zona „{zone}” și folosește toate opțiunile casei. Camerele cu robinete proprii se pot adăuga mai târziu cu „Adaugă cameră”.",
         "data": {
-          "source": "Încălzită prin",
-          "climates": "Termostate",
-          "switches": "Comutatoare (relee)",
-          "command_mode": "Comandă"
+          "source": "Încălzită prin"
         },
+        "description": "Termostatul (sau releul) care încălzește toată casa. Devine zona „{zone}” și folosește toate opțiunile casei. Camerele cu robinete proprii se pot adăuga mai târziu cu „Adaugă cameră”.",
         "data_description": {
-          "source": "Ce încălzește toată casa. Alege „Încă fără dispozitive” dacă vei adăuga doar camere cu robinete proprii.",
-          "climates": "Termostatul care comandă centrala, de ex. entitatea Generic Thermostat (climate.climate).",
-          "switches": "Doar când un releu încălzește casa direct, fără termostat.",
-          "command_mode": "Doar pentru alte termostate decât Generic Thermostat. Diferența e explicată la setările camerei."
+          "source": "Ce încălzește toată casa. Alege „Încă fără dispozitive” dacă vei adăuga doar camere cu robinete proprii."
         }
-      }
-    },
-    "error": {
-      "no_devices": "Alege cel puțin un dispozitiv."
-    }
-  },
-  "options": {
-    "step": {
-      "heating": {
-        "title": "Încălzirea întregii case",
-        "description": "Termostatul (sau releul) care încălzește toată casa. Devine zona „{zone}” și folosește toate opțiunile casei. Camerele cu robinete proprii se pot adăuga mai târziu cu „Adaugă cameră”.",
+      },
+      "heating_devices": {
+        "title": "Dispozitive",
         "data": {
-          "source": "Încălzită prin",
           "climates": "Termostate",
           "switches": "Comutatoare (relee)",
           "command_mode": "Comandă"
         },
         "data_description": {
-          "source": "Ce încălzește toată casa. Alege „Încă fără dispozitive” dacă vei adăuga doar camere cu robinete proprii.",
           "climates": "Termostatul care comandă centrala, de ex. entitatea Generic Thermostat (climate.climate).",
           "switches": "Doar când un releu încălzește casa direct, fără termostat.",
           "command_mode": "Doar pentru alte termostate decât Generic Thermostat. Diferența e explicată la setările camerei."
         }
       },
+      "heating_on_off": {
+        "title": "Comandă pornit / oprit",
+        "data": {
+          "temperature_sensors": "Senzori de temperatură",
+          "hysteresis": "Histerezis",
+          "min_on_minutes": "Timp minim pornit",
+          "min_off_minutes": "Timp minim oprit"
+        },
+        "description": "Integrarea pornește și oprește încălzirea în jurul țintei.",
+        "data_description": {
+          "temperature_sensors": "Senzori din cameră, folosiți în locul senzorului termostatului (mai exacți când termostatul e lângă o sursă de căldură). Lasă gol ca să folosești senzorul termostatului; la relee sunt necesari, releul nu are senzor.",
+          "hysteresis": "Încălzirea pornește sub țintă minus această valoare și se oprește peste țintă plus această valoare.",
+          "min_on_minutes": "Timp minim pornit. 0 pentru încălzitoare cărora nu le strică pornirile scurte.",
+          "min_off_minutes": "Timp minim oprit între două porniri."
+        }
+      },
+      "heating_thermostat": {
+        "title": "Termostat",
+        "data": {
+          "learn_tolerance": "Toleranța termostatului"
+        },
+        "description": "Termostatul ține temperatura; integrarea doar trimite nivelul sau temperatura.",
+        "data_description": {
+          "learn_tolerance": "Cât lasă termostatul camera să scadă sub țintă înainte să încălzească (toleranța lui). Viteza de încălzire se învață din urcările care încep cu cel puțin atât sub țintă."
+        }
+      }
+    },
+    "error": {
+      "no_devices": "Alege cel puțin un dispozitiv.",
+      "sensor_required": "Releele au nevoie de un senzor de temperatură al camerei."
+    }
+  },
+  "options": {
+    "step": {
       "init": {
         "title": "Opțiuni Advanced Climate",
         "menu_options": {
@@ -82,9 +100,7 @@
           "guest_expire_hours": "Modul oaspeți se oprește după",
           "proximity_distance": "Senzor de distanță (Proximity)",
           "proximity_direction": "Senzor de direcție (Proximity)",
-          "travel_time": "Senzor de timp de deplasare",
-          "arrival_distance": "Preîncălzește sub distanța",
-          "arrival_minutes": "Preîncălzește sub timpul"
+          "travel_time": "Senzor de timp de deplasare"
         },
         "data_description": {
           "persons": "Persoanele a căror locație decide acasă / aproape / departe. Lasă gol doar dacă prezența nu contează: casa e atunci mereu „acasă” și decide doar programul.",
@@ -97,9 +113,7 @@
           "guest_expire_hours": "Modul oaspeți ține casa „acasă”; se oprește singur după atâtea ore. 0 = doar manual.",
           "proximity_distance": "Senzorul de distanță al integrării Proximity, pentru preîncălzire pe drumul spre casă. Lasă gol fără Proximity.",
           "proximity_direction": "Senzorul de direcție Proximity. Setează-l ca să nu pornească preîncălzirea când stai la un birou aproape de casă.",
-          "travel_time": "Timpul până acasă (Waze, Google Travel Time), pentru preîncălzire. Lasă gol dacă nu ai.",
-          "arrival_distance": "Preîncălzirea pornește când cineva e mai aproape de atât (cu senzorul de distanță).",
-          "arrival_minutes": "Preîncălzirea pornește când cineva e la mai puțin de atâtea minute (cu senzorul de timp)."
+          "travel_time": "Timpul până acasă (Waze, Google Travel Time), pentru preîncălzire. Lasă gol dacă nu ai."
         }
       },
       "calendar": {
@@ -121,38 +135,18 @@
           "outdoor_sensor": "Senzor de temperatură exterioară",
           "weather": "Entitate meteo",
           "cutoff_enabled": "Oprește încălzirea când e cald afară",
-          "cutoff_temp": "Prag de oprire (exterior)",
-          "cutoff_hysteresis": "Histerezis prag",
-          "cutoff_avg_hours": "Medie pe",
           "forecast_enabled": "Folosește prognoza",
-          "forecast_hours": "Ore de prognoză",
           "season_mode": "Sezon de încălzire",
-          "season_start": "Început sezon (LL-ZZ)",
-          "season_end": "Sfârșit sezon (LL-ZZ)",
-          "season_days": "Sezon automat: zile consecutive",
-          "season_temp": "Prag sezon automat",
           "compensation_enabled": "Compensare exterioară",
-          "compensation_below": "Compensează sub",
-          "compensation_offset": "Compensare",
           "window_ignore_above": "Ignoră ferestrele peste"
         },
         "data_description": {
           "outdoor_sensor": "Temperatura exterioară pentru prag, sezon și compensare. Dacă e gol, se folosește temperatura din entitatea meteo.",
           "weather": "Folosită pentru prognoză, câștigul solar și ca temperatură exterioară când nu ai senzor.",
           "cutoff_enabled": "Oprește încălzirea când media exterioară e peste prag. Are nevoie de senzor exterior sau entitate meteo.",
-          "cutoff_temp": "Peste această medie a temperaturii exterioare încălzirea se oprește.",
-          "cutoff_hysteresis": "Încălzirea repornește doar sub prag minus această valoare, ca să nu pornească și oprească des în jurul pragului.",
-          "cutoff_avg_hours": "Pragul folosește media ultimelor ore, ca o după-amiază însorită să nu oprească încălzirea.",
           "forecast_enabled": "Amână încălzirea când prognoza spune că se încălzește curând. Are nevoie de o entitate meteo cu prognoză orară.",
-          "forecast_hours": "Câte ore de prognoză sunt verificate.",
           "season_mode": "„Mereu” dacă schimbi sezonul cu modul Vară. „Între date” sau „Automat” ca încălzirea să se oprească singură în afara sezonului.",
-          "season_start": "Doar pentru „Între date”. Luna și ziua, de ex. 10-15.",
-          "season_end": "Doar pentru „Între date”. Luna și ziua, de ex. 04-15.",
-          "season_days": "Doar pentru „Automat”: zile la rând sub (sau peste) prag până începe (sau se termină) sezonul.",
-          "season_temp": "Doar pentru „Automat”: media zilnică exterioară care pornește sau oprește sezonul.",
           "compensation_enabled": "Crește puțin ținta când e foarte frig afară (pereții sunt mai reci). Lasă oprit dacă încăperile țin bine temperatura.",
-          "compensation_below": "Temperatura exterioară sub care se adaugă compensarea.",
-          "compensation_offset": "Grade adăugate la țintă (de ex. 0,5).",
           "window_ignore_above": "Ferestrele deschise nu mai coboară încălzirea când afară e atât de cald. Gol = reacționează mereu."
         }
       },
@@ -160,42 +154,22 @@
         "title": "Energie",
         "data": {
           "price_sensor": "Senzor preț energie",
-          "price_high": "Preț mare de la",
-          "price_high_offset": "Ajustare la preț mare",
-          "price_low": "Preț mic până la",
-          "price_low_offset": "Ajustare la preț mic",
-          "pv_sensor": "Senzor surplus fotovoltaic",
-          "pv_threshold": "Surplus de la",
-          "pv_offset": "Ajustare cu surplus"
+          "pv_sensor": "Senzor surplus fotovoltaic"
         },
         "data_description": {
           "price_sensor": "Senzor de preț al energiei (tarif dinamic). Lasă gol la preț fix.",
-          "price_high": "De la acest preț în sus se aplică ajustarea la preț mare.",
-          "price_high_offset": "De obicei negativă, de ex. -1 °C cât energia e scumpă.",
-          "price_low": "Până la acest preț se aplică ajustarea la preț mic.",
-          "price_low_offset": "De obicei pozitivă, de ex. +1 °C cât energia e ieftină (încălzire electrică, pompă de căldură).",
-          "pv_sensor": "Puterea injectată în rețea (W). Util doar cu încălzire electrică sau pompă de căldură.",
-          "pv_threshold": "Surplusul de la care se aplică ajustarea.",
-          "pv_offset": "Grade adăugate cât există surplus (de ex. +1)."
+          "pv_sensor": "Puterea injectată în rețea (W). Util doar cu încălzire electrică sau pompă de căldură."
         }
       },
       "boiler": {
         "title": "Centrală și cerere de căldură",
         "data": {
           "boiler_entity": "Centrală",
-          "boiler_min_rooms": "Camere necesare pentru pornirea centralei",
-          "boiler_min_on": "Timp minim pornită",
-          "boiler_min_off": "Timp minim oprită",
-          "room_diff_alert": "Alertă când o cameră rămâne mai rece cu",
-          "reference_room": "Cameră de referință"
+          "room_diff_alert": "Alertă când o cameră rămâne mai rece cu"
         },
         "data_description": {
           "boiler_entity": "Doar când camerele nu pot porni singure centrala (TRV-uri, robinete de zonă). Lasă gol cu Generic Thermostat sau releu pe centrală și nu alege niciodată releul folosit deja de Generic Thermostat.",
-          "boiler_min_rooms": "Cu centrală setată: câte camere trebuie să ceară căldură ca să pornească. 1 = oricare cameră.",
-          "boiler_min_on": "Cu centrală setată: timpul minim de funcționare, contra pornirilor scurte.",
-          "boiler_min_off": "Cu centrală setată: pauza minimă între porniri.",
-          "room_diff_alert": "Alertă când o cameră rămâne cu atâtea grade sub țintă în timp ce altele sunt calde (robinet blocat, fereastră deschisă). 0 = oprit; util doar cu mai multe camere.",
-          "reference_room": "Cu centrală setată: doar această cameră decide pornirea, celelalte doar își deschid sau închid robinetele. Lasă gol ca să conteze numărul de camere."
+          "room_diff_alert": "Alertă când o cameră rămâne cu atâtea grade sub țintă în timp ce altele sunt calde (robinet blocat, fereastră deschisă). 0 = oprit; util doar cu mai multe camere."
         },
         "description": "Doar pentru casele în care camerele nu pot porni singure centrala (TRV-uri sau robinete de zonă): integrarea pornește atunci centrala când camerele cer căldură. Cu Generic Thermostat sau releu pe centrală lasă centrala goală; alerta de mai jos funcționează oricum."
       },
@@ -203,7 +177,6 @@
         "title": "Modificări manuale, vacanță și limite",
         "data": {
           "override_mode": "Modificările manuale se păstrează",
-          "override_hours": "Durată fixă",
           "override_scope": "Modificarea manuală se aplică",
           "vacation_preheat_hours": "Preîncălzire înainte de sfârșitul vacanței",
           "auto_vacation_hours": "Vacanță automată după departe timp de",
@@ -213,7 +186,6 @@
         },
         "data_description": {
           "override_mode": "O singură regulă pentru toate modificările manuale. „Durată fixă” o păstrează orele de mai jos. „Până la următoarea reevaluare” se termină când se schimbă programul, prezența, o fereastră sau modul; verificarea periodică nu o anulează.",
-          "override_hours": "Doar pentru „Durată fixă”.",
           "override_scope": "„Doar acea cameră” se potrivește majorității. „Toată casa” copiază modificarea în toate camerele; folosește doar dacă fiecare cameră are robinete proprii.",
           "vacation_preheat_hours": "Programul revine cu atâtea ore înainte de sfârșitul vacanței, ca să fie cald când ajungi.",
           "auto_vacation_hours": "Pornește singur vacanța după ce toți au fost departe atât timp. 0 = doar manual.",
@@ -238,11 +210,142 @@
           "battery_threshold": "Alertă când bateria unui dispozitiv din cameră (TRV, senzor) scade sub această valoare.",
           "verify_commands": "După 2 minute verifică dacă dispozitivul a preluat comanda, retrimite o dată, apoi alertă. Dezactivează doar dacă un dispozitiv își raportează starea greu."
         }
+      },
+      "heating": {
+        "title": "Încălzirea întregii case",
+        "data": {
+          "source": "Încălzită prin"
+        },
+        "description": "Termostatul (sau releul) care încălzește toată casa. Devine zona „{zone}” și folosește toate opțiunile casei. Camerele cu robinete proprii se pot adăuga mai târziu cu „Adaugă cameră”.",
+        "data_description": {
+          "source": "Ce încălzește toată casa. Alege „Încă fără dispozitive” dacă vei adăuga doar camere cu robinete proprii."
+        }
+      },
+      "heating_devices": {
+        "title": "Dispozitive",
+        "data": {
+          "climates": "Termostate",
+          "switches": "Comutatoare (relee)",
+          "command_mode": "Comandă"
+        },
+        "data_description": {
+          "climates": "Termostatul care comandă centrala, de ex. entitatea Generic Thermostat (climate.climate).",
+          "switches": "Doar când un releu încălzește casa direct, fără termostat.",
+          "command_mode": "Doar pentru alte termostate decât Generic Thermostat. Diferența e explicată la setările camerei."
+        }
+      },
+      "heating_on_off": {
+        "title": "Comandă pornit / oprit",
+        "data": {
+          "temperature_sensors": "Senzori de temperatură",
+          "hysteresis": "Histerezis",
+          "min_on_minutes": "Timp minim pornit",
+          "min_off_minutes": "Timp minim oprit"
+        },
+        "description": "Integrarea pornește și oprește încălzirea în jurul țintei.",
+        "data_description": {
+          "temperature_sensors": "Senzori din cameră, folosiți în locul senzorului termostatului (mai exacți când termostatul e lângă o sursă de căldură). Lasă gol ca să folosești senzorul termostatului; la relee sunt necesari, releul nu are senzor.",
+          "hysteresis": "Încălzirea pornește sub țintă minus această valoare și se oprește peste țintă plus această valoare.",
+          "min_on_minutes": "Timp minim pornit. 0 pentru încălzitoare cărora nu le strică pornirile scurte.",
+          "min_off_minutes": "Timp minim oprit între două porniri."
+        }
+      },
+      "heating_thermostat": {
+        "title": "Termostat",
+        "data": {
+          "learn_tolerance": "Toleranța termostatului"
+        },
+        "description": "Termostatul ține temperatura; integrarea doar trimite nivelul sau temperatura.",
+        "data_description": {
+          "learn_tolerance": "Cât lasă termostatul camera să scadă sub țintă înainte să încălzească (toleranța lui). Viteza de încălzire se învață din urcările care încep cu cel puțin atât sub țintă."
+        }
+      },
+      "presence_details": {
+        "title": "Preîncălzire pe drum spre casă",
+        "data": {
+          "arrival_distance": "Preîncălzește sub distanța",
+          "arrival_minutes": "Preîncălzește sub timpul"
+        },
+        "data_description": {
+          "arrival_distance": "Preîncălzirea pornește când cineva e mai aproape de atât (cu senzorul de distanță).",
+          "arrival_minutes": "Preîncălzirea pornește când cineva e la mai puțin de atâtea minute (cu senzorul de timp)."
+        }
+      },
+      "weather_details": {
+        "title": "Valori pentru vreme și sezon",
+        "data": {
+          "cutoff_temp": "Prag de oprire (exterior)",
+          "cutoff_hysteresis": "Histerezis prag",
+          "cutoff_avg_hours": "Medie pe",
+          "forecast_hours": "Ore de prognoză",
+          "season_start": "Început sezon (LL-ZZ)",
+          "season_end": "Sfârșit sezon (LL-ZZ)",
+          "season_days": "Sezon automat: zile consecutive",
+          "season_temp": "Prag sezon automat",
+          "compensation_below": "Compensează sub",
+          "compensation_offset": "Compensare"
+        },
+        "data_description": {
+          "cutoff_temp": "Peste această medie a temperaturii exterioare încălzirea se oprește.",
+          "cutoff_hysteresis": "Încălzirea repornește doar sub prag minus această valoare, ca să nu pornească și oprească des în jurul pragului.",
+          "cutoff_avg_hours": "Pragul folosește media ultimelor ore, ca o după-amiază însorită să nu oprească încălzirea.",
+          "forecast_hours": "Câte ore de prognoză sunt verificate.",
+          "season_start": "Prima zi a sezonului: luna și ziua, de ex. 10-15.",
+          "season_end": "Ultima zi a sezonului: luna și ziua, de ex. 04-15.",
+          "season_days": "Zile la rând sub (sau peste) prag până începe (sau se termină) sezonul.",
+          "season_temp": "Media zilnică exterioară care pornește sau oprește sezonul.",
+          "compensation_below": "Temperatura exterioară sub care se adaugă compensarea.",
+          "compensation_offset": "Grade adăugate la țintă (de ex. 0,5)."
+        }
+      },
+      "energy_details": {
+        "title": "Praguri pentru energie",
+        "data": {
+          "price_high": "Preț mare de la",
+          "price_high_offset": "Ajustare la preț mare",
+          "price_low": "Preț mic până la",
+          "price_low_offset": "Ajustare la preț mic",
+          "pv_threshold": "Surplus de la",
+          "pv_offset": "Ajustare cu surplus"
+        },
+        "data_description": {
+          "price_high": "De la acest preț în sus se aplică ajustarea la preț mare.",
+          "price_high_offset": "De obicei negativă, de ex. -1 °C cât energia e scumpă.",
+          "price_low": "Până la acest preț se aplică ajustarea la preț mic.",
+          "price_low_offset": "De obicei pozitivă, de ex. +1 °C cât energia e ieftină (încălzire electrică, pompă de căldură).",
+          "pv_threshold": "Surplusul de la care se aplică ajustarea.",
+          "pv_offset": "Grade adăugate cât există surplus (de ex. +1)."
+        }
+      },
+      "boiler_details": {
+        "title": "Centrală",
+        "data": {
+          "boiler_min_rooms": "Camere necesare pentru pornirea centralei",
+          "boiler_min_on": "Timp minim pornită",
+          "boiler_min_off": "Timp minim oprită",
+          "reference_room": "Cameră de referință"
+        },
+        "data_description": {
+          "boiler_min_rooms": "Câte camere trebuie să ceară căldură ca să pornească. 1 = oricare cameră.",
+          "boiler_min_on": "Timpul minim de funcționare, contra pornirilor scurte.",
+          "boiler_min_off": "Pauza minimă între porniri.",
+          "reference_room": "Doar această cameră decide pornirea, celelalte doar își deschid sau închid robinetele. Lasă gol ca să conteze numărul de camere."
+        }
+      },
+      "behavior_details": {
+        "title": "Modificări manuale",
+        "data": {
+          "override_hours": "Durată fixă"
+        },
+        "data_description": {
+          "override_hours": "Cât timp se păstrează o modificare manuală."
+        }
       }
     },
     "error": {
       "invalid_month_day": "Folosește formatul LL-ZZ, de ex. 10-15.",
-      "no_devices": "Alege cel puțin un dispozitiv."
+      "no_devices": "Alege cel puțin un dispozitiv.",
+      "sensor_required": "Releele au nevoie de un senzor de temperatură al camerei."
     }
   },
   "config_subentries": {
@@ -305,10 +408,8 @@
         },
         "levels": {
           "title": "Niveluri",
-          "description": "Nivelurile au roluri fixe: home, sleep, eco (aproape), away (departe / vacanță), comfort și activity. La comanda cu preset, alege presetul termostatului folosit de fiecare nivel (preseturi găsite: {presets}); temperatura rămâne cea din termostat. Un nivel fără preset e atins trimițând temperatura lui. La comanda pe temperatură sau on/off se folosesc temperaturile de mai jos, care se pot schimba și din card.",
           "data": {
             "nearby_mode": "Când nimeni nu e acasă, dar cineva e aproape",
-            "nearby_temp": "Temperatură fixă pentru „aproape”",
             "name_home": "Numele nivelului „home”",
             "name_sleep": "Numele nivelului „sleep”",
             "name_eco": "Numele nivelului „eco”",
@@ -328,9 +429,9 @@
             "temp_comfort": "Temperatura pentru „comfort”",
             "temp_activity": "Temperatura pentru „activity”"
           },
+          "description": "Nivelurile au roluri fixe: home, sleep, eco (aproape), away (departe / vacanță), comfort și activity. La comanda cu preset, alege presetul termostatului folosit de fiecare nivel (preseturi găsite: {presets}); temperatura rămâne cea din termostat. Un nivel fără preset e atins trimițând temperatura lui. La comanda pe temperatură sau on/off se folosesc temperaturile de mai jos, care se pot schimba și din card.",
           "data_description": {
             "nearby_mode": "Preset eco: folosește nivelul eco. Temperatură fixă: trimite temperatura de mai jos (cu Generic Thermostat, presetul devine none).",
-            "nearby_temp": "Doar pentru „Temperatură fixă”.",
             "name_home": "Cum se numește nivelul în program și în card. Lasă numele implicit dacă nu ai nevoie de altul.",
             "name_sleep": "Cum se numește nivelul în program și în card. Lasă numele implicit dacă nu ai nevoie de altul.",
             "name_eco": "Cum se numește nivelul în program și în card. Lasă numele implicit dacă nu ai nevoie de altul.",
@@ -355,19 +456,13 @@
           "title": "Senzori",
           "data": {
             "temperature_sensors": "Senzori de temperatură",
-            "temperature_aggregation": "Mai mulți senzori",
             "calibration_mode": "Calibrare TRV",
-            "calibration_entities": "Entități de calibrare",
-            "occupancy_sensors": "Senzori de ocupare",
-            "occupancy_minutes": "Eco după lipsă de ocupare de"
+            "occupancy_sensors": "Senzori de ocupare"
           },
           "data_description": {
             "temperature_sensors": "Senzori din cameră, folosiți în locul senzorului termostatului (mai exacți când termostatul e lângă o sursă de căldură). Lasă gol ca să folosești senzorul termostatului; la relee sunt necesari, releul nu are senzor.",
-            "temperature_aggregation": "Doar cu mai mulți senzori: media, cel mai rece sau mediana.",
             "calibration_mode": "Are nevoie de un senzor de temperatură al camerei, setat mai sus. Offset: corectează senzorul TRV-ului. Temperatură externă: scrie temperatura camerei în TRV (dacă știe). Altfel oprit.",
-            "calibration_entities": "Doar cu calibrare: entitățile number ale TRV-urilor (offset sau temperatură externă).",
-            "occupancy_sensors": "Senzori de mișcare / prezență din cameră: când camera e goală o vreme trece pe eco chiar dacă e cineva acasă. Lasă gol pentru camerele care urmează doar programul.",
-            "occupancy_minutes": "Cât timp trebuie să fie camera goală până la eco."
+            "occupancy_sensors": "Senzori de mișcare / prezență din cameră: când camera e goală o vreme trece pe eco chiar dacă e cineva acasă. Lasă gol pentru camerele care urmează doar programul."
           }
         },
         "windows": {
@@ -375,61 +470,118 @@
           "data": {
             "window_sensors": "Senzori de fereastră",
             "linked_window_sensors": "Ferestre din alte camere",
-            "window_open_delay": "Întârziere la deschidere",
-            "window_close_delay": "Întârziere la închidere",
-            "window_action": "Când o fereastră e deschisă",
-            "window_drop_detect": "Detectează ferestrele deschise din temperatură",
-            "window_drop_degrees": "Scădere de temperatură",
-            "window_drop_minutes": "În"
+            "window_drop_detect": "Detectează ferestrele deschise din temperatură"
           },
           "data_description": {
             "window_sensors": "Ferestrele și ușile camerei. Lasă gol dacă nu ai senzori (te poate ajuta detecția din temperatură de mai jos).",
             "linked_window_sensors": "Ferestre din alte camere care răcesc și camera asta, de ex. ușa de balcon din living pentru hol.",
-            "window_open_delay": "Cât trebuie să stea fereastra deschisă până reacționează încălzirea. O aerisire mai scurtă e ignorată.",
-            "window_close_delay": "Cât se așteaptă după închidere până la reluarea încălzirii.",
-            "window_action": "Antiîngheț păstrează o temperatură minimă. Oprire oprește încălzirea.",
-            "window_drop_detect": "O scădere bruscă a temperaturii contează ca fereastră deschisă timp de 15 minute. Util pentru camere fără senzori de fereastră.",
-            "window_drop_degrees": "Scăderea care contează ca fereastră deschisă.",
-            "window_drop_minutes": "Timpul în care trebuie să apară scăderea."
+            "window_drop_detect": "O scădere bruscă a temperaturii contează ca fereastră deschisă timp de 15 minute. Util pentru camere fără senzori de fereastră."
           }
         },
         "schedule": {
           "title": "Program",
-          "description": "Un profil pe linie: `profil: HH:MM preset, HH:MM preset`. Profiluri: workday, weekend, mon…sun sau orice nume (manual sau din calendar). {error}",
           "data": {
             "schedule_source": "Sursa programului",
-            "schedule": "Program",
-            "schedule_helper": "Helper Program",
-            "helper_on_preset": "Nivel cât helperul e pornit",
-            "helper_off_preset": "Nivel cât helperul e oprit",
             "optimal_start": "Pornire anticipată",
-            "optimal_start_max_minutes": "Anticipare maximă",
-            "optimal_stop": "Oprire anticipată",
-            "optimal_stop_minutes": "Coboară mai devreme cu"
+            "optimal_stop": "Oprire anticipată"
           },
           "data_description": {
             "schedule_source": "Program intern: scris aici sau editat din card. Helper Program: un helper Schedule din Home Assistant alege între două niveluri.",
-            "schedule": "Doar pentru programul intern. de ex. `workday: 00:00 sleep, 06:00 home, 22:00 sleep`. Mai simplu de editat din card.",
-            "schedule_helper": "Doar pentru „Helper Program”.",
-            "helper_on_preset": "Doar pentru „Helper Program”: nivelul cât helperul e pornit.",
-            "helper_off_preset": "Doar pentru „Helper Program”: nivelul cât helperul e oprit.",
             "optimal_start": "Pornește încălzirea mai devreme ca nivelul următor să fie atins la timp. Viteza de încălzire se învață în câteva zile.",
-            "optimal_start_max_minutes": "Nu pornește niciodată mai devreme de atât.",
-            "optimal_stop": "Coboară temperatura puțin înainte de nivelul următor mai rece, folosind căldura din pereți. Lasă oprit dacă încăperile se răcesc repede.",
-            "optimal_stop_minutes": "Cu cât mai devreme începe nivelul mai mic."
+            "optimal_stop": "Coboară temperatura puțin înainte de nivelul următor mai rece, folosind căldura din pereți. Lasă oprit dacă încăperile se răcesc repede."
           }
         },
         "extras": {
           "title": "Extra",
           "data": {
             "solar_offset": "Câștig solar",
-            "valve_exercise": "Mișcarea robinetelor",
+            "valve_exercise": "Mișcarea robinetelor"
+          },
+          "data_description": {
+            "solar_offset": "Valoare negativă (de ex. -1) coboară ținta cât e soare, pentru camerele încălzite de soare. 0 = oprit.",
+            "valve_exercise": "Deschide TRV-urile complet 5 minute o dată pe săptămână, contra calcarului."
+          }
+        },
+        "levels_nearby": {
+          "title": "Aproape",
+          "data": {
+            "nearby_temp": "Temperatură fixă pentru „aproape”"
+          },
+          "data_description": {
+            "nearby_temp": "Temperatura trimisă cât nimeni nu e acasă și cineva e aproape. Se poate schimba și din card."
+          }
+        },
+        "sensors_details": {
+          "title": "Senzori: detalii",
+          "data": {
+            "temperature_aggregation": "Mai mulți senzori",
+            "calibration_entities": "Entități de calibrare",
+            "occupancy_minutes": "Eco după lipsă de ocupare de"
+          },
+          "data_description": {
+            "temperature_aggregation": "Cu mai mulți senzori: media, cel mai rece sau mediana.",
+            "calibration_entities": "Entitățile number ale TRV-urilor (offset sau temperatură externă).",
+            "occupancy_minutes": "Cât timp trebuie să fie camera goală până la eco."
+          }
+        },
+        "windows_details": {
+          "title": "Ferestre: întârzieri și acțiune",
+          "data": {
+            "window_open_delay": "Întârziere la deschidere",
+            "window_close_delay": "Întârziere la închidere",
+            "window_action": "Când o fereastră e deschisă",
+            "window_drop_degrees": "Scădere de temperatură",
+            "window_drop_minutes": "În"
+          },
+          "data_description": {
+            "window_open_delay": "Cât trebuie să stea fereastra deschisă până reacționează încălzirea. O aerisire mai scurtă e ignorată.",
+            "window_close_delay": "Cât se așteaptă după închidere până la reluarea încălzirii.",
+            "window_action": "Antiîngheț păstrează o temperatură minimă. Oprire oprește încălzirea.",
+            "window_drop_degrees": "Scăderea care contează ca fereastră deschisă.",
+            "window_drop_minutes": "Timpul în care trebuie să apară scăderea."
+          }
+        },
+        "schedule_internal": {
+          "title": "Program",
+          "data": {
+            "schedule": "Program"
+          },
+          "description": "Un profil pe linie: `profil: HH:MM preset, HH:MM preset`. Profiluri: workday, weekend, mon…sun sau orice nume (manual sau din calendar). {error}",
+          "data_description": {
+            "schedule": "de ex. `workday: 00:00 sleep, 06:00 home, 22:00 sleep`. Mai simplu de editat din card."
+          }
+        },
+        "schedule_helper": {
+          "title": "Helper Program",
+          "data": {
+            "schedule_helper": "Helper Program",
+            "helper_on_preset": "Nivel cât helperul e pornit",
+            "helper_off_preset": "Nivel cât helperul e oprit"
+          },
+          "data_description": {
+            "schedule_helper": "Un helper Schedule din Home Assistant (Setări → Ajutoare).",
+            "helper_on_preset": "Nivelul cât helperul e pornit.",
+            "helper_off_preset": "Nivelul cât helperul e oprit."
+          }
+        },
+        "schedule_optimal": {
+          "title": "Pornire / oprire anticipată",
+          "data": {
+            "optimal_start_max_minutes": "Anticipare maximă",
+            "optimal_stop_minutes": "Coboară mai devreme cu"
+          },
+          "data_description": {
+            "optimal_start_max_minutes": "Nu pornește niciodată mai devreme de atât.",
+            "optimal_stop_minutes": "Cu cât mai devreme începe nivelul mai mic."
+          }
+        },
+        "extras_valves": {
+          "title": "Mișcarea robinetelor",
+          "data": {
             "valve_exercise_day": "Ziua",
             "valve_exercise_time": "Ora"
           },
           "data_description": {
-            "solar_offset": "Valoare negativă (de ex. -1) coboară ținta cât e soare, pentru camerele încălzite de soare. 0 = oprit.",
-            "valve_exercise": "Deschide TRV-urile complet 5 minute o dată pe săptămână, contra calcarului.",
             "valve_exercise_day": "Ziua mișcării robinetelor.",
             "valve_exercise_time": "Ora mișcării robinetelor (ideal când nu e nevoie de căldură)."
           }
@@ -439,7 +591,8 @@
         "no_devices": "Alege cel puțin un dispozitiv.",
         "duplicate_names": "Două niveluri au același nume.",
         "invalid_schedule": "Program invalid.",
-        "helper_required": "Alege helperul de program."
+        "helper_required": "Alege helperul de program.",
+        "sensor_required": "Releele au nevoie de un senzor de temperatură al camerei."
       }
     }
   },
