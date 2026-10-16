@@ -141,7 +141,7 @@ Thermostat, the level temperatures (numbers).
 ## Heating rate learning
 
 Each room learns how fast it heats up, in °C per hour, from its own heating
-episodes; nothing is assumed about the radiators or the boiler.
+episodes.
 
 - An **episode** starts when the room asks for heat at least the *tolerance*
   of its thermostat below the target, so the cycles that only keep the
