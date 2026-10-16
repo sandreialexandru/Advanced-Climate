@@ -671,15 +671,10 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             fields[vol.Required(CONF_COMMAND_MODE, default=d[CONF_COMMAND_MODE])] = _select(
                 [COMMAND_TEMPERATURE, COMMAND_PRESET, COMMAND_HVAC], "command_mode"
             )
-            fields[_req(CONF_LEARN_TOLERANCE, d, ROOM_DEFAULTS)] = _number(0, 2, 0.1, "°C")
         else:
             fields[vol.Required(CONF_SWITCHES, default=d.get(CONF_SWITCHES, []))] = _entity(
                 ["switch", "input_boolean"], multiple=True
             )
-        if source in (SOURCE_SWITCH, SOURCE_CLIMATE):
-            fields[_req(CONF_HYSTERESIS, d, ROOM_DEFAULTS)] = _number(0.1, 3, 0.1, "°C")
-            fields[_req(CONF_MIN_ON, d, ROOM_DEFAULTS)] = _number(0, 60, 1, "min")
-            fields[_req(CONF_MIN_OFF, d, ROOM_DEFAULTS)] = _number(0, 60, 1, "min")
         schema = vol.Schema(fields)
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -688,8 +683,51 @@ class RoomSubentryFlow(ConfigSubentryFlow):
                 errors["base"] = "no_devices"
             else:
                 self._data = _merge(self._data, schema, user_input)
-                return await self.async_step_levels()
+                if source == SOURCE_GT:
+                    return await self.async_step_levels()
+                return await self.async_step_control()
         return self.async_show_form(step_id="devices", data_schema=schema, errors=errors)
+
+    def _on_off(self) -> bool:
+        """Relays, or thermostats switched on and off by the integration."""
+        d = self._data
+        return d[CONF_SOURCE] == SOURCE_SWITCH or (
+            d[CONF_SOURCE] == SOURCE_CLIMATE and d.get(CONF_COMMAND_MODE) == COMMAND_HVAC
+        )
+
+    async def async_step_control(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+        """Only the settings of the chosen command."""
+        d = self._data
+        if self._on_off():
+            schema = vol.Schema(
+                {
+                    _req(CONF_HYSTERESIS, d, ROOM_DEFAULTS): _number(0.1, 3, 0.1, "°C"),
+                    _req(CONF_MIN_ON, d, ROOM_DEFAULTS): _number(0, 60, 1, "min"),
+                    _req(CONF_MIN_OFF, d, ROOM_DEFAULTS): _number(0, 60, 1, "min"),
+                }
+            )
+            step = "control_on_off"
+        else:
+            schema = vol.Schema(
+                {_req(CONF_LEARN_TOLERANCE, d, ROOM_DEFAULTS): _number(0, 2, 0.1, "°C")}
+            )
+            step = "control_thermostat"
+        if user_input is not None:
+            self._data = _merge(self._data, schema, user_input)
+            return await self.async_step_levels()
+        return self.async_show_form(step_id=step, data_schema=schema)
+
+    async def async_step_control_on_off(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Form id of the on / off settings."""
+        return await self.async_step_control(user_input)
+
+    async def async_step_control_thermostat(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Form id of the thermostat settings."""
+        return await self.async_step_control(user_input)
 
     def _current_levels(self) -> dict[str, float]:
         """Level temperatures in use now (edited from the card or numbers included)."""
@@ -798,28 +836,33 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         )
 
     async def async_step_sensors(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
-        """Temperature, calibration and occupancy sensors."""
+        """Temperature, calibration (TRVs only) and occupancy sensors."""
         d = self._data
-        schema = vol.Schema(
-            {
-                _req(CONF_TEMP_SENSORS, d, ROOM_DEFAULTS): _entity(
-                    "sensor", multiple=True, device_class="temperature"
-                ),
-                _req(CONF_TEMP_AGGREGATION, d, ROOM_DEFAULTS): _select(
-                    [AGG_MEAN, AGG_MIN, AGG_MEDIAN], "aggregation"
-                ),
-                _req(CONF_CALIBRATION_MODE, d, ROOM_DEFAULTS): _select(
-                    [CALIBRATION_OFF, CALIBRATION_OFFSET, CALIBRATION_EXTERNAL], "calibration"
-                ),
-                _req(CONF_CALIBRATION_ENTITIES, d, ROOM_DEFAULTS): _entity("number", multiple=True),
-                _req(CONF_OCCUPANCY_SENSORS, d, ROOM_DEFAULTS): _entity(
-                    ["binary_sensor", "input_boolean"], multiple=True
-                ),
-                _req(CONF_OCCUPANCY_MINUTES, d, ROOM_DEFAULTS): _number(1, 720, 1, "min"),
-            }
+        trv = d[CONF_SOURCE] == SOURCE_CLIMATE
+        fields: dict[Any, Any] = {
+            _req(CONF_TEMP_SENSORS, d, ROOM_DEFAULTS): _entity(
+                "sensor", multiple=True, device_class="temperature"
+            ),
+            _req(CONF_TEMP_AGGREGATION, d, ROOM_DEFAULTS): _select(
+                [AGG_MEAN, AGG_MIN, AGG_MEDIAN], "aggregation"
+            ),
+        }
+        if trv:
+            fields[_req(CONF_CALIBRATION_MODE, d, ROOM_DEFAULTS)] = _select(
+                [CALIBRATION_OFF, CALIBRATION_OFFSET, CALIBRATION_EXTERNAL], "calibration"
+            )
+            fields[_req(CONF_CALIBRATION_ENTITIES, d, ROOM_DEFAULTS)] = _entity(
+                "number", multiple=True
+            )
+        fields[_req(CONF_OCCUPANCY_SENSORS, d, ROOM_DEFAULTS)] = _entity(
+            ["binary_sensor", "input_boolean"], multiple=True
         )
+        fields[_req(CONF_OCCUPANCY_MINUTES, d, ROOM_DEFAULTS)] = _number(1, 720, 1, "min")
+        schema = vol.Schema(fields)
         if user_input is not None:
             self._data = _merge(self._data, schema, user_input)
+            if not trv:
+                self._data[CONF_CALIBRATION_MODE] = CALIBRATION_OFF
             return await self.async_step_windows()
         return self.async_show_form(step_id="sensors", data_schema=schema)
 
@@ -896,18 +939,21 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         )
 
     async def async_step_extras(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
-        """Solar gain and valve exercise."""
+        """Solar gain and valve exercise (TRVs without on / off only)."""
         d = self._data
-        schema = vol.Schema(
-            {
-                _req(CONF_SOLAR_OFFSET, d, ROOM_DEFAULTS): _number(-3, 0, 0.1, "°C"),
-                _req(CONF_VALVE_EXERCISE, d, ROOM_DEFAULTS): _bool(),
-                _req(CONF_VALVE_DAY, d, ROOM_DEFAULTS): _select(list(WEEKDAYS), "weekday"),
-                _req(CONF_VALVE_TIME, d, ROOM_DEFAULTS): selector.TimeSelector(),
-            }
-        )
+        valves = d[CONF_SOURCE] == SOURCE_CLIMATE and not self._on_off()
+        fields: dict[Any, Any] = {
+            _req(CONF_SOLAR_OFFSET, d, ROOM_DEFAULTS): _number(-3, 0, 0.1, "°C"),
+        }
+        if valves:
+            fields[_req(CONF_VALVE_EXERCISE, d, ROOM_DEFAULTS)] = _bool()
+            fields[_req(CONF_VALVE_DAY, d, ROOM_DEFAULTS)] = _select(list(WEEKDAYS), "weekday")
+            fields[_req(CONF_VALVE_TIME, d, ROOM_DEFAULTS)] = selector.TimeSelector()
+        schema = vol.Schema(fields)
         if user_input is not None:
             self._data = _merge(self._data, schema, user_input)
+            if not valves:
+                self._data[CONF_VALVE_EXERCISE] = False
             return self._finish()
         return self.async_show_form(step_id="extras", data_schema=schema)
 

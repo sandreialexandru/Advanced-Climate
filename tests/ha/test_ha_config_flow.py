@@ -132,11 +132,18 @@ async def test_room_subentry_flow(hass: HomeAssistant) -> None:
     result = await hass.config_entries.subentries.async_configure(
         result["flow_id"], {"switches": ["input_boolean.heater"]}
     )
+    # Relays: only the on / off settings.
+    assert result["step_id"] == "control_on_off"
+    assert {str(k) for k in result["data_schema"].schema} == {
+        "hysteresis", "min_on_minutes", "min_off_minutes"
+    }
+    result = await hass.config_entries.subentries.async_configure(result["flow_id"], {})
     assert result["step_id"] == "levels"
     result = await hass.config_entries.subentries.async_configure(
         result["flow_id"], {"name_home": "Day", "name_sleep": "Night"}
     )
     assert result["step_id"] == "sensors"
+    assert "calibration_mode" not in {str(k) for k in result["data_schema"].schema}
     result = await hass.config_entries.subentries.async_configure(result["flow_id"], {})
     assert result["step_id"] == "windows"
     result = await hass.config_entries.subentries.async_configure(result["flow_id"], {})
@@ -162,7 +169,7 @@ async def test_room_subentry_flow(hass: HomeAssistant) -> None:
     result = await hass.config_entries.subentries.async_configure(
         result["flow_id"], {"name": "Master bedroom", "source": "switch"}
     )
-    for _ in range(6):
+    for _ in range(7):
         result = await hass.config_entries.subentries.async_configure(result["flow_id"], {})
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reconfigure_successful"
@@ -187,6 +194,12 @@ async def test_room_with_thermostat_presets(hass: HomeAssistant) -> None:
     )
     result = await hass.config_entries.subentries.async_configure(
         result["flow_id"], {"climates": ["climate.trv"], "command_mode": "preset"}
+    )
+    # TRV with presets: only the thermostat tolerance.
+    assert result["step_id"] == "control_thermostat"
+    assert {str(k) for k in result["data_schema"].schema} == {"learn_tolerance"}
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"learn_tolerance": 0.3}
     )
     assert result["step_id"] == "levels"
     assert result["description_placeholders"]["presets"] == "comfort, eco, away, boost"
@@ -222,3 +235,4 @@ async def test_room_with_thermostat_presets(hass: HomeAssistant) -> None:
     assert subentry.data["preset_map"] == {"home": "comfort", "eco": "eco", "comfort": "boost"}
     assert subentry.data["levels"]["sleep"] == 18.5
     assert subentry.data["preset_names"] == {}
+    assert subentry.data["learn_tolerance"] == 0.3

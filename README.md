@@ -70,7 +70,13 @@ Requires Home Assistant **2025.7** or newer.
    whole house*.
 2. Optionally **add rooms** with *Add room* on the integration page, for rooms
    with their own valves or thermostats. Each room has its own devices,
-   sensors, windows and schedule.
+   sensors, windows and schedule. The room settings show only what applies to
+   how the room is heated: the command settings (hysteresis and minimum on /
+   off times for relays and on / off control, the thermostat tolerance for
+   thermostats driven by temperature or preset), TRV calibration only for
+   thermostats / TRVs and the valve exercise only for TRVs that are not
+   switched on / off. The zone *Whole house* is changed the same way
+   (*⋮ → Reconfigure* on the integration page).
 3. Everything else is in the integration **options** (presence, workdays and
    calendar, weather and season, energy, boiler, manual changes and vacation,
    alerts).
