@@ -271,20 +271,12 @@
           "data": {
             "climates": "Termostate",
             "switches": "Comutatoare (relee)",
-            "command_mode": "Comandă",
-            "hysteresis": "Histerezis",
-            "min_on_minutes": "Timp minim pornit",
-            "min_off_minutes": "Timp minim oprit",
-            "learn_tolerance": "Toleranța termostatului"
+            "command_mode": "Comandă"
           },
           "data_description": {
-            "climates": "Termostatele sau TRV-urile camerei. Mai multe TRV-uri din aceeași cameră primesc aceeași comandă.",
+            "climates": "Termostatele camerei. Dacă sunt mai multe în aceeași cameră, primesc toate aceeași comandă.",
             "switches": "Releele care încălzesc camera.",
-            "command_mode": "Temperatură: integrarea trimite temperatura fiecărui nivel (majoritatea TRV-urilor). Preset: fiecare nivel folosește un preset al termostatului, cu temperatura din termostat. Pornit / oprit: termostatul doar e pornit și oprit, integrarea ține temperatura.",
-            "hysteresis": "Încălzirea pornește sub țintă minus această valoare și se oprește peste țintă plus această valoare.",
-            "min_on_minutes": "Timp minim pornit. 0 pentru încălzitoare cărora nu le strică pornirile scurte.",
-            "min_off_minutes": "Timp minim oprit între două porniri.",
-            "learn_tolerance": "Cât lasă termostatul camera să scadă sub țintă înainte să încălzească (toleranța lui). Viteza de încălzire se învață din urcările care încep cu cel puțin atât sub țintă."
+            "command_mode": "Temperatură: integrarea trimite temperatura fiecărui nivel (majoritatea TRV-urilor). Preset: fiecare nivel folosește un preset al termostatului, cu temperatura din termostat. Pornit / oprit: termostatul doar e pornit și oprit, integrarea ține temperatura."
           }
         },
         "control_on_off": {
@@ -337,7 +329,7 @@
             "temp_activity": "Temperatura pentru „activity”"
           },
           "data_description": {
-            "nearby_mode": "Preset eco: folosește nivelul eco. Temperatură fixă: trimite temperatura de mai jos (Generic Thermostat arată atunci presetul none).",
+            "nearby_mode": "Preset eco: folosește nivelul eco. Temperatură fixă: trimite temperatura de mai jos (cu Generic Thermostat, presetul devine none).",
             "nearby_temp": "Doar pentru „Temperatură fixă”.",
             "name_home": "Cum se numește nivelul în program și în card. Lasă numele implicit dacă nu ai nevoie de altul.",
             "name_sleep": "Cum se numește nivelul în program și în card. Lasă numele implicit dacă nu ai nevoie de altul.",
@@ -345,18 +337,18 @@
             "name_away": "Cum se numește nivelul în program și în card. Lasă numele implicit dacă nu ai nevoie de altul.",
             "name_comfort": "Cum se numește nivelul în program și în card. Lasă numele implicit dacă nu ai nevoie de altul.",
             "name_activity": "Cum se numește nivelul în program și în card. Lasă numele implicit dacă nu ai nevoie de altul.",
-            "device_home": "Presetul termostatului folosit pentru acest nivel; temperatura rămâne cea din termostat. Lasă gol dacă termostatul nu are un astfel de preset: se trimite temperatura de mai jos.",
-            "device_sleep": "Presetul termostatului folosit pentru acest nivel; temperatura rămâne cea din termostat. Lasă gol dacă termostatul nu are un astfel de preset: se trimite temperatura de mai jos.",
-            "device_eco": "Presetul termostatului folosit pentru acest nivel; temperatura rămâne cea din termostat. Lasă gol dacă termostatul nu are un astfel de preset: se trimite temperatura de mai jos.",
-            "device_away": "Presetul termostatului folosit pentru acest nivel; temperatura rămâne cea din termostat. Lasă gol dacă termostatul nu are un astfel de preset: se trimite temperatura de mai jos.",
-            "device_comfort": "Presetul termostatului folosit pentru acest nivel; temperatura rămâne cea din termostat. Lasă gol dacă termostatul nu are un astfel de preset: se trimite temperatura de mai jos.",
-            "device_activity": "Presetul termostatului folosit pentru acest nivel; temperatura rămâne cea din termostat. Lasă gol dacă termostatul nu are un astfel de preset: se trimite temperatura de mai jos.",
-            "temp_home": "Temperatura nivelului. Cu preset în termostat se folosește doar dacă presetul lipsește sau temperatura lui nu e raportată. Se poate schimba și din card.",
-            "temp_sleep": "Temperatura nivelului. Cu preset în termostat se folosește doar dacă presetul lipsește sau temperatura lui nu e raportată. Se poate schimba și din card.",
-            "temp_eco": "Temperatura nivelului. Cu preset în termostat se folosește doar dacă presetul lipsește sau temperatura lui nu e raportată. Se poate schimba și din card.",
-            "temp_away": "Temperatura nivelului. Cu preset în termostat se folosește doar dacă presetul lipsește sau temperatura lui nu e raportată. Se poate schimba și din card.",
-            "temp_comfort": "Temperatura nivelului. Cu preset în termostat se folosește doar dacă presetul lipsește sau temperatura lui nu e raportată. Se poate schimba și din card.",
-            "temp_activity": "Temperatura nivelului. Cu preset în termostat se folosește doar dacă presetul lipsește sau temperatura lui nu e raportată. Se poate schimba și din card."
+            "device_home": "Presetul termostatului folosit pentru acest nivel; temperatura rămâne cea din termostat. Lasă gol dacă termostatul nu are un astfel de preset: se trimite temperatura nivelului de mai jos (ea apare și când termostatul nu raportează temperatura presetului).",
+            "device_sleep": "Presetul termostatului folosit pentru acest nivel; temperatura rămâne cea din termostat. Lasă gol dacă termostatul nu are un astfel de preset: se trimite temperatura nivelului de mai jos (ea apare și când termostatul nu raportează temperatura presetului).",
+            "device_eco": "Presetul termostatului folosit pentru acest nivel; temperatura rămâne cea din termostat. Lasă gol dacă termostatul nu are un astfel de preset: se trimite temperatura nivelului de mai jos (ea apare și când termostatul nu raportează temperatura presetului).",
+            "device_away": "Presetul termostatului folosit pentru acest nivel; temperatura rămâne cea din termostat. Lasă gol dacă termostatul nu are un astfel de preset: se trimite temperatura nivelului de mai jos (ea apare și când termostatul nu raportează temperatura presetului).",
+            "device_comfort": "Presetul termostatului folosit pentru acest nivel; temperatura rămâne cea din termostat. Lasă gol dacă termostatul nu are un astfel de preset: se trimite temperatura nivelului de mai jos (ea apare și când termostatul nu raportează temperatura presetului).",
+            "device_activity": "Presetul termostatului folosit pentru acest nivel; temperatura rămâne cea din termostat. Lasă gol dacă termostatul nu are un astfel de preset: se trimite temperatura nivelului de mai jos (ea apare și când termostatul nu raportează temperatura presetului).",
+            "temp_home": "Temperatura nivelului. Se poate schimba și din card.",
+            "temp_sleep": "Temperatura nivelului. Se poate schimba și din card.",
+            "temp_eco": "Temperatura nivelului. Se poate schimba și din card.",
+            "temp_away": "Temperatura nivelului. Se poate schimba și din card.",
+            "temp_comfort": "Temperatura nivelului. Se poate schimba și din card.",
+            "temp_activity": "Temperatura nivelului. Se poate schimba și din card."
           }
         },
         "sensors": {
@@ -370,7 +362,7 @@
             "occupancy_minutes": "Eco după lipsă de ocupare de"
           },
           "data_description": {
-            "temperature_sensors": "Un senzor în cameră e mai exact decât cel din TRV-ul de lângă calorifer. Lasă gol ca să folosești senzorul termostatului.",
+            "temperature_sensors": "Senzori din cameră, folosiți în locul senzorului termostatului (mai exacți când termostatul e lângă o sursă de căldură). Lasă gol ca să folosești senzorul termostatului; la relee sunt necesari, releul nu are senzor.",
             "temperature_aggregation": "Doar cu mai mulți senzori: media, cel mai rece sau mediana.",
             "calibration_mode": "Are nevoie de un senzor de temperatură al camerei, setat mai sus. Offset: corectează senzorul TRV-ului. Temperatură externă: scrie temperatura camerei în TRV (dacă știe). Altfel oprit.",
             "calibration_entities": "Doar cu calibrare: entitățile number ale TRV-urilor (offset sau temperatură externă).",
@@ -395,7 +387,7 @@
             "linked_window_sensors": "Ferestre din alte camere care răcesc și camera asta, de ex. ușa de balcon din living pentru hol.",
             "window_open_delay": "Cât trebuie să stea fereastra deschisă până reacționează încălzirea. O aerisire mai scurtă e ignorată.",
             "window_close_delay": "Cât se așteaptă după închidere până la reluarea încălzirii.",
-            "window_action": "Antiîngheț păstrează o temperatură minimă. Oprire oprește termostatul (dacă știe).",
+            "window_action": "Antiîngheț păstrează o temperatură minimă. Oprire oprește încălzirea.",
             "window_drop_detect": "O scădere bruscă a temperaturii contează ca fereastră deschisă timp de 15 minute. Util pentru camere fără senzori de fereastră.",
             "window_drop_degrees": "Scăderea care contează ca fereastră deschisă.",
             "window_drop_minutes": "Timpul în care trebuie să apară scăderea."
