@@ -2,8 +2,9 @@
 
 The learner observes heating episodes (the room asks for heat and the
 temperature rises from clearly below the target) and keeps the last episodes.
-An episode only starts when the room is more than the thermostat tolerance
-below the target. The heating rate in °C per hour is then estimated as a straight
+An episode starts when the room is at least the thermostat tolerance below
+the target, so the cycles of a thermostat that keeps the temperature are
+learned too. The heating rate in °C per hour is then estimated as a straight
 line of the outdoor temperature, so every episode helps at every outdoor
 temperature and temperatures not seen yet are estimated from the trend.
 
@@ -33,7 +34,7 @@ EXTRAPOLATE = 5.0  # °C
 
 
 def start_gap(tolerance: float) -> float:
-    """Degrees below the target that must be exceeded to start an episode."""
+    """Degrees below the target (at least) needed to start an episode."""
     return round(max(0.0, tolerance), 2)
 
 
@@ -109,7 +110,7 @@ class HeatingRateLearner:
         if heating and self.episode_start is None:
             if (
                 target is not None
-                and target - current > start_gap(tolerance)
+                and target - current >= start_gap(tolerance) - 1e-9
                 and not window_open
             ):
                 self.episode_start = now

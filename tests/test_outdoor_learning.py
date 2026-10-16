@@ -119,13 +119,13 @@ class LearningTest(unittest.TestCase):
         self.assertEqual(old.episodes, [])
         self.assertEqual(old.rate(2.0), learning.DEFAULT_RATE)
 
-    def test_thermostat_cycles_not_learned(self) -> None:
+    def test_episode_starts_at_tolerance(self) -> None:
         # Generic Thermostat with cold_tolerance 0.5: it heats from 0.5 below the target.
         learner = learning.HeatingRateLearner()
-        learner.observe(self.T0, True, 21.5, 22.0, 5.0, tolerance=0.5)
+        learner.observe(self.T0, True, 21.6, 22.0, 5.0, tolerance=0.5)
         self.assertIsNone(learner.episode_start)
-        # More than the tolerance below the target starts an episode.
-        learner.observe(self.T0, True, 21.4, 22.0, 5.0, tolerance=0.5)
+        # At least the tolerance below the target starts an episode (maintenance too).
+        learner.observe(self.T0, True, 21.5, 22.0, 5.0, tolerance=0.5)
         self.assertIsNotNone(learner.episode_start)
         self.assertEqual(learning.start_gap(0.5), 0.5)
 

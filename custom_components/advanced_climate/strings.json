@@ -284,7 +284,7 @@
             "hysteresis": "Only for relays and on / off: heating starts below target minus this value and stops above target plus this value.",
             "min_on_minutes": "Only for relays and on / off: minimum time on. 0 for heaters that do not mind short cycles.",
             "min_off_minutes": "Only for relays and on / off: minimum time off between two starts.",
-            "learn_tolerance": "Only for Temperature and Preset commands: how far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned only from rises that start more than this below the target. On / off uses the hysteresis; Generic Thermostat its cold tolerance."
+            "learn_tolerance": "Only for Temperature and Preset commands: how far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target. On / off uses the hysteresis; Generic Thermostat its cold tolerance."
           }
         },
         "levels": {

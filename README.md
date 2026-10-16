@@ -135,8 +135,9 @@ Thermostat, the level temperatures (numbers).
 Each room learns how fast it heats up, in °C per hour, from its own heating
 episodes; nothing is assumed about the radiators or the boiler.
 
-- An **episode** starts when the room asks for heat more than the *tolerance*
-  of its thermostat below the target. The tolerance is the *cold tolerance* of
+- An **episode** starts when the room asks for heat at least the *tolerance*
+  of its thermostat below the target, so the cycles that only keep the
+  temperature are learned too. The tolerance is the *cold tolerance* of
   Generic Thermostat, the *hysteresis* for relays and on / off control, and the
   *Thermostat tolerance* room setting for other thermostats (default 0).
   The episode ends when the target is reached or the heating stops; it is used
