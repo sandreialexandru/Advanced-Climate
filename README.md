@@ -70,16 +70,30 @@ Requires Home Assistant **2025.7** or newer.
    whole house*.
 2. Optionally **add rooms** with *Add room* on the integration page, for rooms
    with their own valves or thermostats. Each room has its own devices,
-   sensors, windows and schedule. The room settings show only what applies to
-   how the room is heated: the command settings (hysteresis and minimum on /
-   off times for relays and on / off control, the thermostat tolerance for
-   thermostats driven by temperature or preset), TRV calibration only for
-   thermostats / TRVs and the valve exercise only for TRVs that are not
-   switched on / off. The zone *Whole house* is changed the same way
-   (*⋮ → Reconfigure* on the integration page).
+   sensors, windows and schedule. The zone *Whole house* is changed the same
+   way (*⋮ → Reconfigure* on the integration page).
 3. Everything else is in the integration **options** (presence, workdays and
    calendar, weather and season, energy, boiler, manual changes and vacation,
    alerts).
+
+Every form shows only what applies. The choices come first; a second form
+then asks only for the values they need, and is skipped when nothing applies:
+
+- **Heating**: the source, then its devices (and the command for other
+  thermostats), then the command settings: hysteresis and minimum times for
+  relays and on / off control (relays also need a room temperature sensor),
+  the thermostat tolerance for temperature / preset commands, nothing for
+  Generic Thermostat.
+- **Rooms**: TRV calibration and valve exercise only for TRVs; the fixed
+  *nearby* temperature only with that choice; aggregation only with several
+  temperature sensors; occupancy time only with occupancy sensors; window
+  delays only with window sensors or the temperature-drop detection; the
+  Schedule helper fields only for a helper; optimal start / stop limits only
+  when turned on.
+- **Options**: preheat distances only with a Proximity / travel time sensor,
+  cutoff / forecast / season / compensation values only for what is turned
+  on, price and PV thresholds only with their sensors, boiler times only with
+  a boiler, the fixed duration only for that kind of manual change.
 
 ### Schedule format
 
