@@ -122,6 +122,13 @@ async def test_set_schedule_service(hass: HomeAssistant, freezer: FrozenDateTime
     """The card saves schedules through the service."""
     entry = await _setup(hass, freezer)
     await _tick(hass, freezer, 15)
+    seen: list[str] = []
+    hass.bus.async_listen(
+        "state_changed",
+        lambda event: seen.append(event.data["new_state"].state)
+        if event.data["entity_id"] == "sensor.bedroom_decision" and event.data["new_state"]
+        else None,
+    )
     await hass.services.async_call(
         DOMAIN,
         "set_schedule",
@@ -133,6 +140,8 @@ async def test_set_schedule_service(hass: HomeAssistant, freezer: FrozenDateTime
     assert subentry.data["schedule"] == "workday: 00:00 eco"
     await _tick(hass, freezer, 15)
     assert hass.states.get("sensor.bedroom_decision").attributes["preset"] == "eco"
+    # Saving a schedule does not reload the integration.
+    assert "unavailable" not in seen
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
 

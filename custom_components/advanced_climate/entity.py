@@ -12,6 +12,9 @@ from .const import DOMAIN, PRESETS, SIGNAL_UPDATE
 from .house import House
 from .room import Room
 
+# Home Assistant 2026.8+ links devices by device id (via_device is deprecated).
+_VIA_DEVICE_ID = "via_device_id" in getattr(DeviceInfo, "__annotations__", {})
+
 
 class HouseEntity(Entity):
     """Entity attached to the house device."""
@@ -56,15 +59,19 @@ class RoomEntity(Entity):
         self.house = room.house
         self._attr_translation_key = key
         self._attr_unique_id = f"{room.id}_{key}"
-        self._attr_device_info = DeviceInfo(
+        info = DeviceInfo(
             identifiers={(DOMAIN, room.id)},
             name=room.name,
             manufacturer="Advanced Climate",
             model="Whole house" if room.is_whole_house else "Room",
             entry_type=DeviceEntryType.SERVICE,
-            via_device=(DOMAIN, room.house.entry.entry_id),
             suggested_area=room.area_name,
         )
+        if _VIA_DEVICE_ID and room.house.device_id:
+            info["via_device_id"] = room.house.device_id  # type: ignore[typeddict-unknown-key]
+        elif not _VIA_DEVICE_ID:
+            info["via_device"] = (DOMAIN, room.house.entry.entry_id)  # type: ignore[typeddict-unknown-key]
+        self._attr_device_info = info
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to updates."""

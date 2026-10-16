@@ -7,10 +7,10 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN
+from .const import CONF_SCHEDULE, DEFAULT_SCHEDULE, DOMAIN
 from .frontend import async_register_card, async_remove_lovelace_resource
 from .house import House
 from .services import async_setup_services
@@ -49,13 +49,49 @@ async def async_setup_entry(hass: HomeAssistant, entry: AdvancedClimateConfigEnt
     house = House(hass, entry)
     await house.async_setup()
     entry.runtime_data = house
+    # The house device exists before the rooms, which are linked to it.
+    house.device_id = (
+        dr.async_get(hass)
+        .async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=entry.title,
+            manufacturer="Advanced Climate",
+            model="House",
+            entry_type=dr.DeviceEntryType.SERVICE,
+        )
+        .id
+    )
+    house.config_snapshot = _snapshot(entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
 
+def _snapshot(entry: ConfigEntry) -> tuple:
+    """Settings of the house and rooms, without the schedules."""
+    rooms = {
+        sid: (sub.title, sub.unique_id, {k: v for k, v in sub.data.items() if k != CONF_SCHEDULE})
+        for sid, sub in entry.subentries.items()
+    }
+    return (dict(entry.options), entry.title, rooms)
+
+
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload when options or rooms change."""
+    """Reload when options or rooms change; a new schedule is applied in place.
+
+    Saving a schedule (e.g. from the card) does not reload the integration, so
+    the entities do not become unavailable for a moment.
+    """
+    house = getattr(entry, "runtime_data", None)
+    if house is not None and _snapshot(entry) == getattr(house, "config_snapshot", None):
+        for sid, sub in entry.subentries.items():
+            room = house.rooms.get(sid)
+            if room is not None and sub.data.get(CONF_SCHEDULE) != room.config.get(CONF_SCHEDULE):
+                room.apply_schedule(sub.data.get(CONF_SCHEDULE) or DEFAULT_SCHEDULE)
+        house.async_save()
+        house.async_request_evaluate(0)
+        return
     await hass.config_entries.async_reload(entry.entry_id)
 
 
