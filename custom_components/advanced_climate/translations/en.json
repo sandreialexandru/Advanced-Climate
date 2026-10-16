@@ -271,20 +271,12 @@
           "data": {
             "climates": "Thermostats",
             "switches": "Switches (relays)",
-            "command_mode": "Command",
-            "hysteresis": "Hysteresis",
-            "min_on_minutes": "Minimum on time",
-            "min_off_minutes": "Minimum off time",
-            "learn_tolerance": "Thermostat tolerance"
+            "command_mode": "Command"
           },
           "data_description": {
-            "climates": "The thermostats or TRVs of this room. Several TRVs in one room get the same command.",
+            "climates": "The thermostats of this room. Several thermostats in one room all get the same command.",
             "switches": "The relays that heat this room.",
-            "command_mode": "Temperature: the integration sends the temperature of each level (most TRVs). Preset: each level uses a preset of the thermostat, with the thermostat's temperature. On / off: the thermostat is only switched on and off, the integration keeps the temperature.",
-            "hysteresis": "Heating starts below target minus this value and stops above target plus this value.",
-            "min_on_minutes": "Minimum time on. 0 for heaters that do not mind short cycles.",
-            "min_off_minutes": "Minimum time off between two starts.",
-            "learn_tolerance": "How far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target."
+            "command_mode": "Temperature: the integration sends the temperature of each level (most TRVs). Preset: each level uses a preset of the thermostat, with the thermostat's temperature. On / off: the thermostat is only switched on and off, the integration keeps the temperature."
           }
         },
         "control_on_off": {
@@ -337,7 +329,7 @@
             "temp_activity": "Temperature of 'activity'"
           },
           "data_description": {
-            "nearby_mode": "Eco preset: uses the eco level. Fixed temperature: sends the temperature below (Generic Thermostat then shows preset none).",
+            "nearby_mode": "Eco preset: uses the eco level. Fixed temperature: sends the temperature below (with Generic Thermostat the preset becomes none).",
             "nearby_temp": "Only for 'Fixed temperature'.",
             "name_home": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",
             "name_sleep": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",
@@ -345,18 +337,18 @@
             "name_away": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",
             "name_comfort": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",
             "name_activity": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",
-            "device_home": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature below is sent instead.",
-            "device_sleep": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature below is sent instead.",
-            "device_eco": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature below is sent instead.",
-            "device_away": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature below is sent instead.",
-            "device_comfort": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature below is sent instead.",
-            "device_activity": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature below is sent instead.",
-            "temp_home": "Temperature of this level. With a thermostat preset it is used only if the preset is missing or its temperature is not reported. Can be changed later from the card.",
-            "temp_sleep": "Temperature of this level. With a thermostat preset it is used only if the preset is missing or its temperature is not reported. Can be changed later from the card.",
-            "temp_eco": "Temperature of this level. With a thermostat preset it is used only if the preset is missing or its temperature is not reported. Can be changed later from the card.",
-            "temp_away": "Temperature of this level. With a thermostat preset it is used only if the preset is missing or its temperature is not reported. Can be changed later from the card.",
-            "temp_comfort": "Temperature of this level. With a thermostat preset it is used only if the preset is missing or its temperature is not reported. Can be changed later from the card.",
-            "temp_activity": "Temperature of this level. With a thermostat preset it is used only if the preset is missing or its temperature is not reported. Can be changed later from the card."
+            "device_home": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature of the level below is sent instead (it is also shown when the thermostat does not report the preset temperature).",
+            "device_sleep": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature of the level below is sent instead (it is also shown when the thermostat does not report the preset temperature).",
+            "device_eco": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature of the level below is sent instead (it is also shown when the thermostat does not report the preset temperature).",
+            "device_away": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature of the level below is sent instead (it is also shown when the thermostat does not report the preset temperature).",
+            "device_comfort": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature of the level below is sent instead (it is also shown when the thermostat does not report the preset temperature).",
+            "device_activity": "Preset of the thermostat used for this level; the thermostat keeps its temperature. Leave empty if the thermostat has no such preset: the temperature of the level below is sent instead (it is also shown when the thermostat does not report the preset temperature).",
+            "temp_home": "Temperature of this level. Can be changed later from the card.",
+            "temp_sleep": "Temperature of this level. Can be changed later from the card.",
+            "temp_eco": "Temperature of this level. Can be changed later from the card.",
+            "temp_away": "Temperature of this level. Can be changed later from the card.",
+            "temp_comfort": "Temperature of this level. Can be changed later from the card.",
+            "temp_activity": "Temperature of this level. Can be changed later from the card."
           }
         },
         "sensors": {
@@ -370,7 +362,7 @@
             "occupancy_minutes": "Eco after no occupancy for"
           },
           "data_description": {
-            "temperature_sensors": "A sensor in the room is more accurate than the one in a TRV next to the radiator. Leave empty to use the thermostat's own sensor.",
+            "temperature_sensors": "Sensors in the room, used instead of the thermostat sensor (more accurate when the thermostat sits next to a heat source). Leave empty to use the thermostat sensor; needed for relays, which have no sensor.",
             "temperature_aggregation": "Only with several sensors: average, the coldest or the median.",
             "calibration_mode": "Needs a room temperature sensor above. Offset: corrects the TRV sensor. External temperature: writes the room temperature into the TRV (if it supports it). Off otherwise.",
             "calibration_entities": "Only with calibration: the TRV number entities (offset or external temperature).",
@@ -395,7 +387,7 @@
             "linked_window_sensors": "Windows of other rooms that also cool this one, e.g. the living room balcony door for the hall.",
             "window_open_delay": "How long a window must be open before the heating reacts. Short airing below this is ignored.",
             "window_close_delay": "How long to wait after closing before heating again.",
-            "window_action": "Frost protection keeps a minimum temperature. Turn off switches the thermostat off (if it supports it).",
+            "window_action": "Frost protection keeps a minimum temperature. Turn off stops the heating.",
             "window_drop_detect": "Treats a quick temperature drop as an open window for 15 minutes. Useful for rooms without window sensors.",
             "window_drop_degrees": "Drop that counts as an open window.",
             "window_drop_minutes": "Time in which the drop must happen."
