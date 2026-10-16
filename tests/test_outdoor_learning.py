@@ -124,12 +124,10 @@ class LearningTest(unittest.TestCase):
         learner = learning.HeatingRateLearner()
         learner.observe(self.T0, True, 21.5, 22.0, 5.0, tolerance=0.5)
         self.assertIsNone(learner.episode_start)
-        learner.observe(self.T0, True, 21.3, 22.0, 5.0, tolerance=0.5)
-        self.assertIsNone(learner.episode_start)
-        # A real rise (more than tolerance + 0.3 below) is learned.
-        learner.observe(self.T0, True, 21.2, 22.0, 5.0, tolerance=0.5)
+        # More than the tolerance below the target starts an episode.
+        learner.observe(self.T0, True, 21.4, 22.0, 5.0, tolerance=0.5)
         self.assertIsNotNone(learner.episode_start)
-        self.assertEqual(learning.start_gap(0.5), 0.8)
+        self.assertEqual(learning.start_gap(0.5), 0.5)
 
 
 if __name__ == "__main__":

@@ -651,12 +651,12 @@ class Room:
         if self.source == SOURCE_GT:
             value = self._gt_options().get("cold_tolerance")
             try:
-                return float(value) if value is not None else 0.3
+                return float(value) if value is not None else 0.0
             except (TypeError, ValueError):
-                return 0.3
+                return 0.0
         if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
             return float(self.config[CONF_HYSTERESIS])
-        return float(self.config.get(CONF_LEARN_TOLERANCE, 0.2))
+        return float(self.config.get(CONF_LEARN_TOLERANCE, 0.0))
 
     def time_to_target(self, outdoor: float | None) -> int | None:
         """Minutes until the target is reached at the learned rate (None when not heating up)."""
