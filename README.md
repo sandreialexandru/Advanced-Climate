@@ -124,18 +124,6 @@ Rules are evaluated from the top; the first one that applies wins:
 Then the adjustments (outdoor cutoff, compensation, tariff, PV, solar gain) and
 the safety limits.
 
-### Example: replacing four Scheduler schedules
-
-| Before (Scheduler component) | Advanced Climate |
-| --- | --- |
-| *Someone home* (workdays) | Profile `workday` |
-| *Weekend someone home* | Profile `weekend` |
-| *No person home (in Bucharest)* | Presence *nearby* → `eco` (nearby zone *Bucharest*) |
-| *Out of Bucharest (workday)* / *Weekend no person home* | Presence *far* → `away` |
-
-Disable the old schedules (or the automations that set the same thermostat)
-before enabling a room, otherwise both will change the thermostat; Advanced
-Climate would see those changes as manual changes.
 
 ## Entities
 
