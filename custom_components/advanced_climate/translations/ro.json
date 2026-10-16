@@ -274,7 +274,8 @@
             "command_mode": "Comandă",
             "hysteresis": "Histerezis",
             "min_on_minutes": "Timp minim pornit",
-            "min_off_minutes": "Timp minim oprit"
+            "min_off_minutes": "Timp minim oprit",
+            "learn_tolerance": "Toleranța termostatului"
           },
           "data_description": {
             "climates": "Termostatele sau TRV-urile camerei. Mai multe TRV-uri din aceeași cameră primesc aceeași comandă.",
@@ -282,7 +283,8 @@
             "command_mode": "Temperatură: integrarea trimite temperatura fiecărui nivel (majoritatea TRV-urilor). Preset: fiecare nivel folosește un preset al termostatului, cu temperatura din termostat. Pornit / oprit: termostatul doar e pornit și oprit, integrarea ține temperatura.",
             "hysteresis": "Doar pentru relee și pornit / oprit: încălzirea pornește sub țintă minus această valoare și se oprește peste țintă plus această valoare.",
             "min_on_minutes": "Doar pentru relee și pornit / oprit: timp minim pornit. 0 pentru încălzitoare cărora nu le strică pornirile scurte.",
-            "min_off_minutes": "Doar pentru relee și pornit / oprit: timp minim oprit între două porniri."
+            "min_off_minutes": "Doar pentru relee și pornit / oprit: timp minim oprit între două porniri.",
+            "learn_tolerance": "Doar pentru comanda Temperatură și Preset: cât lasă termostatul camera să scadă sub țintă înainte să încălzească (toleranța lui, de obicei 0,2–0,5 °C). Viteza de încălzire se învață doar din urcările care încep cu mai mult de atât plus 0,3 °C sub țintă. Pornit / oprit folosește histerezisul; Generic Thermostat, toleranța lui la rece."
           }
         },
         "levels": {

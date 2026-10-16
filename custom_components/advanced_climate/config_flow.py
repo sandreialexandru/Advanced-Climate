@@ -63,6 +63,7 @@ from .const import (
     CONF_HELPER_ON_PRESET,
     CONF_HOME_RULE,
     CONF_HYSTERESIS,
+    CONF_LEARN_TOLERANCE,
     CONF_LINKED_WINDOW_SENSORS,
     CONF_MAX_TEMP,
     CONF_MIN_OFF,
@@ -670,6 +671,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             fields[vol.Required(CONF_COMMAND_MODE, default=d[CONF_COMMAND_MODE])] = _select(
                 [COMMAND_TEMPERATURE, COMMAND_PRESET, COMMAND_HVAC], "command_mode"
             )
+            fields[_req(CONF_LEARN_TOLERANCE, d, ROOM_DEFAULTS)] = _number(0, 2, 0.1, "°C")
         else:
             fields[vol.Required(CONF_SWITCHES, default=d.get(CONF_SWITCHES, []))] = _entity(
                 ["switch", "input_boolean"], multiple=True

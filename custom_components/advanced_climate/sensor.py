@@ -19,6 +19,7 @@ from . import AdvancedClimateConfigEntry
 from .const import PRESENCE_STATES, PRESETS, RULES
 from .entity import HOUSE_ENTITY_KEYS, ROOM_ENTITY_KEYS, HouseEntity, RoomEntity, entity_map
 from .house import House
+from .learning import start_gap
 from .room import Room
 from .schedule import profiles_to_dict
 from .util import iso
@@ -205,6 +206,8 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "climate_entities": room.climates,
             "device_preset": room.device_preset(),
             "device_level": room.level_of_device_preset(room.device_preset()),
+            "time_to_target": room.time_to_target(room.house.outdoor.latest()),
+            "rate_learned": bool(room.learner.episodes),
             "device_levels": room.device_levels,
             "heat_demand": room.heat_demand,
             "day_boundary": room.house.day_boundary_minutes,
@@ -314,6 +317,7 @@ class HeatingRateSensor(RoomEntity, SensorEntity):
             "rates": learner.rates,
             "episodes": len(learner.episodes),
             "per_degree_outdoor": round(line[1], 3) if line else None,
+            "learning_starts_below_target": start_gap(self.room.learn_tolerance()),
             "last_episodes": [
                 {"outdoor": o, "rate": r, "at": at or None} for o, r, at in learner.episodes[-5:]
             ],

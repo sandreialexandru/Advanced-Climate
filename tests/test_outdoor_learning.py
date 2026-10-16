@@ -114,9 +114,22 @@ class LearningTest(unittest.TestCase):
         self._episode(learner, self.T0, 5.0)
         again = learning.HeatingRateLearner.from_dict(learner.as_dict())
         self.assertEqual(again.episodes, learner.episodes)
+        # Data of older versions is discarded.
         old = learning.HeatingRateLearner.from_dict({"rates": {"above_10": 0.284}})
-        self.assertEqual(old.episodes, [[15.0, 0.284, ""]])
-        self.assertAlmostEqual(old.rate(2.0), 0.284)
+        self.assertEqual(old.episodes, [])
+        self.assertEqual(old.rate(2.0), learning.DEFAULT_RATE)
+
+    def test_thermostat_cycles_not_learned(self) -> None:
+        # Generic Thermostat with cold_tolerance 0.5: it heats from 0.5 below the target.
+        learner = learning.HeatingRateLearner()
+        learner.observe(self.T0, True, 21.5, 22.0, 5.0, tolerance=0.5)
+        self.assertIsNone(learner.episode_start)
+        learner.observe(self.T0, True, 21.3, 22.0, 5.0, tolerance=0.5)
+        self.assertIsNone(learner.episode_start)
+        # A real rise (more than tolerance + 0.3 below) is learned.
+        learner.observe(self.T0, True, 21.2, 22.0, 5.0, tolerance=0.5)
+        self.assertIsNotNone(learner.episode_start)
+        self.assertEqual(learning.start_gap(0.5), 0.8)
 
 
 if __name__ == "__main__":

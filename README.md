@@ -135,8 +135,12 @@ Thermostat, the level temperatures (numbers).
 Each room learns how fast it heats up, in °C per hour, from its own heating
 episodes; nothing is assumed about the radiators or the boiler.
 
-- An **episode** starts when the room asks for heat at least 0.5 °C below the
-  target and ends when the target is reached or the heating stops. It is used
+- An **episode** starts when the room asks for heat more than *tolerance +
+  0.3 °C* below the target, so the small cycles of a thermostat that only keeps
+  the temperature are not learned. The tolerance is the *cold tolerance* of
+  Generic Thermostat, the *hysteresis* for relays and on / off control, and the
+  *Thermostat tolerance* room setting for other thermostats (default 0.2 °C).
+  The episode ends when the target is reached or the heating stops; it is used
   when it lasted at least 10 minutes and the temperature rose at least 0.3 °C.
 - Episodes during which a **window or door sensor** of the room (or a linked
   one from another room) was open are not used. Rooms without window sensors
@@ -152,8 +156,16 @@ episodes; nothing is assumed about the radiators or the boiler.
 
 The *Heating rate* sensor shows the rate for the current outdoor temperature;
 its attributes show the estimate at −10 / 0 / 10 / 20 °C, the number of
-episodes, the change per degree outdoors and the last episodes. Optimal start
-uses the same rate.
+episodes, the change per degree outdoors, how far below the target an episode
+starts and the last episodes. Optimal start uses the same rate.
+
+While a room is below its target the card shows the **time to the target**
+(e.g. *~35 min*) under the target temperature, from the learned rate for the
+current outdoor temperature; until the first episode it shows *learning…*.
+The *Decision* sensor has it as the `time_to_target` attribute (minutes).
+
+Version 1.7 discards the learning data of older versions, which also learned
+the small thermostat cycles.
 
 ## Services
 

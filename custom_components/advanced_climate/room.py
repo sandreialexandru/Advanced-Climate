@@ -40,6 +40,7 @@ from .const import (
     CONF_HELPER_OFF_PRESET,
     CONF_HELPER_ON_PRESET,
     CONF_HYSTERESIS,
+    CONF_LEARN_TOLERANCE,
     CONF_LINKED_WINDOW_SENSORS,
     CONF_MAX_TEMP,
     CONF_MIN_OFF,
@@ -645,6 +646,29 @@ class Room:
         ):
             self._drop_until = now + timedelta(minutes=TEMP_DROP_HOLD_MINUTES)
 
+    def learn_tolerance(self) -> float:
+        """How far below the target the thermostat lets the room fall before heating."""
+        if self.source == SOURCE_GT:
+            value = self._gt_options().get("cold_tolerance")
+            try:
+                return float(value) if value is not None else 0.3
+            except (TypeError, ValueError):
+                return 0.3
+        if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
+            return float(self.config[CONF_HYSTERESIS])
+        return float(self.config.get(CONF_LEARN_TOLERANCE, 0.2))
+
+    def time_to_target(self, outdoor: float | None) -> int | None:
+        """Minutes until the target is reached at the learned rate (None when not heating up)."""
+        if self.current_temp is None or self.target_temperature is None:
+            return None
+        if self.decision is None or self.decision.target.kind == KIND_OFF or self.window_open:
+            return None
+        gap = self.target_temperature - self.current_temp
+        if gap <= 0.1:
+            return None
+        return max(1, round(gap / self.learner.rate(outdoor) * 60))
+
     def _window_sensor_open(self) -> bool:
         """A window or door sensor of the room (or a linked one) is open right now."""
         sensors = as_list(self.config.get(CONF_WINDOW_SENSORS)) + as_list(
@@ -894,7 +918,7 @@ class Room:
         self._update_demand()
         self.learner.observe(
             now, self.heat_demand, self.current_temp, self.target_temperature,
-            house.outdoor.latest(), self._window_sensor_open(),
+            house.outdoor.latest(), self._window_sensor_open(), self.learn_tolerance(),
         )
         self._check_alerts(now)
 
