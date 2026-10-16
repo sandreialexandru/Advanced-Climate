@@ -281,10 +281,34 @@
             "climates": "The thermostats or TRVs of this room. Several TRVs in one room get the same command.",
             "switches": "The relays that heat this room.",
             "command_mode": "Temperature: the integration sends the temperature of each level (most TRVs). Preset: each level uses a preset of the thermostat, with the thermostat's temperature. On / off: the thermostat is only switched on and off, the integration keeps the temperature.",
-            "hysteresis": "Only for relays and on / off: heating starts below target minus this value and stops above target plus this value.",
-            "min_on_minutes": "Only for relays and on / off: minimum time on. 0 for heaters that do not mind short cycles.",
-            "min_off_minutes": "Only for relays and on / off: minimum time off between two starts.",
-            "learn_tolerance": "Only for Temperature and Preset commands: how far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target. On / off uses the hysteresis; Generic Thermostat its cold tolerance."
+            "hysteresis": "Heating starts below target minus this value and stops above target plus this value.",
+            "min_on_minutes": "Minimum time on. 0 for heaters that do not mind short cycles.",
+            "min_off_minutes": "Minimum time off between two starts.",
+            "learn_tolerance": "How far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target."
+          }
+        },
+        "control_on_off": {
+          "title": "On / off control",
+          "description": "The integration switches the heating on and off around the target.",
+          "data": {
+            "hysteresis": "Hysteresis",
+            "min_on_minutes": "Minimum on time",
+            "min_off_minutes": "Minimum off time"
+          },
+          "data_description": {
+            "hysteresis": "Heating starts below target minus this value and stops above target plus this value.",
+            "min_on_minutes": "Minimum time on. 0 for heaters that do not mind short cycles.",
+            "min_off_minutes": "Minimum time off between two starts."
+          }
+        },
+        "control_thermostat": {
+          "title": "Thermostat",
+          "description": "The thermostat keeps the temperature; the integration only sends the level or the temperature.",
+          "data": {
+            "learn_tolerance": "Thermostat tolerance"
+          },
+          "data_description": {
+            "learn_tolerance": "How far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target."
           }
         },
         "levels": {
@@ -348,7 +372,7 @@
           "data_description": {
             "temperature_sensors": "A sensor in the room is more accurate than the one in a TRV next to the radiator. Leave empty to use the thermostat's own sensor.",
             "temperature_aggregation": "Only with several sensors: average, the coldest or the median.",
-            "calibration_mode": "Only for TRVs with a room sensor above. Offset: corrects the TRV sensor. External temperature: writes the room temperature into the TRV (if it supports it). Off otherwise.",
+            "calibration_mode": "Needs a room temperature sensor above. Offset: corrects the TRV sensor. External temperature: writes the room temperature into the TRV (if it supports it). Off otherwise.",
             "calibration_entities": "Only with calibration: the TRV number entities (offset or external temperature).",
             "occupancy_sensors": "Motion / presence sensors of the room: when the room is empty for a while it goes to eco even if someone is home. Leave empty for rooms that should follow only the schedule.",
             "occupancy_minutes": "How long the room must be empty before eco."
@@ -413,7 +437,7 @@
           },
           "data_description": {
             "solar_offset": "Negative value (e.g. -1) lowers the target while the sun shines, for rooms that get warm from the sun. 0 = off.",
-            "valve_exercise": "Only for TRVs: opens them fully 5 minutes once a week, against limescale. Leave off for Generic Thermostat and relays.",
+            "valve_exercise": "Opens the TRVs fully 5 minutes once a week, against limescale.",
             "valve_exercise_day": "Day of the valve exercise.",
             "valve_exercise_time": "Time of the valve exercise (best when nobody needs heat)."
           }

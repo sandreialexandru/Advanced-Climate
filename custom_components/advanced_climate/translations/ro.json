@@ -281,10 +281,34 @@
             "climates": "Termostatele sau TRV-urile camerei. Mai multe TRV-uri din aceeași cameră primesc aceeași comandă.",
             "switches": "Releele care încălzesc camera.",
             "command_mode": "Temperatură: integrarea trimite temperatura fiecărui nivel (majoritatea TRV-urilor). Preset: fiecare nivel folosește un preset al termostatului, cu temperatura din termostat. Pornit / oprit: termostatul doar e pornit și oprit, integrarea ține temperatura.",
-            "hysteresis": "Doar pentru relee și pornit / oprit: încălzirea pornește sub țintă minus această valoare și se oprește peste țintă plus această valoare.",
-            "min_on_minutes": "Doar pentru relee și pornit / oprit: timp minim pornit. 0 pentru încălzitoare cărora nu le strică pornirile scurte.",
-            "min_off_minutes": "Doar pentru relee și pornit / oprit: timp minim oprit între două porniri.",
-            "learn_tolerance": "Doar pentru comanda Temperatură și Preset: cât lasă termostatul camera să scadă sub țintă înainte să încălzească (toleranța lui). Viteza de încălzire se învață din urcările care încep cu cel puțin atât sub țintă. Pornit / oprit folosește histerezisul; Generic Thermostat, toleranța lui la rece."
+            "hysteresis": "Încălzirea pornește sub țintă minus această valoare și se oprește peste țintă plus această valoare.",
+            "min_on_minutes": "Timp minim pornit. 0 pentru încălzitoare cărora nu le strică pornirile scurte.",
+            "min_off_minutes": "Timp minim oprit între două porniri.",
+            "learn_tolerance": "Cât lasă termostatul camera să scadă sub țintă înainte să încălzească (toleranța lui). Viteza de încălzire se învață din urcările care încep cu cel puțin atât sub țintă."
+          }
+        },
+        "control_on_off": {
+          "title": "Comandă pornit / oprit",
+          "description": "Integrarea pornește și oprește încălzirea în jurul țintei.",
+          "data": {
+            "hysteresis": "Histerezis",
+            "min_on_minutes": "Timp minim pornit",
+            "min_off_minutes": "Timp minim oprit"
+          },
+          "data_description": {
+            "hysteresis": "Încălzirea pornește sub țintă minus această valoare și se oprește peste țintă plus această valoare.",
+            "min_on_minutes": "Timp minim pornit. 0 pentru încălzitoare cărora nu le strică pornirile scurte.",
+            "min_off_minutes": "Timp minim oprit între două porniri."
+          }
+        },
+        "control_thermostat": {
+          "title": "Termostat",
+          "description": "Termostatul ține temperatura; integrarea doar trimite nivelul sau temperatura.",
+          "data": {
+            "learn_tolerance": "Toleranța termostatului"
+          },
+          "data_description": {
+            "learn_tolerance": "Cât lasă termostatul camera să scadă sub țintă înainte să încălzească (toleranța lui). Viteza de încălzire se învață din urcările care încep cu cel puțin atât sub țintă."
           }
         },
         "levels": {
@@ -348,7 +372,7 @@
           "data_description": {
             "temperature_sensors": "Un senzor în cameră e mai exact decât cel din TRV-ul de lângă calorifer. Lasă gol ca să folosești senzorul termostatului.",
             "temperature_aggregation": "Doar cu mai mulți senzori: media, cel mai rece sau mediana.",
-            "calibration_mode": "Doar pentru TRV-uri cu senzor de cameră setat mai sus. Offset: corectează senzorul TRV-ului. Temperatură externă: scrie temperatura camerei în TRV (dacă știe). Altfel oprit.",
+            "calibration_mode": "Are nevoie de un senzor de temperatură al camerei, setat mai sus. Offset: corectează senzorul TRV-ului. Temperatură externă: scrie temperatura camerei în TRV (dacă știe). Altfel oprit.",
             "calibration_entities": "Doar cu calibrare: entitățile number ale TRV-urilor (offset sau temperatură externă).",
             "occupancy_sensors": "Senzori de mișcare / prezență din cameră: când camera e goală o vreme trece pe eco chiar dacă e cineva acasă. Lasă gol pentru camerele care urmează doar programul.",
             "occupancy_minutes": "Cât timp trebuie să fie camera goală până la eco."
@@ -413,7 +437,7 @@
           },
           "data_description": {
             "solar_offset": "Valoare negativă (de ex. -1) coboară ținta cât e soare, pentru camerele încălzite de soare. 0 = oprit.",
-            "valve_exercise": "Doar pentru TRV-uri: le deschide complet 5 minute o dată pe săptămână, contra calcarului. Lasă oprit pentru Generic Thermostat și relee.",
+            "valve_exercise": "Deschide TRV-urile complet 5 minute o dată pe săptămână, contra calcarului.",
             "valve_exercise_day": "Ziua mișcării robinetelor.",
             "valve_exercise_time": "Ora mișcării robinetelor (ideal când nu e nevoie de căldură)."
           }
