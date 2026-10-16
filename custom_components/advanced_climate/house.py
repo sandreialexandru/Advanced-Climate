@@ -137,6 +137,8 @@ class House:
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}"
         )
         self.rooms: dict[str, Room] = {}
+        self.device_id: str | None = None
+        self.config_snapshot: tuple | None = None
         self.started = False
 
         # Persisted state

@@ -237,6 +237,14 @@ class Room:
     # ------------------------------------------------------------------
     # Setup
     # ------------------------------------------------------------------
+    def apply_schedule(self, text: str) -> None:
+        """Use a new schedule without reloading the integration."""
+        self.config[CONF_SCHEDULE] = text
+        self.schedule_error = None
+        self.schedule = self._build_schedule(text)
+        if self.profile_select != AUTO_PROFILE and self.profile_select not in self.schedule.profiles:
+            self.profile_select = AUTO_PROFILE
+
     def _build_schedule(self, text: str) -> Schedule:
         valid_names = list(PRESETS) + [n for n in self.preset_names.values() if n not in PRESETS]
         try:
