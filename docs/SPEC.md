@@ -94,7 +94,7 @@ home_office: 00:00 sleep, 07:00 comfort, 23:00 sleep
 | Calendar | none | An event titled with a profile name selects that profile; a preset name selects that level |
 | Schedule source | internal | Internal schedule or an existing HA **Schedule helper** |
 | Optimal start | off | Start heating early so the next level is reached on time |
-| Learned heating rate | on with optimal start | °C/h per room, by outdoor temperature bucket |
+| Learned heating rate | on with optimal start | °C/h per room, a straight line of the outdoor temperature from the last 30 heating episodes; episodes with an open window sensor are not used |
 | Maximum early start | 2 h | Limit of the optimal start |
 | Optimal stop | off | Lower the target earlier, using the thermal inertia |
 | Day boundary | 00:00 | For night shifts: when the schedule day changes |

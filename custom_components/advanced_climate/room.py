@@ -645,6 +645,16 @@ class Room:
         ):
             self._drop_until = now + timedelta(minutes=TEMP_DROP_HOLD_MINUTES)
 
+    def _window_sensor_open(self) -> bool:
+        """A window or door sensor of the room (or a linked one) is open right now."""
+        sensors = as_list(self.config.get(CONF_WINDOW_SENSORS)) + as_list(
+            self.config.get(CONF_LINKED_WINDOW_SENSORS)
+        )
+        return any(
+            (st := self.hass.states.get(eid)) is not None and st.state == STATE_ON
+            for eid in sensors
+        )
+
     def _window_raw(self, now: datetime) -> bool:
         if self.house.windows_ignored:
             return False
@@ -884,7 +894,7 @@ class Room:
         self._update_demand()
         self.learner.observe(
             now, self.heat_demand, self.current_temp, self.target_temperature,
-            house.outdoor.latest(),
+            house.outdoor.latest(), self._window_sensor_open(),
         )
         self._check_alerts(now)
 
