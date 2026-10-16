@@ -16,7 +16,7 @@
  *   compact: false               # one row per room (and the house); tap a row to open it
  */
 
-const CARD_VERSION = "1.5.4";
+const CARD_VERSION = "1.7.0";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -132,6 +132,8 @@ const TEXT = {
     drag_hint: "Drag the handles on the bar to move a start time in 5-minute steps (arrow keys: 5 min, Shift: 1 h). Levels are chosen in the list.",
     copy_to: "Copy over…",
     new_profile: "new",
+    eta_learning: "learning…",
+    eta_help: "Time until the target at the heating rate learned for the current outdoor temperature.",
     zoom_in: "Zoom in",
     zoom_out: "Zoom out",
     zoom_reset: "Whole period",
@@ -226,6 +228,8 @@ const TEXT = {
     drag_hint: "Trage de mânerele de pe bară ca să muți o oră de început din 5 în 5 minute (săgeți: 5 min, Shift: 1 h). Nivelurile se aleg în listă.",
     copy_to: "Copiază peste…",
     new_profile: "nou",
+    eta_learning: "se învață…",
+    eta_help: "Timpul până la țintă, după viteza de încălzire învățată pentru temperatura de afară de acum.",
     zoom_in: "Mărește",
     zoom_out: "Micșorează",
     zoom_reset: "Toată perioada",
@@ -496,14 +500,30 @@ class AdvancedClimateCard extends HTMLElement {
     )}</span></button>`;
   }
 
-  _tempPair(current, target, color) {
+  /** "~35 min" until the target, from the learned heating rate. */
+  _eta(a) {
+    const current = num(a.current_temperature);
+    const target = num(a.target_temperature);
+    if (current === null || target === null || target - current <= 0.1) return "";
+    if (a.time_to_target === null || a.time_to_target === undefined) return "";
+    if (!a.rate_learned) return this._t("eta_learning");
+    const m = Math.round(a.time_to_target);
+    if (m < 60) return `~${m} min`;
+    const h = Math.floor(m / 60);
+    const r = Math.round((m % 60) / 5) * 5;
+    return r ? `~${h} h ${r} min` : `~${h} h`;
+  }
+
+  _tempPair(current, target, color, eta = "") {
     return `<div class="temps">
         <div class="tval"><span class="tag">${this._t("now_tag")}</span><span class="tnum">${this._temp(
           current
         )}</span></div>
         <div class="tval target" style="--c:${color}"><span class="tag">${this._t(
           "target_tag"
-        )}</span><span class="tnum">${this._temp(target)}</span></div>
+        )}</span><span class="tnum">${this._temp(target)}</span>${
+          eta ? `<span class="eta" title="${esc(this._t("eta_help"))}">${esc(eta)}</span>` : ""
+        }</div>
       </div>`;
   }
 
@@ -658,7 +678,7 @@ class AdvancedClimateCard extends HTMLElement {
         <button class="room-title" data-action="fold" data-key="room-${esc(key)}" aria-expanded="${!folded}">
           <span class="chev ${folded ? "" : "open"}"></span><span class="name">${esc(a.room_name)}</span>
         </button>
-        ${this._tempPair(a.current_temperature, a.target_temperature, color)}
+        ${this._tempPair(a.current_temperature, a.target_temperature, color, this._eta(a))}
       </div>
       <div class="decision"><span class="pill rule" style="--c:${color}">${esc(
         this._label(stateObj)
@@ -700,7 +720,7 @@ class AdvancedClimateCard extends HTMLElement {
     return `<button class="crow" data-action="fold" data-key="room-${esc(a.room_id)}" aria-expanded="false" style="--c:${color}">
         <span class="cbar"></span>
         <span class="ctext"><span class="cname">${esc(a.room_name)}</span>
-          <span class="crule">${esc(this._label(stateObj))}</span></span>
+          <span class="crule">${this._eta(a) ? `${esc(this._eta(a))} · ` : ""}${esc(this._label(stateObj))}</span></span>
         ${icons.join("")}
         <span class="ctemp"><span class="cnow">${this._temp(a.current_temperature)}</span><span class="carrow">→</span><b>${this._temp(
           a.target_temperature
@@ -1852,6 +1872,7 @@ const STYLE = `
   .tval .tnum { font-size: 1.45em; font-variant-numeric: tabular-nums; line-height: 1.15; font-weight: 300; }
   .tval.target { background: color-mix(in srgb, var(--c) 16%, transparent); }
   .tval.target .tnum { font-weight: 600; }
+  .tval .eta { font-size: 0.68em; color: var(--ac-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .decision { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .reason { margin: 0; color: var(--ac-muted); font-size: 0.9em; }
   .chart-card { border-radius: 14px; background: var(--ac-surface); padding: 12px 12px 10px;

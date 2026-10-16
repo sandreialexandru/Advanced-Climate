@@ -274,7 +274,8 @@
             "command_mode": "Command",
             "hysteresis": "Hysteresis",
             "min_on_minutes": "Minimum on time",
-            "min_off_minutes": "Minimum off time"
+            "min_off_minutes": "Minimum off time",
+            "learn_tolerance": "Thermostat tolerance"
           },
           "data_description": {
             "climates": "The thermostats or TRVs of this room. Several TRVs in one room get the same command.",
@@ -282,7 +283,8 @@
             "command_mode": "Temperature: the integration sends the temperature of each level (most TRVs). Preset: each level uses a preset of the thermostat, with the thermostat's temperature. On / off: the thermostat is only switched on and off, the integration keeps the temperature.",
             "hysteresis": "Only for relays and on / off: heating starts below target minus this value and stops above target plus this value.",
             "min_on_minutes": "Only for relays and on / off: minimum time on. 0 for heaters that do not mind short cycles.",
-            "min_off_minutes": "Only for relays and on / off: minimum time off between two starts."
+            "min_off_minutes": "Only for relays and on / off: minimum time off between two starts.",
+            "learn_tolerance": "Only for Temperature and Preset commands: how far below the target the thermostat lets the room fall before heating (its own tolerance, often 0.2–0.5 °C). The heating rate is learned only from rises that start more than this plus 0.3 °C below the target. On / off uses the hysteresis; Generic Thermostat its cold tolerance."
           }
         },
         "levels": {

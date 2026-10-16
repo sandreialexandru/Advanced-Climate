@@ -1,8 +1,10 @@
 """Heating rate learning for optimal start (pure Python).
 
 The learner observes heating episodes (the room asks for heat and the
-temperature rises from at least 0.5 °C below the target) and keeps the last
-episodes. The heating rate in °C per hour is then estimated as a straight
+temperature rises from clearly below the target) and keeps the last episodes.
+An episode only starts when the room is more than the thermostat tolerance
+plus a margin below the target, so the small cycles of a thermostat that only
+keeps the temperature are not learned. The heating rate in °C per hour is then estimated as a straight
 line of the outdoor temperature, so every episode helps at every outdoor
 temperature and temperatures not seen yet are estimated from the trend.
 
@@ -16,6 +18,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 DEFAULT_RATE = 1.0  # °C per hour, until the first episode
+START_MARGIN = 0.3  # °C below "target - tolerance" before an episode starts
+DATA_VERSION = 2  # learning data of older versions is discarded
 MIN_RATE = 0.2
 MAX_RATE = 10.0
 MIN_EPISODE_MINUTES = 10
@@ -29,8 +33,10 @@ MAX_SLOPE = 0.3  # (°C/h) per °C outdoor
 # How far beyond the outdoor temperatures seen so far the line is used.
 EXTRAPOLATE = 5.0  # °C
 
-# Buckets of the versions before 1.6 (migrated to episodes).
-_LEGACY_BUCKETS = {"below_0": -5.0, "0_10": 5.0, "above_10": 15.0}
+
+def start_gap(tolerance: float) -> float:
+    """Degrees below the target needed to start an episode."""
+    return round(max(0.0, tolerance) + START_MARGIN, 2)
 
 
 @dataclass(slots=True)
@@ -92,16 +98,22 @@ class HeatingRateLearner:
         target: float | None,
         outdoor: float | None,
         window_open: bool = False,
+        tolerance: float = 0.2,
     ) -> float | None:
         """Feed an observation. Returns the measured rate when an episode is used.
 
         ``window_open`` is True while a window or door sensor of the room is open;
-        such an episode is not used.
+        such an episode is not used. ``tolerance`` is how far below the target the
+        thermostat lets the room fall before heating (its normal cycle).
         """
         if current is None:
             return None
         if heating and self.episode_start is None:
-            if target is not None and target - current >= 0.5 and not window_open:
+            if (
+                target is not None
+                and target - current >= start_gap(tolerance)
+                and not window_open
+            ):
                 self.episode_start = now
                 self.episode_temp = current
                 self.episode_outdoor = [outdoor] if outdoor is not None else []
@@ -138,13 +150,14 @@ class HeatingRateLearner:
     # ----------------------------------------------------------- persistence
     def as_dict(self) -> dict:
         """Serialize."""
-        return {"episodes": self.episodes}
+        return {"version": DATA_VERSION, "episodes": self.episodes}
 
     @classmethod
     def from_dict(cls, data: dict | None) -> HeatingRateLearner:
-        """Restore (rates per bucket of older versions become one episode each)."""
+        """Restore. Data of older versions is discarded: it also learned the small
+        maintenance cycles of the thermostats."""
         obj = cls()
-        if not data:
+        if not data or data.get("version") != DATA_VERSION:
             return obj
         episodes = data.get("episodes")
         if isinstance(episodes, list):
@@ -153,12 +166,6 @@ class HeatingRateLearner:
                     outdoor = None if item[0] is None else float(item[0])
                     obj.episodes.append([outdoor, float(item[1]), str(item[2]) if len(item) > 2 else ""])
                 except (TypeError, ValueError, IndexError):
-                    continue
-        elif isinstance(data.get("rates"), dict):
-            for bucket, rate in data["rates"].items():
-                try:
-                    obj.episodes.append([_LEGACY_BUCKETS.get(str(bucket)), float(rate), ""])
-                except (TypeError, ValueError):
                     continue
         del obj.episodes[:-MAX_EPISODES]
         return obj
