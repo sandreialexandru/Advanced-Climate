@@ -24,7 +24,7 @@ other thermostats or plain relays are supported as well.
 - **Schedules** with `workday` / `weekend` / weekday / custom profiles, holidays
   from the Workday integration, profiles chosen from a calendar, a day boundary
   for night shifts, or an existing Schedule helper.
-- **Optimal start / stop** with a learned heating rate per room.
+- **Optimal start / stop** with a learned heating rate per room (see *Heating rate learning*).
 - **Windows**: open/close delays, frost protection or off, detection from a
   sudden temperature drop, windows of neighbouring rooms, alerts.
 - **Weather**: outdoor cutoff with averaging and hysteresis, heating season
@@ -129,6 +129,31 @@ Room: *Decision* (enum with the reason in the attributes), *Target temperature*,
 demand*, *Window open*, *Manual change*, *Profile* (select), *Child lock*
 (switch), *Clear manual change* (button) and, for rooms without Generic
 Thermostat, the level temperatures (numbers).
+
+## Heating rate learning
+
+Each room learns how fast it heats up, in °C per hour, from its own heating
+episodes; nothing is assumed about the radiators or the boiler.
+
+- An **episode** starts when the room asks for heat at least 0.5 °C below the
+  target and ends when the target is reached or the heating stops. It is used
+  when it lasted at least 10 minutes and the temperature rose at least 0.3 °C.
+- Episodes during which a **window or door sensor** of the room (or a linked
+  one from another room) was open are not used. Rooms without window sensors
+  use every episode.
+- The last 30 episodes are kept with the average **outdoor temperature** of
+  each. The rate is a straight line of the outdoor temperature (faster when it
+  is warmer outside, never slower), so every episode helps at every outdoor
+  temperature and a temperature not seen yet is estimated from the trend, up
+  to 5 °C beyond the coldest and warmest seen. With fewer than 3 episodes, or
+  outdoor temperatures less than 3 °C apart, the average of the episodes is
+  used.
+- Until the first episode the rate is 1 °C/h.
+
+The *Heating rate* sensor shows the rate for the current outdoor temperature;
+its attributes show the estimate at −10 / 0 / 10 / 20 °C, the number of
+episodes, the change per degree outdoors and the last episodes. Optimal start
+uses the same rate.
 
 ## Services
 

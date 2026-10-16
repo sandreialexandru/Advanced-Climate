@@ -289,6 +289,8 @@ class NextChangeSensor(RoomEntity, SensorEntity):
 class HeatingRateSensor(RoomEntity, SensorEntity):
     """Learned heating rate."""
 
+    _unrecorded_attributes = frozenset({"rates", "last_episodes"})
+
     _attr_native_unit_of_measurement = "°C/h"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -306,7 +308,16 @@ class HeatingRateSensor(RoomEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """All buckets."""
-        return {"rates": self.room.learner.rates}
+        learner = self.room.learner
+        line = learner.fit()
+        return {
+            "rates": learner.rates,
+            "episodes": len(learner.episodes),
+            "per_degree_outdoor": round(line[1], 3) if line else None,
+            "last_episodes": [
+                {"outdoor": o, "rate": r, "at": at or None} for o, r, at in learner.episodes[-5:]
+            ],
+        }
 
 
 class RoomRuntimeSensor(RoomEntity, SensorEntity):
