@@ -2,6 +2,8 @@
 
 # Advanced Climate
 
+**English** | [Română](README.ro.md)
+
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
 [![Validate](https://github.com/sandreialexandru/Advanced-Climate/actions/workflows/validate.yml/badge.svg)](https://github.com/sandreialexandru/Advanced-Climate/actions/workflows/validate.yml)
 [![Tests](https://github.com/sandreialexandru/Advanced-Climate/actions/workflows/tests.yml/badge.svg)](https://github.com/sandreialexandru/Advanced-Climate/actions/workflows/tests.yml)
@@ -54,7 +56,7 @@ other thermostats or plain relays are supported as well.
   reason, an event on every change, diagnostics with the last 100 decisions and
   a Lovelace card with an editable schedule.
 
-The full specification is in [docs/SPEC.md](docs/SPEC.md).
+The full specification is in [docs/SPEC.md](docs/SPEC.md) ([Română](docs/SPEC.ro.md)).
 
 ## Installation
 
@@ -292,7 +294,7 @@ badges, the *Profile* select, the *Child lock* switch and *Back to automatic*.
 
 ## Translations
 
-English and Romanian.
+English and Romanian (the integration, the card and this documentation).
 
 ## License
 

@@ -1,5 +1,7 @@
 # Advanced Climate – specification
 
+**English** | [Română](SPEC.ro.md)
+
 Advanced Climate computes **one target per room** from the schedule, presence,
 windows, weather and manual changes, and applies it to the heating devices.
 Everything is configured from the UI (config flow, options flow and room
@@ -15,7 +17,7 @@ fits. Rooms heated by other thermostats, TRVs or plain relays are supported too.
   (person, zone, window, time, weather) triggers a reevaluation, not only the
   start of a time slot. A periodic check (default every 5 minutes) catches
   anything missed.
-- **A fixed and explicit rule hierarchy** (section 13), so two rules never fight.
+- **A fixed and explicit rule hierarchy** (section 12), so two rules never fight.
 - **Every decision has a visible reason**: the *Decision* sensor of the room
   shows the winning rule and a text explaining it.
 - **State survives restarts**: overrides, vacation, learned heating and cooling.
@@ -102,7 +104,7 @@ home_office: 00:00 sleep, 07:00 comfort, 23:00 sleep
 | Learned cooling | on with optimal stop | One coefficient per room of the inside / outside difference (mean of the last 30 episodes). An episode lasts from the end to the start of the heat demand and is used when it lasted at least 10 minutes and the temperature fell, however little; episodes with an open window sensor are not used |
 | Optimal stop tolerance | GT: cold tolerance; relays and thermostats without `hvac_action`: hysteresis; others: 0 | The comfort kept by the optimal stop: how far below the current level the room may fall before the change |
 | Maximum early stop | 30 min | Limit of the optimal stop; until the cooling is learned the lower level starts this early |
-| Optimal stop | off | Needs an outdoor temperature (sensor or weather; without one the saved outdoor values are dropped). Lower the level as early as the room can cool and stay in the comfort of the current level (tolerance: GT cold tolerance, relay hysteresis or a room setting); the cooling is learned from periods without heat demand, as a coefficient of the inside / outside difference; limited by a maximum; continues once started, cancelled (current level until the change) if the room falls below the comfort |
+| Optimal stop | off | Needs an outdoor temperature (sensor or weather; without one the saved outdoor values are dropped). Lower the level as early as the room can cool and stay in the comfort of the current level (the tolerance above); the cooling is learned from periods without heat demand, as a coefficient of the inside / outside difference; limited by a maximum; continues once started, cancelled (current level until the change) if the room falls below the comfort |
 | Day boundary | 00:00 | For night shifts: when the schedule day changes |
 
 ## 4. Presence
@@ -188,7 +190,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| Hysteresis | 0.3 °C | Relays only (not with GT, which has its own tolerances) |
+| Hysteresis | 0.3 °C | Relays, on / off control and thermostats without `hvac_action` (not with GT, which has its own tolerances) |
 | Minimum on / off time | 5 / 5 min | Relays only (not with GT) |
 | Dynamic tariff | off | Lower by X °C above a price, preheat below a price |
 | PV surplus | off | Raise by X °C with surplus |
@@ -207,7 +209,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | Restart | restore | Overrides, vacation and learned data are kept |
 | Periodic reevaluation | 5 min | In addition to events |
 
-## 12. Visibility
+## 11. Visibility
 
 | Entity / interface | Shows |
 | --- | --- |
@@ -226,7 +228,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | Lovelace card | Room state and decision; 24 h chart (temperature, target, heating) with the next 12 h planned and zoom to the minute; schedule editable by dragging (5 minutes), copy of a day; time to the target or, during an optimal stop, the expected temperature at the change; heating time per day / week / month; compact mode |
 | Diagnostics | Configuration and the last 100 decisions |
 
-## 13. Rule hierarchy
+## 12. Rule hierarchy
 
 Rules are evaluated from the top down for every room; the first rule that
 applies sets the level.
@@ -244,7 +246,7 @@ correct a heating target by a few tenths of a degree, and the result always goes
 through the safety limits. The reason shown by the decision sensor is the
 winning rule.
 
-## 14. Glossary RO → EN
+## 13. Glossary RO → EN
 
 | Română | English |
 | --- | --- |
