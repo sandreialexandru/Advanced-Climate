@@ -71,11 +71,13 @@
       "heating_thermostat": {
         "title": "Thermostat",
         "data": {
-          "learn_tolerance": "Thermostat tolerance"
+          "learn_tolerance": "Thermostat tolerance",
+          "hysteresis": "Hysteresis"
         },
         "description": "The thermostat keeps the temperature; the integration only sends the level or the temperature.",
         "data_description": {
-          "learn_tolerance": "How far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target."
+          "learn_tolerance": "How far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target.",
+          "hysteresis": "This thermostat does not report when it heats (no hvac_action): it counts as heating from this far below its set temperature until this far above it, like a relay. Used for the heat demand, the boiler, the heating time and the learning."
         }
       }
     },
@@ -268,11 +270,13 @@
       "heating_thermostat": {
         "title": "Thermostat",
         "data": {
-          "learn_tolerance": "Thermostat tolerance"
+          "learn_tolerance": "Thermostat tolerance",
+          "hysteresis": "Hysteresis"
         },
         "description": "The thermostat keeps the temperature; the integration only sends the level or the temperature.",
         "data_description": {
-          "learn_tolerance": "How far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target."
+          "learn_tolerance": "How far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target.",
+          "hysteresis": "This thermostat does not report when it heats (no hvac_action): it counts as heating from this far below its set temperature until this far above it, like a relay. Used for the heat demand, the boiler, the heating time and the learning."
         }
       },
       "presence_details": {
@@ -415,10 +419,12 @@
           "title": "Thermostat",
           "description": "The thermostat keeps the temperature; the integration only sends the level or the temperature.",
           "data": {
-            "learn_tolerance": "Thermostat tolerance"
+            "learn_tolerance": "Thermostat tolerance",
+            "hysteresis": "Hysteresis"
           },
           "data_description": {
-            "learn_tolerance": "How far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target."
+            "learn_tolerance": "How far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target.",
+            "hysteresis": "This thermostat does not report when it heats (no hvac_action): it counts as heating from this far below its set temperature until this far above it, like a relay. Used for the heat demand, the boiler, the heating time and the learning."
           }
         },
         "levels": {
@@ -503,7 +509,7 @@
           "data_description": {
             "schedule_source": "Internal schedule: written here or edited from the card. Schedule helper: a Home Assistant Schedule helper decides between two levels.",
             "optimal_start": "Starts heating early so the next level is reached on time. The heating speed is learned in a few days.",
-            "optimal_stop": "Lowers the level before the next colder one, as early as the room can cool without falling out of the comfort of the current level. The cooling is learned from the periods without heat demand."
+            "optimal_stop": "Lowers the level before the next colder one, as early as the room can cool without falling out of the comfort of the current level. The cooling is learned from the periods without heat demand. Needs an outdoor temperature (sensor or weather) in the house settings; shown only then."
           }
         },
         "extras": {

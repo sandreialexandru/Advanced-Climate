@@ -37,6 +37,7 @@ entry for the **house** (people, zones, global mode, shared settings) and one
 | External temperature sensors | none | Used instead of the device sensor; several sensors → mean, minimum or median |
 | TRV calibration | off | Offset calculated from the external sensor, or the external temperature written to the TRV input (in the unit of the TRV entity) |
 | Thermostat tolerance | GT: cold tolerance; relays: hysteresis; others: 0 | How far below the target the thermostat lets the room fall before heating; heating episodes are learned from this far below the target |
+| Heat demand | `hvac_action` | Thermostats without `hvac_action` count as heating from the hysteresis below their set temperature to the hysteresis above it, like a relay |
 | Boiler | none | Switched on when enough rooms ask for heat (with minimum on/off times) |
 | Rooms needed | 1 | Number of rooms that must ask for heat to start the boiler |
 | Reference room | none | Only this room decides for the boiler |
@@ -96,12 +97,12 @@ home_office: 00:00 sleep, 07:00 comfort, 23:00 sleep
 | Calendar | none | An event titled with a profile name selects that profile; a preset name selects that level |
 | Schedule source | internal | Internal schedule or an existing HA **Schedule helper** |
 | Optimal start | off | Start heating early so the next level is reached on time |
-| Learned heating rate | on with optimal start | °C/h per room, a straight line of the outdoor temperature from the last 30 heating episodes (with fewer than 3 episodes or outdoor temperatures less than 3 °C apart: their average). An episode starts at least the thermostat tolerance below the target and is used when the heat demand lasted at least 10 minutes and the temperature rose, however little; episodes with an open window sensor are not used. No minimum or maximum rate; until the first episode 1 °C/h |
+| Learned heating rate | on with optimal start | °C/h per room, a straight line of the outdoor temperature from the last 30 heating episodes (with fewer than 3 episodes or outdoor temperatures less than 3 °C apart: their average). An episode starts at least the thermostat tolerance below the target and is used when the heat demand lasted at least 10 minutes and the temperature rose, however little; episodes with an open window sensor are not used. No minimum or maximum rate; until the first episode 1 °C/h. Heating and cooling are learned in the cold season only (not in mode Off or Summer, nor outside the season) |
 | Maximum early start | 2 h | Limit of the optimal start. Once started, the optimal start continues until the change (the other rules can still override it) |
 | Learned cooling | on with optimal stop | One coefficient per room of the inside / outside difference (mean of the last 30 episodes). An episode lasts from the end to the start of the heat demand and is used when it lasted at least 10 minutes and the temperature fell, however little; episodes with an open window sensor are not used |
 | Optimal stop tolerance | GT: cold tolerance; relays: hysteresis; others: 0 | The comfort kept by the optimal stop: how far below the current level the room may fall before the change |
 | Maximum early stop | 30 min | Limit of the optimal stop; until the cooling is learned the lower level starts this early |
-| Optimal stop | off | Lower the level as early as the room can cool and stay in the comfort of the current level (tolerance: GT cold tolerance, relay hysteresis or a room setting); the cooling is learned from periods without heat demand, as a coefficient of the inside / outside difference; limited by a maximum; continues once started, cancelled (current level until the change) if the room falls below the comfort |
+| Optimal stop | off | Needs an outdoor temperature (sensor or weather). Lower the level as early as the room can cool and stay in the comfort of the current level (tolerance: GT cold tolerance, relay hysteresis or a room setting); the cooling is learned from periods without heat demand, as a coefficient of the inside / outside difference; limited by a maximum; continues once started, cancelled (current level until the change) if the room falls below the comfort |
 | Day boundary | 00:00 | For night shifts: when the schedule day changes |
 
 ## 4. Presence

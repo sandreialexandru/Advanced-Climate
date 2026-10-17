@@ -786,7 +786,7 @@ class Room:
         if self.decision is None or self.decision.target.kind == KIND_OFF or self.window_open:
             return None
         gap = self.target_temperature - self.current_temp
-        if gap <= 0.1:
+        if gap <= 0:
             return None
         return max(1, round(gap / self.learner.rate(outdoor) * 60))
 
@@ -983,6 +983,8 @@ class Room:
                 self.comfort_floor(state.preset),
             )
             self._stop_cancelled_for = state.next_change if self.stop_cancelled else None
+            # The optimal stop needs the outdoor temperature (sensor or weather).
+            outdoor_known = house.outdoor.latest() is not None
             preset, schedule_rule = optimal_schedule(
                 now,
                 state.preset,
@@ -993,7 +995,7 @@ class Room:
                 self.learner.rate(house.outdoor.latest()),
                 bool(self.config[CONF_OPTIMAL_START]),
                 float(self.config[CONF_OPTIMAL_START_MAX]),
-                bool(self.config[CONF_OPTIMAL_STOP]) and stop_allowed,
+                bool(self.config[CONF_OPTIMAL_STOP]) and stop_allowed and outdoor_known,
                 float(self.config[CONF_OPTIMAL_STOP_MINUTES]),
                 started,
                 self.stop_needed(state.preset, house.outdoor.latest()),
@@ -1061,14 +1063,20 @@ class Room:
         await self._async_apply(decision.target)
         await self._async_calibrate(now)
         self._update_demand()
-        self.learner.observe(
-            now, self.heat_demand, self.current_temp, self.target_temperature,
-            house.outdoor.latest(), self._window_sensor_open(), self.learn_tolerance(),
-        )
-        self.cooling.observe(
-            now, self.heat_demand, self.current_temp, house.outdoor.latest(),
-            self._window_sensor_open(),
-        )
+        # The heating and the cooling are learned in the cold season only (not in
+        # mode Off or Summer, nor outside the heating season).
+        if house.season_active and house.mode not in (MODE_OFF, MODE_SUMMER):
+            self.learner.observe(
+                now, self.heat_demand, self.current_temp, self.target_temperature,
+                house.outdoor.latest(), self._window_sensor_open(), self.learn_tolerance(),
+            )
+            self.cooling.observe(
+                now, self.heat_demand, self.current_temp, house.outdoor.latest(),
+                self._window_sensor_open(),
+            )
+        else:
+            self.learner.cancel()
+            self.cooling.cancel()
         self._check_alerts(now)
 
         # When should we look again?
@@ -1160,6 +1168,7 @@ class Room:
         if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
             demand = bool(self._relay_on)
         else:
+            hysteresis = float(self.config[CONF_HYSTERESIS])
             for entity_id in self.climates:
                 state = self.hass.states.get(entity_id)
                 if not valid(state):
@@ -1168,15 +1177,15 @@ class Room:
                 if action is not None:
                     demand = demand or action == "heating"
                     continue
+                # No hvac_action: heating is decided with the hysteresis, like a relay.
                 current = climate_temp(self.hass, state, "current_temperature")
                 target = climate_temp(self.hass, state, ATTR_TEMPERATURE)
-                if (
-                    state.state != STATE_OFF  # type: ignore[union-attr]
-                    and current is not None
-                    and target is not None
-                    and current < target - 0.2
-                ):
+                if state.state == STATE_OFF or current is None or target is None:  # type: ignore[union-attr]
+                    continue
+                if current <= target - hysteresis:
                     demand = True
+                elif current < target + hysteresis and self.heat_demand:
+                    demand = True  # between the limits: keep heating
         if demand and self._demand_since is None:
             self._demand_since = dt_util.now()
         if not demand and self._demand_since is not None:
