@@ -6,7 +6,8 @@ An episode starts when the room is at least the thermostat tolerance below
 the target, so the cycles of a thermostat that keeps the temperature are
 learned too. The heating rate in °C per hour is then estimated as a straight
 line of the outdoor temperature, so every episode helps at every outdoor
-temperature and temperatures not seen yet are estimated from the trend.
+temperature and temperatures not seen yet are estimated from the trend. The
+learning is free: the measured rates and the line are used as they are.
 
 Episodes during which a window or door sensor of the room was open are not
 used.
@@ -18,19 +19,15 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 DEFAULT_RATE = 1.0  # °C per hour, until the first episode
-DATA_VERSION = 2  # learning data of older versions is discarded
-MIN_RATE = 0.2
-MAX_RATE = 10.0
+DATA_VERSION = 3  # learning data of older versions is discarded
+# Version 2 cut the rates to 0.2 … 10 °C/h; episodes at those values are dropped.
+_V2_CLAMPED = (0.2, 10.0)
 MIN_EPISODE_MINUTES = 10
 MIN_RISE = 0.3
 MAX_EPISODES = 30
 # A line needs a few episodes over a real spread of outdoor temperatures.
 MIN_FIT_EPISODES = 3
 MIN_FIT_SPREAD = 3.0  # °C
-# Rooms heat faster when it is warmer outside, never slower.
-MAX_SLOPE = 0.3  # (°C/h) per °C outdoor
-# How far beyond the outdoor temperatures seen so far the line is used.
-EXTRAPOLATE = 5.0  # °C
 
 
 def start_gap(tolerance: float) -> float:
@@ -65,7 +62,7 @@ class HeatingRateLearner:
         mean_y = sum(p[1] for p in points) / len(points)
         var = sum((x - mean_x) ** 2 for x in xs)
         cov = sum((x - mean_x) * (y - mean_y) for x, y in points)
-        slope = min(max(cov / var, 0.0), MAX_SLOPE) if var else 0.0
+        slope = cov / var if var else 0.0
         return mean_y - slope * mean_x, slope
 
     def rate(self, outdoor: float | None) -> float:
@@ -75,11 +72,12 @@ class HeatingRateLearner:
         mean = sum(float(r) for _, r, *_ in self.episodes) / len(self.episodes)
         line = self.fit()
         if line is None or outdoor is None:
-            return round(min(max(mean, MIN_RATE), MAX_RATE), 3)
-        xs = [p[0] for p in self._points()]
-        x = min(max(outdoor, min(xs) - EXTRAPOLATE), max(xs) + EXTRAPOLATE)
+            return round(mean, 3)
         intercept, slope = line
-        return round(min(max(intercept + slope * x, MIN_RATE), MAX_RATE), 3)
+        estimate = intercept + slope * outdoor
+        # A line can reach zero far from what was seen; a room that heats has a
+        # positive rate, so the average of the episodes is used there.
+        return round(estimate if estimate > 0 else mean, 3)
 
     @property
     def rates(self) -> dict[str, float]:
@@ -138,7 +136,7 @@ class HeatingRateLearner:
         self.episode_disturbed = False
         if disturbed or minutes < MIN_EPISODE_MINUTES or rise < MIN_RISE:
             return None
-        measured = round(min(max(rise / (minutes / 60), MIN_RATE), MAX_RATE), 3)
+        measured = round(rise / (minutes / 60), 3)
         mean_outdoor = (
             round(sum(outdoor_values) / len(outdoor_values), 1) if outdoor_values else None
         )
@@ -156,13 +154,16 @@ class HeatingRateLearner:
         """Restore. Data of older versions is discarded: it also learned the small
         maintenance cycles of the thermostats."""
         obj = cls()
-        if not data or data.get("version") != DATA_VERSION:
+        version = (data or {}).get("version")
+        if version not in (2, DATA_VERSION):
             return obj
         episodes = data.get("episodes")
         if isinstance(episodes, list):
             for item in episodes:
                 try:
                     outdoor = None if item[0] is None else float(item[0])
+                    if version == 2 and float(item[1]) in _V2_CLAMPED:
+                        continue
                     obj.episodes.append([outdoor, float(item[1]), str(item[2]) if len(item) > 2 else ""])
                 except (TypeError, ValueError, IndexError):
                     continue

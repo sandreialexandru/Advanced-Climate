@@ -383,8 +383,8 @@ def optimal_schedule(
     if start_enabled and next_temp > now_temp and started:
         return next_preset, RULE_OPTIMAL_START
     if start_enabled and next_temp > now_temp and current_temp is not None:
-        if current_temp < next_temp:
-            hours = (next_temp - current_temp) / max(rate, 0.1)
+        if current_temp < next_temp and rate > 0:
+            hours = (next_temp - current_temp) / rate
             needed = min(timedelta(hours=hours), timedelta(minutes=start_max_minutes))
             if remaining <= needed:
                 return next_preset, RULE_OPTIMAL_START
