@@ -246,7 +246,7 @@ class Room:
         self._temp_samples: deque[tuple[datetime, float]] = deque(maxlen=120)
         self._drop_until: datetime | None = None
         self._last_occupied: datetime | None = None
-        self._started_at = dt_util.now()
+        self._started_at = dt_util.utcnow()
         self._exercise_until: datetime | None = None
         self._relay_on: bool | None = None
         self._relay_changed: datetime | None = None
@@ -312,8 +312,8 @@ class Room:
                     self.hass, sorted(tracked), self._async_entity_changed
                 )
             )
-        self._update_temperature(dt_util.now())
-        self._update_window(dt_util.now())
+        self._update_temperature(dt_util.utcnow())
+        self._update_window(dt_util.utcnow())
 
     @callback
     def async_stop(self) -> None:
@@ -523,7 +523,7 @@ class Room:
         entity_id = event.data["entity_id"]
         old: State | None = event.data["old_state"]
         new: State | None = event.data["new_state"]
-        now = dt_util.now()
+        now = dt_util.utcnow()
         if entity_id in self.climates:
             self._remember_preset_temp(new)
             if self._is_manual_change(event, old, new):
@@ -642,7 +642,7 @@ class Room:
         target: Target | None = None,
     ) -> None:
         """Start a manual override."""
-        now = dt_util.now()
+        now = dt_util.utcnow()
         mode = self.house.options[CONF_OVERRIDE_MODE]
         if hours is None and mode == OVERRIDE_FIXED:
             hours = float(self.house.options[CONF_OVERRIDE_HOURS])
@@ -881,7 +881,7 @@ class Room:
             def _recheck(_now: datetime) -> None:
                 """Check the window again when a delay ends."""
                 self._window_timer = None
-                self._update_window(dt_util.now())
+                self._update_window(dt_util.utcnow())
                 self.house.async_request_evaluate(0)
 
             self._window_timer = async_call_later(self.hass, delay, _recheck)
@@ -903,7 +903,7 @@ class Room:
     def _day_info(self, day: date) -> tuple[bool, str | None]:
         """Whether a day is a workday, and a profile forced for today (select or calendar)."""
         forced = None
-        today = self.schedule.schedule_day(dt_util.now())
+        today = self.schedule.schedule_day(dt_util.now())  # local
         if day == today:
             if self.profile_select != AUTO_PROFILE:
                 forced = self.profile_select
@@ -934,7 +934,7 @@ class Room:
                 next_change=next_event,
                 next_preset=next_preset if next_event else None,
             )
-        return self.schedule.lookup(now, self._day_info)
+        return self.schedule.lookup(dt_util.as_local(now), self._day_info)
 
     def plan(self, now: datetime, hours: float = 12) -> list[dict[str, Any]]:
         """Schedule levels for the next hours (shown by the card)."""
@@ -948,7 +948,9 @@ class Room:
                 result.append({"at": state.next_change.isoformat(), "preset": state.next_preset})
             return result
         try:
-            changes = self.schedule.upcoming(now, self._day_info, timedelta(hours=hours))
+            changes = self.schedule.upcoming(
+                dt_util.as_local(now), self._day_info, timedelta(hours=hours)
+            )
         except Exception:  # noqa: BLE001 - the plan is only informative
             return result
         result += [{"at": moment.isoformat(), "preset": preset} for moment, preset in changes]
@@ -978,12 +980,13 @@ class Room:
                 return True
             self._exercise_until = None
             return False
-        if WEEKDAYS[now.weekday()] != self.config[CONF_VALVE_DAY]:
+        local = dt_util.as_local(now)  # the day and time of the exercise are local
+        if WEEKDAYS[local.weekday()] != self.config[CONF_VALVE_DAY]:
             return False
         start = parse_clock(self.config[CONF_VALVE_TIME])
-        start_dt = now.replace(hour=start.hour, minute=start.minute, second=0, microsecond=0)
-        today = now.date().isoformat()
-        if start_dt <= now < start_dt + timedelta(minutes=30) and self.last_exercise != today:
+        start_dt = local.replace(hour=start.hour, minute=start.minute, second=0, microsecond=0)
+        today = local.date().isoformat()
+        if start_dt <= local < start_dt + timedelta(minutes=30) and self.last_exercise != today:
             self.last_exercise = today
             self._exercise_until = now + timedelta(seconds=VALVE_EXERCISE_SECONDS)
             return True
@@ -1239,13 +1242,20 @@ class Room:
         configured, source_on = self.house.heat_source_state()
         self.source_unknown = configured and source_on is None
         heating = demand and (not configured or bool(source_on))
-        now = dt_util.now()
+        now = dt_util.utcnow()
         if heating and self._heating_since is None:
             self._heating_since = now
         if not heating and self._heating_since is not None:
             self._account_runtime(now)
             self._heating_since = None
         self.heating = heating
+
+    @property
+    def frost_demand(self) -> bool:
+        """The room asks for heat to stay at the frost protection temperature."""
+        if not self.heat_demand or self.target_temperature is None:
+            return False
+        return self.target_temperature <= self.frost_temp()
 
     def temperature_gap(self) -> float | None:
         """Degrees below the target (negative when above)."""
@@ -1389,7 +1399,7 @@ class Room:
 
     async def _async_apply_relay(self, target: Target) -> bool:
         """On/off control for switches or climates in hvac_mode command mode."""
-        now = dt_util.now()
+        now = dt_util.utcnow()
         if target.kind == KIND_OFF:
             want = False
         else:

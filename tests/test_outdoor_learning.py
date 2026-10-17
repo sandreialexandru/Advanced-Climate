@@ -20,6 +20,14 @@ class OutdoorTest(unittest.TestCase):
         self.assertAlmostEqual(tracker.average(t0 + timedelta(hours=6), 6), 15.0)
         self.assertAlmostEqual(tracker.average(t0 + timedelta(hours=6), 3), 20.0)
 
+    def test_daily_mean_of_the_local_day(self) -> None:
+        # 22:30 UTC on 12 October is already 13 October in Bucharest (UTC+3).
+        from zoneinfo import ZoneInfo
+
+        tracker = outdoor.OutdoorTracker(tz=ZoneInfo("Europe/Bucharest"))
+        tracker.add(datetime(2026, 10, 12, 22, 30, tzinfo=TZ), 4.0)
+        self.assertEqual(tracker.daily_means, {"2026-10-13": 4.0})
+
     def test_unknown_after_the_window(self) -> None:
         # No new value for the averaging window: the outdoor temperature is unknown.
         tracker = outdoor.OutdoorTracker(max_age=timedelta(hours=6))

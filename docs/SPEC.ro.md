@@ -44,7 +44,7 @@ program).
 | Calibrare TRV | oprită | Offset calculat din senzorul extern sau temperatura externă scrisă în intrarea TRV-ului (în unitatea entității TRV) |
 | Toleranța termostatului | GT: cold tolerance; relee: histerezis; altele: 0 | Cât lasă termostatul camera să coboare sub țintă înainte să încălzească; episoadele de încălzire se învață de la atât sub țintă |
 | Cererea de căldură | `hvac_action` | Termostatele fără `hvac_action` sunt tratate ca releele: se consideră că încălzesc de la histerezis sub temperatura setată până la histerezis peste ea, iar oprirea anticipată folosește histerezisul ca toleranță; histerezisul se cere când un termostat nu raportează `hvac_action` sau e indisponibil la configurare |
-| Sursa de căldură | niciuna | Centrala (sau releul care pornește sursa de căldură) când camerele nu o pot porni singure (TRV-uri, robinete de zonă); pornită când destule camere cer căldură (cu timpi minimi de pornire / oprire) |
+| Sursa de căldură | niciuna | Centrala (sau releul care pornește sursa de căldură) când camerele nu o pot porni singure (TRV-uri, robinete de zonă); pornită când destule camere cer căldură (cu timpi minimi de pornire / oprire). O sursă de tip `climate` merge cât `hvac_action` e heating, când îl raportează |
 | Încălzire | sursa de căldură pornită | O cameră încălzește (învățare, timp de încălzire) doar cât merge sursa ei: GT încălzește, releul sau termostatul on / off e pornit și, când e setată, și *Sursa de căldură*; cu TRV-uri și fără sursă, cererea TRV-ului. Cât timp starea sursei e necunoscută nu se folosește niciun episod. Cu TRV-uri și o centrală pornită de un termostat din afara Home Assistant învățarea nu e sigură |
 | Camere necesare | 1 | Câte camere trebuie să ceară căldură ca să pornească sursa de căldură |
 | Cameră de referință | niciuna | Doar această cameră decide pentru sursa de căldură |
@@ -205,7 +205,7 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 
 | Opțiune | Implicit | Descriere |
 | --- | --- | --- |
-| Antiîngheț | activ | Limita de jos, și în modurile Oprit și Pauză (GT: temperatura lui minimă); odată ce încălzește, continuă până când dispozitivul nu mai cere căldură |
+| Antiîngheț | activ | Limita de jos, și în modurile Oprit și Pauză (GT: temperatura lui minimă); odată ce încălzește, continuă până când dispozitivul nu mai cere căldură. O cameră în antiîngheț pornește singură sursa de căldură (fără camere necesare, fără camera de referință, și în pauză) |
 | Senzor indisponibil | senzorul dispozitivului | Senzor extern căzut → senzorul dispozitivului → eco, cu alertă |
 | Dispozitiv indisponibil | alertă după 15 min | Celelalte camere funcționează în continuare |
 | Verificarea comenzilor | activă | Reîncearcă o dată după 2 min, apoi alertă |
@@ -213,6 +213,7 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | Baterie descărcată | alertă sub 20 % | TRV-urile și senzorii camerei |
 | Repornire | restaurare | Schimbările manuale, vacanța și datele învățate se păstrează |
 | Reevaluare periodică | 5 min | Pe lângă evenimente |
+| Timp | UTC intern | Duratele (timp de încălzire, învățare, schimbări manuale, întârzieri, preîncălzirea dinaintea sfârșitului vacanței) sunt în timp real, și peste schimbarea orei; programul, zilele lucrătoare și mediile zilnice folosesc ora locală |
 
 ## 11. Vizibilitate
 

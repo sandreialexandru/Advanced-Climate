@@ -40,7 +40,7 @@ entry for the **house** (people, zones, global mode, shared settings) and one
 | TRV calibration | off | Offset calculated from the external sensor, or the external temperature written to the TRV input (in the unit of the TRV entity) |
 | Thermostat tolerance | GT: cold tolerance; relays: hysteresis; others: 0 | How far below the target the thermostat lets the room fall before heating; heating episodes are learned from this far below the target |
 | Heat demand | `hvac_action` | Thermostats without `hvac_action` are handled like relays: they count as heating from the hysteresis below their set temperature to the hysteresis above it, and the optimal stop uses the hysteresis as its comfort; the hysteresis is asked for when a thermostat does not report `hvac_action` or is unavailable during the setup |
-| Heat source | none | The boiler (or the relay that starts the heat source) when the rooms cannot start it themselves (TRVs, zone valves); switched on when enough rooms ask for heat (with minimum on/off times) |
+| Heat source | none | The boiler (or the relay that starts the heat source) when the rooms cannot start it themselves (TRVs, zone valves); switched on when enough rooms ask for heat (with minimum on/off times). A `climate` heat source runs while its `hvac_action` is heating, when it reports one |
 | Heating | heat source running | A room heats (learning, heating time) only while its heat source runs: GT heating, the relay or on / off thermostat on, and the *Heat source* too when set; with TRVs and no heat source, the demand of the TRV. While the heat source state is unknown no episode is used. With TRVs and a boiler started by a thermostat outside Home Assistant the learning is not reliable |
 | Rooms needed | 1 | Number of rooms that must ask for heat to start the heat source |
 | Reference room | none | Only this room decides for the heat source |
@@ -201,7 +201,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| Frost protection | on | Lower limit, also in Off and Pause (GT: its minimum temperature); once heating, it continues until the device stops asking for heat |
+| Frost protection | on | Lower limit, also in Off and Pause (GT: its minimum temperature); once heating, it continues until the device stops asking for heat. A room in frost protection starts the heat source on its own (no rooms needed, no reference room, also while paused) |
 | Sensor unavailable | device sensor | External sensor down → device sensor → eco, with alert |
 | Device unavailable | alert after 15 min | The other rooms keep working |
 | Command verification | on | Retry once after 2 min, then alert |
@@ -209,6 +209,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | Low battery | alert below 20 % | TRVs and sensors of the room |
 | Restart | restore | Overrides, vacation and learned data are kept |
 | Periodic reevaluation | 5 min | In addition to events |
+| Time | UTC inside | Durations (heating time, learning, manual changes, delays, vacation preheat) are real time, also across a DST change; the schedule, workdays and daily means use the local time |
 
 ## 11. Visibility
 

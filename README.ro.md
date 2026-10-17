@@ -57,7 +57,8 @@ interfața în engleză; cu Home Assistant în română ele apar traduse.
   căldură (centralei) după cererea de căldură a camerelor, statistici ale
   timpului de încălzire.
 - **Siguranță**: antiîngheț mereu (odată ce încălzește, continuă până când
-  dispozitivul nu mai cere căldură), temperatură maximă, verificarea comenzilor
+  dispozitivul nu mai cere căldură; o cameră în antiîngheț pornește singură
+  sursa de căldură, și în pauză), temperatură maximă, verificarea comenzilor
   cu reîncercare, alerte pentru dispozitive indisponibile, senzori defecți,
   baterii descărcate și ferestre deschise, mișcarea robinetelor TRV.
 - **Vizibilitate**: un senzor *Decision* pentru fiecare cameră, cu regula

@@ -49,7 +49,8 @@ other thermostats or plain relays are supported as well.
 - **Energy**: dynamic tariff, PV surplus, control of the heat source (boiler)
   from the heat demand of the rooms, heating time statistics.
 - **Safety**: frost protection always (once it starts heating it continues
-  until the device stops asking for heat), maximum temperature, command
+  until the device stops asking for heat; a room in frost protection starts
+  the heat source on its own, also while paused), maximum temperature, command
   verification with retry, alerts for unavailable devices, failed sensors, low
   batteries and open windows, valve exercise for TRVs.
 - **Visibility**: a *Decision* sensor per room with the winning rule and the

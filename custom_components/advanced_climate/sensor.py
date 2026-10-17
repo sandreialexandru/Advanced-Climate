@@ -250,7 +250,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "profile_select": room.profile_select,
             "next_change": iso(state.next_change) if state else None,
             "next_preset": state.next_preset if state else None,
-            "plan": room.plan(dt_util.now()),
+            "plan": room.plan(dt_util.utcnow()),
             "schedule": profiles_to_dict(room.schedule.profiles),
             "schedule_error": room.schedule_error,
             "schedule_editable": room.config.get("schedule_source", "internal") == "internal",
@@ -394,7 +394,7 @@ class HeatingRateSensor(RoomEntity, SensorEntity):
 
 def _forecast(room: Room, unit: str) -> dict[str, Any] | None:
     """Expected temperature at the scheduled change during an optimal stop."""
-    forecast = room.stop_forecast(dt_util.now(), room.house.outdoor_now)
+    forecast = room.stop_forecast(dt_util.utcnow(), room.house.outdoor_now)
     if forecast is None:
         return None
     return {"at": forecast["at"], "temperature": _t(forecast["temperature"], unit, 1)}

@@ -173,6 +173,7 @@ class House:
         self.boiler_on: bool | None = None
         self.boiler_changed: datetime | None = None
         self._source_running_since: datetime | None = None
+        self._frost_started = False  # heat source started for frost protection while paused
         self._alerts: dict[str, datetime] = {}
         self._unsubs: list[Callable[[], None]] = []
         self._timer_unsub: Callable[[], None] | None = None
@@ -205,6 +206,8 @@ class House:
             season = self.outdoor.season_active
             self.outdoor = OutdoorTracker()
             self.outdoor.season_active = season
+        # Daily means are per local calendar day.
+        self.outdoor.tz = dt_util.get_default_time_zone()
         # Without a new value for the averaging window of the cutoff, the outdoor
         # temperature is unknown.
         self.outdoor.max_age = timedelta(hours=float(self.options[CONF_CUTOFF_AVG_HOURS]))
@@ -393,7 +396,7 @@ class House:
 
     async def _async_evaluate_locked(self) -> None:
         """Evaluate the house and every room, then send the commands."""
-        now = dt_util.now()
+        now = dt_util.utcnow()
         self._last_eval = now
         self._sample_outdoor()
         self._update_weather(now)
@@ -556,7 +559,7 @@ class House:
         """Turn guest mode on or off."""
         self.guest = on
         hours = float(self.options[CONF_GUEST_EXPIRE_HOURS] or 0)
-        self.guest_until = dt_util.now() + timedelta(hours=hours) if on and hours > 0 else None
+        self.guest_until = dt_util.utcnow() + timedelta(hours=hours) if on and hours > 0 else None
         await self.async_evaluate_or_notify()
 
     async def async_set_pause(self, on: bool) -> None:
@@ -598,7 +601,10 @@ class House:
         """When the heating starts again before the end of the vacation."""
         if self.vacation_end is None:
             return None
-        return self.vacation_end - timedelta(hours=float(self.options[CONF_VACATION_PREHEAT]))
+        # In UTC, so the preheating lasts the real number of hours across a DST change.
+        return dt_util.as_utc(self.vacation_end) - timedelta(
+            hours=float(self.options[CONF_VACATION_PREHEAT])
+        )
 
     def _update_vacation(self, now: datetime) -> None:
         # Clear a finished period.
@@ -609,7 +615,7 @@ class House:
 
     def vacation_active(self, now: datetime | None = None) -> bool:
         """Return True when the vacation level applies."""
-        now = now or dt_util.now()
+        now = now or dt_util.utcnow()
         if self.mode == MODE_VACATION:
             return True
         # The preheating before the end of a planned vacation wins over the
@@ -628,7 +634,7 @@ class House:
 
     def vacation_preheating(self, now: datetime | None = None) -> bool:
         """The last hours before the end of a vacation: the schedule applies again."""
-        now = now or dt_util.now()
+        now = now or dt_util.utcnow()
         if self.mode == MODE_VACATION or self.vacation_end is None:
             return False
         resume = self._vacation_resume()
@@ -651,7 +657,7 @@ class House:
 
     def is_workday(self, day: date) -> bool:
         """Return whether a day is a workday."""
-        today = dt_util.now().date()
+        today = dt_util.now().date()  # local calendar day
         sensor = self.options.get(CONF_WORKDAY_SENSOR)
         if sensor and day == today:
             state = self.hass.states.get(sensor)
@@ -667,7 +673,7 @@ class House:
         sensor = self.options.get(CONF_WORKDAY_SENSOR)
         if not sensor or not self.hass.services.has_service("workday", "check_date"):
             return
-        today = dt_util.now().date()
+        today = dt_util.now().date()  # local calendar day
         for offset in range(0, 8):
             day = today + timedelta(days=offset)
             key = day.isoformat()
@@ -717,7 +723,7 @@ class House:
     @property
     def outdoor_now(self) -> float | None:
         """Latest outdoor temperature, None when unknown (or older than the window)."""
-        return self.outdoor.latest(dt_util.now())
+        return self.outdoor.latest(dt_util.utcnow())
 
     @property
     def outdoor_configured(self) -> bool:
@@ -738,7 +744,7 @@ class House:
         """Record the current outdoor temperature."""
         value = self.outdoor_temperature()
         if value is not None:
-            self.outdoor.add(dt_util.now(), value)
+            self.outdoor.add(dt_util.utcnow(), value)
 
     def _update_weather(self, now: datetime) -> None:
         """Update the outdoor cutoff and the heating season."""
@@ -748,7 +754,7 @@ class House:
             average, float(opts[CONF_CUTOFF_TEMP]), float(opts[CONF_CUTOFF_HYSTERESIS])
         )
         self.outdoor.update_season(
-            now.date(),
+            dt_util.as_local(now).date(),
             opts[CONF_SEASON_MODE],
             str(opts[CONF_SEASON_START]),
             str(opts[CONF_SEASON_END]),
@@ -759,7 +765,7 @@ class House:
     @property
     def outdoor_average(self) -> float | None:
         """Outdoor average used by the cutoff."""
-        return self.outdoor.average(dt_util.now(), float(self.options[CONF_CUTOFF_AVG_HOURS]))
+        return self.outdoor.average(dt_util.utcnow(), float(self.options[CONF_CUTOFF_AVG_HOURS]))
 
     @property
     def cutoff_active(self) -> bool:
@@ -796,7 +802,7 @@ class House:
             return
         forecast = ((response or {}).get(weather) or {}).get("forecast") or []
         unit = self._weather_unit(self.hass.states.get(weather))
-        now = dt_util.now()
+        now = dt_util.utcnow()
         horizon = now + timedelta(hours=float(self.options[CONF_FORECAST_HOURS]))
         temps = []
         for item in forecast:
@@ -878,6 +884,10 @@ class House:
         else:
             count = sum(1 for room in self.rooms.values() if room.heat_demand)
             demand = count >= max(1, int(opts[CONF_BOILER_MIN_ROOMS])) if self.rooms else False
+        # Frost protection of any room starts the heat source on its own (no
+        # rooms needed, no reference room, also while paused).
+        frost = any(room.frost_demand for room in self.rooms.values())
+        demand = demand or frost
         self.heat_demand = demand
         # Heating time of the house: while the heat source runs (its real state),
         # without one while at least one room heats.
@@ -890,13 +900,23 @@ class House:
             self._source_running_since = now
 
         boiler = opts.get(CONF_BOILER_ENTITY)
-        if not boiler or self.paused:
+        if not boiler:
             return
+        want = demand
+        if self.paused:
+            # Paused: only frost protection; a heat source started for it is
+            # stopped again when it is no longer needed.
+            if frost:
+                want = True
+            elif self._frost_started:
+                want = False
+            else:
+                return
         state = self.hass.states.get(boiler)
         if not valid(state):
             return
         is_on = state.state not in ("off",)  # type: ignore[union-attr]
-        if is_on == demand:
+        if is_on == want:
             return
         if self.boiler_changed is not None:
             minimum = timedelta(
@@ -913,14 +933,14 @@ class House:
                 await self.hass.services.async_call(
                     "climate",
                     "set_hvac_mode",
-                    {"entity_id": boiler, "hvac_mode": on_mode if demand else "off"},
+                    {"entity_id": boiler, "hvac_mode": on_mode if want else "off"},
                     blocking=True,
                     context=context,
                 )
             else:
                 await self.hass.services.async_call(
                     domain,
-                    SERVICE_TURN_ON if demand else SERVICE_TURN_OFF,
+                    SERVICE_TURN_ON if want else SERVICE_TURN_OFF,
                     {"entity_id": boiler},
                     blocking=True,
                     context=context,
@@ -928,8 +948,9 @@ class House:
         except HomeAssistantError as err:
             _LOGGER.warning("Could not switch the boiler %s: %s", boiler, err)
             return
-        self.boiler_on = demand
+        self.boiler_on = want
         self.boiler_changed = now
+        self._frost_started = bool(want and self.paused)
 
     def heat_source_state(self) -> tuple[bool, bool | None]:
         """(configured, running) of the heat source of the house (the boiler entity).
@@ -942,6 +963,9 @@ class House:
         state = self.hass.states.get(entity_id)
         if not valid(state):
             return True, None
+        if entity_id.startswith("climate.") and "hvac_action" in state.attributes:  # type: ignore[union-attr]
+            # A thermostat in heat mode may be idle: it runs only while heating.
+            return True, state.attributes["hvac_action"] == "heating"  # type: ignore[union-attr]
         return True, state.state != "off"  # type: ignore[union-attr]
 
     def _check_room_difference(self) -> None:
@@ -1004,7 +1028,7 @@ class House:
         repeat: timedelta | None = None,
     ) -> None:
         """Send an alert once (or again after ``repeat``)."""
-        now = dt_util.now()
+        now = dt_util.utcnow()
         last = self._alerts.get(key)
         if last is not None and (repeat is None or now - last < repeat):
             return

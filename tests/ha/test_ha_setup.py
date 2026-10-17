@@ -414,3 +414,91 @@ async def test_heating_counts_only_while_the_heat_source_runs(
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def _trv_house(hass, freezer, **options):
+    """A house with one TRV room and an input_boolean as its heat source."""
+    await hass.config.async_set_time_zone("Europe/Bucharest")
+    freezer.move_to("2026-10-12 09:00:00+00:00")
+    async_mock_service(hass, "climate", "set_temperature")
+    assert await async_setup_component(hass, "input_boolean", {"input_boolean": {"boiler": {}}})
+    hass.states.async_set("person.andrei", "home")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Home",
+        options={
+            "persons": ["person.andrei"],
+            "nearby_zones": [],
+            "boiler_entity": "input_boolean.boiler",
+            **options,
+        },
+        subentries_data=[
+            {
+                "data": {"source": "climate", "climates": ["climate.trv"], "command_mode": "temperature"},
+                "subentry_type": SUBENTRY_ROOM,
+                "title": "Office",
+                "unique_id": None,
+            }
+        ],
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+async def test_frost_protection_starts_the_heat_source(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Frost protection starts the heat source alone, also while paused."""
+    cold = {"hvac_modes": ["heat", "off"], "current_temperature": 5.0, "temperature": 7.0}
+    hass.states.async_set("climate.trv", "heat", {**cold, "hvac_action": "heating"})
+    entry = await _trv_house(hass, freezer, boiler_min_rooms=2)
+    await hass.services.async_call(
+        "select", "select_option", {"entity_id": "select.home_mode", "option": "off"}, blocking=True
+    )
+    await _tick(hass, freezer, 15)
+    # One room is fewer than the rooms needed, but it is in frost protection.
+    assert hass.states.get("input_boolean.boiler").state == "on"
+
+    # Warm again: the heat source stops.
+    hass.states.async_set(
+        "climate.trv", "heat", {**cold, "current_temperature": 8.0, "hvac_action": "idle"}
+    )
+    await _tick(hass, freezer, 600)
+    assert hass.states.get("input_boolean.boiler").state == "off"
+
+    # Paused: no commands, except for frost protection.
+    await hass.services.async_call("switch", "turn_on", {"entity_id": "switch.home_pause"}, blocking=True)
+    hass.states.async_set("climate.trv", "heat", {**cold, "hvac_action": "heating"})
+    await _tick(hass, freezer, 600)
+    assert hass.states.get("input_boolean.boiler").state == "on"
+    hass.states.async_set(
+        "climate.trv", "heat", {**cold, "current_temperature": 8.0, "hvac_action": "idle"}
+    )
+    await _tick(hass, freezer, 600)
+    assert hass.states.get("input_boolean.boiler").state == "off"
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_durations_across_the_dst_change(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A manual change for 2 hours lasts 2 real hours across the end of summer time."""
+    entry = await _setup(hass, freezer)
+    await _tick(hass, freezer, 15)
+    # 02:30 summer time on 25 October 2026; at 04:00 the clock goes back to 03:00.
+    freezer.move_to("2026-10-24 23:30:00+00:00")
+    await hass.services.async_call(
+        DOMAIN, "set_override", {"room": "Bedroom", "temperature": 23, "duration_hours": 2},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    until = dt_util.parse_datetime(
+        hass.states.get("binary_sensor.bedroom_manual_change").attributes["until"]
+    )
+    assert dt_util.as_utc(until) == dt_util.parse_datetime("2026-10-25 01:30:00+00:00")
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

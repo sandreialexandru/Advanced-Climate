@@ -6,7 +6,7 @@ Pure Python, no Home Assistant imports, so it can be unit tested.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, tzinfo
 
 from .const import SEASON_ALWAYS, SEASON_AUTO, SEASON_DATES
 
@@ -47,6 +47,8 @@ class OutdoorTracker:
     # How long a value stays valid without a new one (the averaging window of
     # the cutoff); None = always.
     max_age: timedelta | None = None
+    # Time zone of the calendar days of the daily means (None = as given).
+    tz: tzinfo | None = None
 
     def add(self, now: datetime, value: float) -> None:
         """Add a sample and drop old ones."""
@@ -59,10 +61,14 @@ class OutdoorTracker:
             self.samples.pop(0)
         self._update_daily(now)
 
+    def _day(self, moment: datetime) -> date:
+        """Calendar day of a moment in the time zone of the house."""
+        return (moment.astimezone(self.tz) if self.tz else moment).date()
+
     def _update_daily(self, now: datetime) -> None:
         """Update the mean of today (used by the automatic season)."""
-        day = now.date()
-        values = [v for t, v in self.samples if t.date() == day]
+        day = self._day(now)
+        values = [v for t, v in self.samples if self._day(t) == day]
         if values:
             self.daily_means[day.isoformat()] = round(sum(values) / len(values), 2)
         if len(self.daily_means) > MAX_DAILY_MEANS:
