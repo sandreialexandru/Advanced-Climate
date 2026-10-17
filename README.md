@@ -168,8 +168,9 @@ episodes.
   Generic Thermostat, the *hysteresis* for relays and on / off control, and the
   *Thermostat tolerance* room setting for other thermostats (default 0).
   The episode ends when the target is reached or the heating stops; it is used
-  whenever the temperature rose, however little and however short: a slow rise
-  is learned too (it may show a problem, but it is real).
+  when the heat demand lasted at least 10 minutes and the temperature rose,
+  however little: a slow rise is learned too (it may show a problem, but it is
+  real).
 - Episodes during which a **window or door sensor** of the room (or a linked
   one from another room) was open are not used. Rooms without window sensors
   use every episode.

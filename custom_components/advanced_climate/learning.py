@@ -18,6 +18,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
+# The heat demand must last this long for an episode to be learned.
+MIN_DEMAND_MINUTES = 10
 DEFAULT_RATE = 1.0  # °C per hour, until the first episode
 DATA_VERSION = 3  # learning data of older versions is discarded
 # Version 2 cut the rates to 0.2 … 10 °C/h; episodes at those values are dropped.
@@ -132,9 +134,10 @@ class HeatingRateLearner:
         self.episode_temp = None
         self.episode_outdoor = []
         self.episode_disturbed = False
-        # Any rise and any duration count, a slow rise too (it may show a
-        # problem, but it is real). Without a rise there is no rate to measure.
-        if disturbed or minutes <= 0 or rise <= 0:
+        # The heat demand lasted at least 10 minutes; any rise counts, a slow one
+        # too (it may show a problem, but it is real). Without a rise there is
+        # no rate to measure.
+        if disturbed or minutes < MIN_DEMAND_MINUTES or rise <= 0:
             return None
         measured = round(rise / (minutes / 60), 3)
         mean_outdoor = (
