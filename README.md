@@ -46,8 +46,8 @@ other thermostats or plain relays are supported as well.
   automatic vacation), Off (frost protection) and Summer. During the preheating
   hours before the end of a vacation the schedule applies even while everyone
   is still far away. Only an end date: the vacation starts now.
-- **Energy**: dynamic tariff, PV surplus, boiler control from the heat demand
-  of the rooms, runtime statistics.
+- **Energy**: dynamic tariff, PV surplus, control of the heat source (boiler)
+  from the heat demand of the rooms, heating time statistics.
 - **Safety**: frost protection always (once it starts heating it continues
   until the device stops asking for heat), maximum temperature, command
   verification with retry, alerts for unavailable devices, failed sensors, low
@@ -86,7 +86,7 @@ Requires Home Assistant **2025.7** or newer.
    sensors, windows and schedule. The zone *Whole house* is changed the same
    way (*⋮ → Reconfigure* on the integration page).
 3. Everything else is in the integration **options** (presence, workdays and
-   calendar, weather and season, energy, boiler, manual changes and vacation,
+   calendar, weather and season, energy, heat source, manual changes and vacation,
    alerts).
 
 ### Temperature unit
@@ -116,8 +116,8 @@ then asks only for the values they need, and is skipped when nothing applies:
   when turned on.
 - **Options**: preheat distances only with a Proximity / travel time sensor,
   cutoff / forecast / season / compensation values only for what is turned
-  on, price and PV thresholds only with their sensors, boiler times only with
-  a boiler, the fixed duration only for that kind of manual change.
+  on, price and PV thresholds only with their sensors, heat source times only
+  with a heat source, the fixed duration only for that kind of manual change.
 
 ### Schedule format
 
@@ -188,6 +188,18 @@ episodes.
   fewer than 3 episodes, or outdoor temperatures less than 3 °C apart, the
   average of the episodes is used.
 - Until the first episode the rate is 1 °C/h.
+- **Heating only while the heat source runs.** The learning (heating and
+  cooling) and the heating time count a room as heating only while its heat
+  source runs: Generic Thermostat heating (`hvac_action`), the relay or the
+  on / off thermostat on, and, when a *Heat source* is set in the options
+  (the boiler that TRVs and zone valves wait for), only while it runs too. A
+  room that asks for heat while the heat source waits for other rooms cools,
+  and is learned as cooling. While the state of the heat source is unknown,
+  episodes are not used. With TRVs and no heat source set the demand of the
+  TRV is used; that is right for a boiler that runs all season or by outdoor
+  compensation. **With TRVs and a boiler started by a thermostat that is not in
+  Home Assistant the learning is not reliable: optimal start and stop are not
+  recommended.**
 - The heating and the cooling are learned in the **cold season** only: not in
   mode Off or Summer, nor outside the heating season (an episode in progress
   is dropped).
@@ -197,6 +209,10 @@ episodes.
   uses the hysteresis as its comfort too); the *Hysteresis*
   setting is shown for them (and for thermostats unavailable during the
   setup, which cannot be checked).
+
+The *Heating runtime* sensors count the same way: a room while its heat
+source runs for it, the house while the heat source runs (without one, while
+at least one room heats). The chart of the card shows these periods.
 
 The *Heating rate* sensor shows the rate for the current outdoor temperature;
 its attributes show the estimate at −10 / 0 / 10 / 20 °C, the number of

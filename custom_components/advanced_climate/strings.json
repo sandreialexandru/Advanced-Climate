@@ -99,7 +99,7 @@
           "calendar": "Workdays and calendar",
           "weather": "Weather and season",
           "energy": "Energy",
-          "boiler": "Boiler and heat demand",
+          "boiler": "Heat source and heat demand",
           "behavior": "Overrides, vacation and limits",
           "alerts": "Alerts"
         }
@@ -179,16 +179,16 @@
         }
       },
       "boiler": {
-        "title": "Boiler and heat demand",
+        "title": "Heat source and heat demand",
         "data": {
-          "boiler_entity": "Boiler",
+          "boiler_entity": "Heat source",
           "room_diff_alert": "Alert when a room stays colder than"
         },
         "data_description": {
-          "boiler_entity": "Only when the rooms cannot start the boiler themselves (TRVs, zone valves). Leave empty with Generic Thermostat or a relay on the boiler, and never pick the relay Generic Thermostat already uses.",
+          "boiler_entity": "The boiler (or the relay that starts the heat source) when the rooms cannot start it themselves (TRVs, zone valves). The integration starts it when rooms ask for heat, and the learning and the heating time count only while it runs. Leave empty with Generic Thermostat or a relay on the boiler, and never pick the relay Generic Thermostat already uses. With TRVs and a boiler started by a thermostat that is not in Home Assistant, the learning is not reliable: optimal start and stop are not recommended.",
           "room_diff_alert": "Alert when one room stays this much below its target while others are warm (stuck valve, open window). 0 = off; useful only with several rooms."
         },
-        "description": "Only for houses where the rooms cannot start the boiler themselves (TRVs or zone valves): the integration then starts the boiler when rooms ask for heat. With Generic Thermostat or a relay on the boiler leave the boiler empty; the alert below still works."
+        "description": "Only for houses where the rooms cannot start the heat source themselves (TRVs or zone valves): the integration then starts it when rooms ask for heat, and a room heats (for the learning and the heating time) only while it runs. With Generic Thermostat or a relay on the boiler leave it empty; the alert below still works."
       },
       "behavior": {
         "title": "Overrides, vacation and limits",
@@ -337,11 +337,11 @@
         }
       },
       "boiler_details": {
-        "title": "Boiler",
+        "title": "Heat source",
         "data": {
-          "boiler_min_rooms": "Rooms needed to start the boiler",
-          "boiler_min_on": "Boiler minimum on time",
-          "boiler_min_off": "Boiler minimum off time",
+          "boiler_min_rooms": "Rooms needed to start the heat source",
+          "boiler_min_on": "Heat source minimum on time",
+          "boiler_min_off": "Heat source minimum off time",
           "reference_room": "Reference room"
         },
         "data_description": {

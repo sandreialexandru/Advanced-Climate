@@ -172,7 +172,7 @@ class House:
         self.heat_demand = False
         self.boiler_on: bool | None = None
         self.boiler_changed: datetime | None = None
-        self._boiler_demand_since: datetime | None = None
+        self._source_running_since: datetime | None = None
         self._alerts: dict[str, datetime] = {}
         self._unsubs: list[Callable[[], None]] = []
         self._timer_unsub: Callable[[], None] | None = None
@@ -321,10 +321,12 @@ class House:
 
     @callback
     def _async_boiler_changed(self, event: Event[EventStateChangedData]) -> None:
-        """The boiler changed outside the integration: refresh the entities."""
-        if event.context.id in self._own_contexts:
-            return
-        self.async_notify_listeners()
+        """The heat source started or stopped (by us or not): evaluate again.
+
+        The learning and the heating time follow the real state of the heat
+        source, so they start and stop when it changes.
+        """
+        self.async_request_evaluate()
 
     # ------------------------------------------------------------------
     # Persistence
@@ -876,13 +878,16 @@ class House:
         else:
             count = sum(1 for room in self.rooms.values() if room.heat_demand)
             demand = count >= max(1, int(opts[CONF_BOILER_MIN_ROOMS])) if self.rooms else False
-        # Runtime statistics for the house demand.
-        if self._boiler_demand_since is not None:
-            self.boiler_runtime_s += (now - self._boiler_demand_since).total_seconds()
-            self._boiler_demand_since = None
-        if demand:
-            self._boiler_demand_since = now
         self.heat_demand = demand
+        # Heating time of the house: while the heat source runs (its real state),
+        # without one while at least one room heats.
+        configured, source_on = self.heat_source_state()
+        running = bool(source_on) if configured else any(r.heating for r in self.rooms.values())
+        if self._source_running_since is not None:
+            self.boiler_runtime_s += (now - self._source_running_since).total_seconds()
+            self._source_running_since = None
+        if running:
+            self._source_running_since = now
 
         boiler = opts.get(CONF_BOILER_ENTITY)
         if not boiler or self.paused:
@@ -925,6 +930,19 @@ class House:
             return
         self.boiler_on = demand
         self.boiler_changed = now
+
+    def heat_source_state(self) -> tuple[bool, bool | None]:
+        """(configured, running) of the heat source of the house (the boiler entity).
+
+        ``running`` is None while the entity is unavailable or unknown.
+        """
+        entity_id = self.options.get(CONF_BOILER_ENTITY)
+        if not entity_id:
+            return False, None
+        state = self.hass.states.get(entity_id)
+        if not valid(state):
+            return True, None
+        return True, state.state != "off"  # type: ignore[union-attr]
 
     def _check_room_difference(self) -> None:
         """Alert when some rooms stay cold while others reached their target."""

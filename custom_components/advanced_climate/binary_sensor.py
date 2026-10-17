@@ -37,9 +37,7 @@ async def async_setup_entry(
     for room in house.rooms.values():
         async_add_entities(
             [
-                RoomBinarySensor(
-                    room, "heat_demand", lambda r: r.heat_demand, BinarySensorDeviceClass.HEAT
-                ),
+                HeatDemandSensor(room),
                 RoomBinarySensor(
                     room, "window_open", lambda r: r.window_open, BinarySensorDeviceClass.WINDOW
                 ),
@@ -89,6 +87,26 @@ class RoomBinarySensor(RoomEntity, BinarySensorEntity):
     def is_on(self) -> bool:
         """State."""
         return self._value(self.room)
+
+
+class HeatDemandSensor(RoomEntity, BinarySensorEntity):
+    """On while the room asks for heat; ``heating`` tells if its heat source runs."""
+
+    _attr_device_class = BinarySensorDeviceClass.HEAT
+
+    def __init__(self, room: Room) -> None:
+        """Initialize."""
+        super().__init__(room, "heat_demand")
+
+    @property
+    def is_on(self) -> bool:
+        """The room asks for heat."""
+        return self.room.heat_demand
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Whether the heat source runs for the room (it really heats)."""
+        return {"heating": self.room.heating}
 
 
 class OverrideBinarySensor(RoomEntity, BinarySensorEntity):

@@ -40,9 +40,10 @@ entry for the **house** (people, zones, global mode, shared settings) and one
 | TRV calibration | off | Offset calculated from the external sensor, or the external temperature written to the TRV input (in the unit of the TRV entity) |
 | Thermostat tolerance | GT: cold tolerance; relays: hysteresis; others: 0 | How far below the target the thermostat lets the room fall before heating; heating episodes are learned from this far below the target |
 | Heat demand | `hvac_action` | Thermostats without `hvac_action` are handled like relays: they count as heating from the hysteresis below their set temperature to the hysteresis above it, and the optimal stop uses the hysteresis as its comfort; the hysteresis is asked for when a thermostat does not report `hvac_action` or is unavailable during the setup |
-| Boiler | none | Switched on when enough rooms ask for heat (with minimum on/off times) |
-| Rooms needed | 1 | Number of rooms that must ask for heat to start the boiler |
-| Reference room | none | Only this room decides for the boiler |
+| Heat source | none | The boiler (or the relay that starts the heat source) when the rooms cannot start it themselves (TRVs, zone valves); switched on when enough rooms ask for heat (with minimum on/off times) |
+| Heating | heat source running | A room heats (learning, heating time) only while its heat source runs: GT heating, the relay or on / off thermostat on, and the *Heat source* too when set; with TRVs and no heat source, the demand of the TRV. While the heat source state is unknown no episode is used. With TRVs and a boiler started by a thermostat outside Home Assistant the learning is not reliable |
+| Rooms needed | 1 | Number of rooms that must ask for heat to start the heat source |
+| Reference room | none | Only this room decides for the heat source |
 | Room difference alert | off | Alert when a room stays colder than the target while others are warm |
 
 ## 2. Levels (presets)
@@ -186,7 +187,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | Off | Frost protection only (`min_temp` of GT) | – |
 | Summer | Heating off | Automatic switch with the season (section 6) |
 
-## 9. Energy and boiler protection
+## 9. Energy and heat source protection
 
 | Option | Default | Description |
 | --- | --- | --- |
@@ -217,9 +218,9 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | `sensor.<room>_target_temperature`, `sensor.<room>_room_temperature` | Target and room temperature, in the unit of the house |
 | `sensor.<room>_heating_rate` | Learned heating rate for the current outdoor temperature (estimates, episodes) |
 | `sensor.<room>_cooling_rate` | How fast the room falls now without heating (coefficient, episodes, tolerance) |
-| `sensor.<room>_heating_runtime`, `sensor.<house>_heating_runtime` | Total heating time (total increasing) |
+| `sensor.<room>_heating_runtime`, `sensor.<house>_heating_runtime` | Total heating time (total increasing): a room while its heat source runs, the house while the heat source runs (without one, while a room heats) |
 | `sensor.<room>_next_change` | Next scheduled change |
-| `binary_sensor.<room>_heat_demand` | Whether the room asks for heat |
+| `binary_sensor.<room>_heat_demand` | Whether the room asks for heat; the `heating` attribute tells if its heat source runs |
 | `sensor.<house>_presence` | home / nearby / far |
 | `select.<house>_mode`, `select.<room>_profile` | Global mode and active profile |
 | `number.*`, `button.*`, `switch.*` | Levels, clear overrides, guest mode, pause, child lock |
@@ -268,6 +269,7 @@ winning rule.
 | Toleranța termostatului | thermostat tolerance |
 | Toleranța opririi anticipate | optimal stop tolerance |
 | Unitatea de temperatură | temperature unit |
+| Sursa de căldură | heat source |
 | Cererea către centrală | heat demand |
 | Mod oaspeți | guest mode |
 | Motiv curent | decision reason |

@@ -233,6 +233,10 @@ class Room:
         self.current_temp: float | None = None
         self.target_temperature: float | None = None
         self.heat_demand = False
+        # The heat source runs for this room (see _update_demand); the learning
+        # and the heating time count only then.
+        self.heating = False
+        self.source_unknown = False
         self.next_wakeup: datetime | None = None
         self.window_open = False
         self._window_raw_since: datetime | None = None
@@ -246,7 +250,7 @@ class Room:
         self._exercise_until: datetime | None = None
         self._relay_on: bool | None = None
         self._relay_changed: datetime | None = None
-        self._demand_since: datetime | None = None
+        self._heating_since: datetime | None = None
         self._unsubs: list[Callable[[], None]] = []
         self._verify_unsub: Callable[[], None] | None = None
         self._verify_attempts = 0
@@ -1098,16 +1102,19 @@ class Room:
         # mode Off or Summer, nor outside the heating season).
         if house.season_active and house.mode not in (MODE_OFF, MODE_SUMMER):
             outdoor = house.outdoor_now
-            # An episode is not used with a window open, nor when the outdoor
-            # temperature of a house that has one became unknown.
-            disturbed = self._window_sensor_open() or (
-                house.outdoor_configured and outdoor is None
+            # An episode is not used with a window open, when the outdoor
+            # temperature of a house that has one became unknown, or when the
+            # state of the heat source is unknown.
+            disturbed = (
+                self._window_sensor_open()
+                or (house.outdoor_configured and outdoor is None)
+                or self.source_unknown
             )
             self.learner.observe(
-                now, self.heat_demand, self.current_temp, self.target_temperature,
+                now, self.heating, self.current_temp, self.target_temperature,
                 outdoor, disturbed, self.learn_tolerance(),
             )
-            self.cooling.observe(now, self.heat_demand, self.current_temp, outdoor, disturbed)
+            self.cooling.observe(now, self.heating, self.current_temp, outdoor, disturbed)
         else:
             self.learner.cancel()
             self.cooling.cancel()
@@ -1197,9 +1204,9 @@ class Room:
 
     def _account_runtime(self, now: datetime) -> None:
         """Add the heating time since the last evaluation."""
-        if self._demand_since is not None:
-            self.runtime_s += (now - self._demand_since).total_seconds()
-            self._demand_since = now if self.heat_demand else None
+        if self._heating_since is not None:
+            self.runtime_s += (now - self._heating_since).total_seconds()
+            self._heating_since = now if self.heating else None
 
     def _update_demand(self) -> None:
         """Whether the room asks for heat (hvac_action, else the hysteresis; relays: on)."""
@@ -1225,12 +1232,20 @@ class Room:
                     demand = True
                 elif current < target + hysteresis and self.heat_demand:
                     demand = True  # between the limits: keep heating
-        if demand and self._demand_since is None:
-            self._demand_since = dt_util.now()
-        if not demand and self._demand_since is not None:
-            self._account_runtime(dt_util.now())
-            self._demand_since = None
         self.heat_demand = demand
+        # The room heats only while its heat source runs: its own device (GT,
+        # relay, on / off thermostat) and, when one is set, the heat source of
+        # the house (the boiler that TRVs and zone valves wait for).
+        configured, source_on = self.house.heat_source_state()
+        self.source_unknown = configured and source_on is None
+        heating = demand and (not configured or bool(source_on))
+        now = dt_util.now()
+        if heating and self._heating_since is None:
+            self._heating_since = now
+        if not heating and self._heating_since is not None:
+            self._account_runtime(now)
+            self._heating_since = None
+        self.heating = heating
 
     def temperature_gap(self) -> float | None:
         """Degrees below the target (negative when above)."""

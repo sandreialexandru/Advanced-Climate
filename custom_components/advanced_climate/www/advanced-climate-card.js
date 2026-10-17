@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.9.7";
+const CARD_VERSION = "1.10.0";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -741,7 +741,7 @@ class AdvancedClimateCard extends HTMLElement {
     if (cfg.compact && folded) return this._compactRow(stateObj, color);
 
     const badges = [];
-    if (a.heat_demand) badges.push(`<span class="pill hot">${this._t("heating")}</span>`);
+    if (a.heating ?? a.heat_demand) badges.push(`<span class="pill hot">${this._t("heating")}</span>`);
     if (a.window_open) badges.push(`<span class="pill warn">${this._t("window")}</span>`);
     if (a.override) {
       const until = this._overrideUntil(a);
@@ -798,7 +798,7 @@ class AdvancedClimateCard extends HTMLElement {
   _compactRow(stateObj, color) {
     const a = stateObj.attributes;
     const icons = [];
-    if (a.heat_demand) icons.push(`<span class="cicon hot" title="${esc(this._t("heating"))}">${this._icon("fire")}</span>`);
+    if (a.heating ?? a.heat_demand) icons.push(`<span class="cicon hot" title="${esc(this._t("heating"))}">${this._icon("fire")}</span>`);
     if (a.window_open) icons.push(`<span class="cicon warn" title="${esc(this._t("window"))}">${this._icon("window-open-variant")}</span>`);
     if (a.override) icons.push(`<span class="cicon" title="${esc(`${this._t("override")} ${this._overrideUntil(a)}`)}">${this._icon("hand-back-right-outline")}</span>`);
     return `<button class="crow" data-action="fold" data-key="room-${esc(a.room_id)}" aria-expanded="false" style="--c:${color}">
@@ -889,7 +889,8 @@ class AdvancedClimateCard extends HTMLElement {
           .map((p) => [p.t, num(p.s)])
           .filter((p) => p[1] !== null),
         target: rows(e.target_temperature).map((p) => ({ t: p.t, v: num(p.s), preset: p.a.preset })),
-        heat: rows(e.heat_demand).map((p) => [p.t, p.s === "on"]),
+        // Heated: the heat source ran (older history without the attribute: the demand).
+        heat: rows(e.heat_demand).map((p) => [p.t, p.s === "on" && p.a.heating !== false]),
       };
     } catch (err) {
       this._hist[key] = { at: Date.now(), loading: false, temp: [], target: [], heat: [], failed: true };
@@ -962,7 +963,7 @@ class AdvancedClimateCard extends HTMLElement {
         }
       }
       if (on !== null) heat.push([on, now]);
-    } else if (a.heat_demand) {
+    } else if (a.heating ?? a.heat_demand) {
       heat.push([now - 5 * 60 * 1000, now]);
     }
 

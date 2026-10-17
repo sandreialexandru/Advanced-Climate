@@ -44,9 +44,10 @@ program).
 | Calibrare TRV | oprită | Offset calculat din senzorul extern sau temperatura externă scrisă în intrarea TRV-ului (în unitatea entității TRV) |
 | Toleranța termostatului | GT: cold tolerance; relee: histerezis; altele: 0 | Cât lasă termostatul camera să coboare sub țintă înainte să încălzească; episoadele de încălzire se învață de la atât sub țintă |
 | Cererea de căldură | `hvac_action` | Termostatele fără `hvac_action` sunt tratate ca releele: se consideră că încălzesc de la histerezis sub temperatura setată până la histerezis peste ea, iar oprirea anticipată folosește histerezisul ca toleranță; histerezisul se cere când un termostat nu raportează `hvac_action` sau e indisponibil la configurare |
-| Centrală | niciuna | Pornită când destule camere cer căldură (cu timpi minimi de pornire / oprire) |
-| Camere necesare | 1 | Câte camere trebuie să ceară căldură ca să pornească centrala |
-| Cameră de referință | niciuna | Doar această cameră decide pentru centrală |
+| Sursa de căldură | niciuna | Centrala (sau releul care pornește sursa de căldură) când camerele nu o pot porni singure (TRV-uri, robinete de zonă); pornită când destule camere cer căldură (cu timpi minimi de pornire / oprire) |
+| Încălzire | sursa de căldură pornită | O cameră încălzește (învățare, timp de încălzire) doar cât merge sursa ei: GT încălzește, releul sau termostatul on / off e pornit și, când e setată, și *Sursa de căldură*; cu TRV-uri și fără sursă, cererea TRV-ului. Cât timp starea sursei e necunoscută nu se folosește niciun episod. Cu TRV-uri și o centrală pornită de un termostat din afara Home Assistant învățarea nu e sigură |
+| Camere necesare | 1 | Câte camere trebuie să ceară căldură ca să pornească sursa de căldură |
+| Cameră de referință | niciuna | Doar această cameră decide pentru sursa de căldură |
 | Alertă diferență între camere | oprită | Alertă când o cameră rămâne sub țintă în timp ce altele sunt calde |
 
 ## 2. Niveluri (preseturi)
@@ -190,7 +191,7 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | Oprit | Doar antiîngheț (`min_temp` al GT) | – |
 | Vară | Încălzire oprită | Comutare automată cu sezonul (secțiunea 6) |
 
-## 9. Energie și protecția centralei
+## 9. Energie și protecția sursei de căldură
 
 | Opțiune | Implicit | Descriere |
 | --- | --- | --- |
@@ -221,9 +222,9 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | `sensor.<room>_target_temperature`, `sensor.<room>_room_temperature` | Ținta și temperatura camerei, în unitatea casei |
 | `sensor.<room>_heating_rate` | Viteza de încălzire învățată pentru temperatura de afară de acum (estimări, episoade) |
 | `sensor.<room>_cooling_rate` | Cât de repede scade camera acum fără încălzire (coeficient, episoade, toleranță) |
-| `sensor.<room>_heating_runtime`, `sensor.<house>_heating_runtime` | Timpul total de încălzire (total crescător) |
+| `sensor.<room>_heating_runtime`, `sensor.<house>_heating_runtime` | Timpul total de încălzire (total crescător): o cameră cât merge sursa ei, casa cât merge sursa de căldură (fără ea, cât încălzește o cameră) |
 | `sensor.<room>_next_change` | Următoarea schimbare din program |
-| `binary_sensor.<room>_heat_demand` | Dacă camera cere căldură |
+| `binary_sensor.<room>_heat_demand` | Dacă camera cere căldură; atributul `heating` arată dacă sursa ei merge |
 | `sensor.<house>_presence` | acasă / aproape / departe |
 | `select.<house>_mode`, `select.<room>_profile` | Modul global și profilul activ |
 | `number.*`, `button.*`, `switch.*` | Niveluri, anularea schimbărilor manuale, mod oaspeți, pauză, blocare pentru copii |
@@ -272,6 +273,7 @@ de senzorul de decizie este regula câștigătoare.
 | Toleranța termostatului | thermostat tolerance |
 | Toleranța opririi anticipate | optimal stop tolerance |
 | Unitatea de temperatură | temperature unit |
+| Sursa de căldură | heat source |
 | Cererea către centrală | heat demand |
 | Mod oaspeți | guest mode |
 | Motiv curent | decision reason |

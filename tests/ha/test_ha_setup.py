@@ -357,3 +357,60 @@ async def test_saved_outdoor_values_dropped_without_source(
     assert house.outdoor.cutoff_active is False
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_heating_counts_only_while_the_heat_source_runs(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A TRV room that asks for heat while the boiler waits for other rooms does not heat."""
+    await hass.config.async_set_time_zone("Europe/Bucharest")
+    freezer.move_to("2026-10-12 09:00:00+00:00")
+    async_mock_service(hass, "climate", "set_temperature")
+    assert await async_setup_component(hass, "input_boolean", {"input_boolean": {"boiler": {}}})
+    trv = {"hvac_modes": ["heat", "off"], "current_temperature": 18.0, "temperature": 21.0}
+    hass.states.async_set("climate.trv", "heat", {**trv, "hvac_action": "heating"})
+    hass.states.async_set("person.andrei", "home")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Home",
+        options={
+            "persons": ["person.andrei"],
+            "nearby_zones": [],
+            "boiler_entity": "input_boolean.boiler",
+            "boiler_min_rooms": 2,  # one room is not enough: the boiler waits
+        },
+        subentries_data=[
+            {
+                "data": {"source": "climate", "climates": ["climate.trv"], "command_mode": "temperature"},
+                "subentry_type": SUBENTRY_ROOM,
+                "title": "Office",
+                "unique_id": None,
+            }
+        ],
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    await _tick(hass, freezer, 15)
+    room = next(iter(entry.runtime_data.rooms.values()))
+    demand = hass.states.get("binary_sensor.office_heat_demand")
+    assert demand.state == "on"
+    assert demand.attributes["heating"] is False
+    assert room.learner.episode_start is None
+    await _tick(hass, freezer, 1800)
+    assert room.runtime_s == 0
+
+    # The heat source runs (paused, so the integration does not switch it off
+    # for the missing second room): now the room heats and learns.
+    await hass.services.async_call("switch", "turn_on", {"entity_id": "switch.home_pause"}, blocking=True)
+    await hass.services.async_call(
+        "input_boolean", "turn_on", {"entity_id": "input_boolean.boiler"}, blocking=True
+    )
+    await _tick(hass, freezer, 5)
+    assert hass.states.get("binary_sensor.office_heat_demand").attributes["heating"] is True
+    assert room.learner.episode_start is not None
+    await _tick(hass, freezer, 600)
+    assert room.runtime_s >= 600
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

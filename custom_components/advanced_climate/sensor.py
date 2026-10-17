@@ -266,6 +266,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "rate_learned": bool(room.learner.episodes),
             "device_levels": room.device_levels,
             "heat_demand": room.heat_demand,
+            "heating": room.heating,
             "day_boundary": room.house.day_boundary_minutes,
             "source": room.source,
             "custom_levels": room.uses_custom_levels,

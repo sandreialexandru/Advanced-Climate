@@ -53,8 +53,9 @@ interfața în engleză; cu Home Assistant în română ele apar traduse.
   întoarcere și vacanță automată), Oprit (antiîngheț) și Vară. În orele de
   preîncălzire dinaintea sfârșitului vacanței se aplică programul chiar dacă
   toată lumea e încă departe. Doar cu data de sfârșit: vacanța începe acum.
-- **Energie**: tarif dinamic, surplus fotovoltaic, comanda centralei după
-  cererea de căldură a camerelor, statistici de funcționare.
+- **Energie**: tarif dinamic, surplus fotovoltaic, comanda sursei de
+  căldură (centralei) după cererea de căldură a camerelor, statistici ale
+  timpului de încălzire.
 - **Siguranță**: antiîngheț mereu (odată ce încălzește, continuă până când
   dispozitivul nu mai cere căldură), temperatură maximă, verificarea comenzilor
   cu reîncercare, alerte pentru dispozitive indisponibile, senzori defecți,
@@ -126,7 +127,7 @@ nimic:
 - **Opțiuni**: distanțele de preîncălzire doar cu un senzor Proximity / de timp
   de călătorie, valorile pentru prag / prognoză / sezon / compensare doar
   pentru ce e activat, pragurile de preț și fotovoltaic doar cu senzorii lor,
-  timpii centralei doar cu o centrală, durata fixă doar pentru acel tip de
+  timpii sursei de căldură doar cu o sursă, durata fixă doar pentru acel tip de
   schimbare manuală.
 
 ### Formatul programului
@@ -199,6 +200,18 @@ episoade de încălzire.
   episoadelor. Cu mai puțin de 3 episoade sau cu temperaturi de afară la mai
   puțin de 3 °C distanță se folosește media episoadelor.
 - Până la primul episod viteza este 1 °C/h.
+- **Încălzire doar cât merge sursa de căldură.** Învățarea (încălzire și
+  răcire) și timpul de încălzire consideră că o cameră încălzește doar cât
+  merge sursa ei de căldură: Generic Thermostat încălzește (`hvac_action`),
+  releul sau termostatul on / off e pornit și, când în opțiuni e setată o
+  *Sursă de căldură* (centrala pe care o așteaptă TRV-urile și robinetele de
+  zonă), doar cât merge și ea. O cameră care cere căldură în timp ce sursa
+  așteaptă alte camere se răcește și e învățată ca răcire. Cât timp starea
+  sursei e necunoscută, episoadele nu se folosesc. Cu TRV-uri și fără sursă
+  setată se folosește cererea TRV-ului; e corect pentru o centrală care merge
+  tot sezonul sau după compensarea exterioară. **Cu TRV-uri și o centrală
+  pornită de un termostat care nu e în Home Assistant, învățarea nu e sigură:
+  pornirea și oprirea anticipată nu sunt recomandate.**
 - Încălzirea și răcirea se învață doar în **sezonul rece**: nu în modurile
   Oprit sau Vară și nici în afara sezonului de încălzire (episodul în curs
   este renunțat).
@@ -208,6 +221,10 @@ episoade de încălzire.
   anticipată folosește și ea histerezisul ca toleranță); pentru ele apare
   setarea *Hysteresis* (și pentru termostatele indisponibile la configurare,
   care nu pot fi verificate).
+
+Senzorii *Heating runtime* numără la fel: o cameră cât merge sursa ei de
+căldură, casa cât merge sursa de căldură (fără ea, cât încălzește cel puțin o
+cameră). Graficul din card arată aceste perioade.
 
 Senzorul *Heating rate* arată viteza pentru temperatura de afară de acum;
 atributele arată estimarea la −10 / 0 / 10 / 20 °C, numărul de episoade,
