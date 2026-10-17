@@ -503,7 +503,7 @@
           "data_description": {
             "schedule_source": "Program intern: scris aici sau editat din card. Helper Program: un helper Schedule din Home Assistant alege între două niveluri.",
             "optimal_start": "Pornește încălzirea mai devreme ca nivelul următor să fie atins la timp. Viteza de încălzire se învață în câteva zile.",
-            "optimal_stop": "Coboară temperatura puțin înainte de nivelul următor mai rece, folosind căldura din pereți. Lasă oprit dacă încăperile se răcesc repede."
+            "optimal_stop": "Coboară nivelul înainte de următorul mai rece, cât de devreme se poate răci camera fără să iasă din confortul nivelului curent. Răcirea se învață din perioadele fără cerere de căldură."
           }
         },
         "extras": {
@@ -583,11 +583,13 @@
           "title": "Pornire / oprire anticipată",
           "data": {
             "optimal_start_max_minutes": "Anticipare maximă",
-            "optimal_stop_minutes": "Coboară mai devreme cu"
+            "optimal_stop_minutes": "Oprire anticipată maximă",
+            "stop_tolerance": "Toleranța opririi anticipate"
           },
           "data_description": {
             "optimal_start_max_minutes": "Nu pornește niciodată mai devreme de atât.",
-            "optimal_stop_minutes": "Cu cât mai devreme începe nivelul mai mic."
+            "optimal_stop_minutes": "Nu se oprește niciodată mai devreme de atât. Până se învață răcirea, nivelul mai mic începe cu atât mai devreme.",
+            "stop_tolerance": "Cât poate coborî camera sub nivelul curent până la schimbarea din program (confortul ei). 0 = camera nu are voie să coboare sub nivel, deci se oprește mai devreme doar când e mai caldă decât nivelul."
           }
         },
         "extras_valves": {
@@ -664,6 +666,9 @@
       },
       "heating_rate": {
         "name": "Viteză de încălzire"
+      },
+      "cooling_rate": {
+        "name": "Viteză de răcire"
       }
     },
     "binary_sensor": {

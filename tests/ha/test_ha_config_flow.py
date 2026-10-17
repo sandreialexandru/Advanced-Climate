@@ -199,7 +199,9 @@ async def test_room_subentry_flow(hass: HomeAssistant) -> None:
     # No window sensors and no detection: no delays form.
     assert result["step_id"] == "schedule"
     assert _keys(result) == {"schedule_source", "optimal_start", "optimal_stop"}
-    result = await flow.async_configure(result["flow_id"], {"optimal_start": True})
+    result = await flow.async_configure(
+        result["flow_id"], {"optimal_start": True, "optimal_stop": True}
+    )
     assert result["step_id"] == "schedule_internal"
     result = await flow.async_configure(result["flow_id"], {"schedule": "workday: 06:00 Day, 25:00 Night"})
     assert result["errors"] == {"schedule": "invalid_schedule"}
@@ -207,7 +209,8 @@ async def test_room_subentry_flow(hass: HomeAssistant) -> None:
         result["flow_id"], {"schedule": "workday: 00:00 Night, 06:00 Day, 22:00 Night"}
     )
     assert result["step_id"] == "schedule_optimal"
-    assert _keys(result) == {"optimal_start_max_minutes"}
+    # A relay keeps its hysteresis as the comfort of the optimal stop.
+    assert _keys(result) == {"optimal_start_max_minutes", "optimal_stop_minutes"}
     result = await flow.async_configure(result["flow_id"], {})
     # No weather entity (no solar gain) and no TRVs: nothing more to ask.
     assert result["type"] is FlowResultType.CREATE_ENTRY

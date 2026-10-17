@@ -503,7 +503,7 @@
           "data_description": {
             "schedule_source": "Internal schedule: written here or edited from the card. Schedule helper: a Home Assistant Schedule helper decides between two levels.",
             "optimal_start": "Starts heating early so the next level is reached on time. The heating speed is learned in a few days.",
-            "optimal_stop": "Lowers the temperature a little before the next colder level, using the heat already in the walls. Leave off if the rooms cool fast."
+            "optimal_stop": "Lowers the level before the next colder one, as early as the room can cool without falling out of the comfort of the current level. The cooling is learned from the periods without heat demand."
           }
         },
         "extras": {
@@ -583,11 +583,13 @@
           "title": "Optimal start / stop",
           "data": {
             "optimal_start_max_minutes": "Maximum early start",
-            "optimal_stop_minutes": "Lower early by"
+            "optimal_stop_minutes": "Maximum early stop",
+            "stop_tolerance": "Optimal stop tolerance"
           },
           "data_description": {
             "optimal_start_max_minutes": "Never starts earlier than this.",
-            "optimal_stop_minutes": "How early the lower level starts."
+            "optimal_stop_minutes": "Never stops earlier than this. Until the cooling is learned, the lower level starts this early.",
+            "stop_tolerance": "How far below the current level the room may fall before the scheduled change (its comfort). 0 = the room must not fall below the level, so it stops early only when warmer than the level."
           }
         },
         "extras_valves": {
@@ -664,6 +666,9 @@
       },
       "heating_rate": {
         "name": "Heating rate"
+      },
+      "cooling_rate": {
+        "name": "Cooling rate"
       }
     },
     "binary_sensor": {
