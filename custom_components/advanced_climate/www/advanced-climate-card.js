@@ -17,8 +17,10 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.11.2";
+const CARD_VERSION = "1.11.3";
 
+// A target that is only a temperature (no level): neutral.
+const TEMP_COLOR = "var(--ac-fixed)";
 const PRESET_COLORS = {
   comfort: "#d9480f",
   home: "#f08c00",
@@ -1128,7 +1130,7 @@ class AdvancedClimateCard extends HTMLElement {
       .join("")}`;
     const segs = d.segs
       .map((sg) => {
-        const c = PRESET_COLORS[sg.preset] || "var(--ac-accent)";
+        const c = PRESET_COLORS[sg.preset] || TEMP_COLOR;
         const x0 = x(sg.s);
         const x1 = x(sg.e);
         const yy = y(sg.v);
@@ -1161,17 +1163,22 @@ class AdvancedClimateCard extends HTMLElement {
       .filter((sg) => {
         const [xs, xe] = visible(sg);
         const yy = y(sg.v);
-        if (xe - xs < 110 || placed.some(([lx, ly]) => Math.abs(xs - lx) < 190 && Math.abs(yy - ly) < 14)) {
+        const wide = sg.preset ? 190 : 90;
+        if (xe - xs < (sg.preset ? 110 : 60) || placed.some(([lx, ly, lw]) => Math.abs(xs - lx) < Math.max(wide, lw) && Math.abs(yy - ly) < 14)) {
           return false;
         }
-        placed.push([xs, yy]);
+        placed.push([xs, yy, wide]);
         return true;
       })
       .map((sg) => {
-        const [xs] = visible(sg);
-        return `<span class="lvl ${sg.future ? "future" : ""}" style="left:${(xs / W) * 100}%;top:${
+        const [xs, xe] = visible(sg);
+        // Near the right edge the label ends with the segment, so it stays inside.
+        const place =
+          xs > W * 0.7 ? `right:${100 - (xe / W) * 100}%` : `left:${(xs / W) * 100}%`;
+        const name = sg.preset ? `${esc(this._presetName(a, sg.preset))} ` : "";
+        return `<span class="lvl ${sg.future ? "future" : ""} ${xs > W * 0.7 ? "end" : ""}" style="${place};top:${
           (y(sg.v) / H) * 100
-        }%;--c:${PRESET_COLORS[sg.preset] || "var(--ac-accent)"}">${esc(this._presetName(a, sg.preset) || "")} ${sg.v}°</span>`;
+        }%;--c:${PRESET_COLORS[sg.preset] || TEMP_COLOR}">${name}${sg.v}°</span>`;
       })
       .join("");
     const yLabels = gridValues
@@ -1289,7 +1296,7 @@ class AdvancedClimateCard extends HTMLElement {
     if (t <= d.now && temp !== null) rows.push(`<span><i class="lg-temp"></i>${temp.toFixed(1)}°</span>`);
     if (seg) {
       rows.push(
-        `<span><i style="background:${PRESET_COLORS[seg.preset] || "var(--ac-accent)"}"></i>${
+        `<span><i style="background:${PRESET_COLORS[seg.preset] || TEMP_COLOR}"></i>${
           seg.future ? this._t("planned") : this._t("target_tag")
         } ${seg.v}° · ${esc(this._presetName(a, seg.preset) || "")}</span>`
       );
@@ -2046,6 +2053,7 @@ const STYLE = `
     --ac-line: color-mix(in srgb, var(--primary-text-color) 12%, transparent);
     --ac-muted: var(--secondary-text-color);
     --ac-accent: var(--primary-color);
+    --ac-fixed: color-mix(in srgb, var(--primary-text-color) 65%, transparent);
     --ac-hot: #d9480f;
     --ac-warn: #c98a12;
     color: var(--primary-text-color);
@@ -2187,6 +2195,7 @@ const STYLE = `
   .overlay .lvl { position: absolute; transform: translate(4px, calc(-100% - 4px)); font-size: 0.7em; white-space: nowrap;
     padding: 1px 6px; border-radius: 6px; background: color-mix(in srgb, var(--card-background-color) 88%, transparent);
     color: var(--primary-text-color); display: inline-flex; align-items: center; gap: 5px; }
+  .overlay .lvl.end { transform: translate(-4px, calc(-100% - 4px)); }
   .overlay .lvl::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
   .overlay .lvl.future { color: var(--ac-muted); }
   .ylabels span { position: absolute; right: calc(100% + 6px); transform: translateY(-50%); font-size: 0.68em;
