@@ -222,7 +222,11 @@ falls from 22 to 21.5 °C in 40 minutes, sleep starts at 21:20.
 - The *Maximum early stop* room setting is the limit; until the first cooling
   episode the lower level starts that early.
 - Once an optimal stop begins it continues until the scheduled time; the rules
-  above the schedule can still override it.
+  above the schedule can still override it. If the room falls below the
+  comfort of the current level before that time (it cooled faster than
+  learned), the optimal stop is cancelled: the current level stays until the
+  scheduled time and the stop does not start again for that change. If this
+  happens often, lower the *Maximum early stop*.
 - The card shows the expected temperature at the change (e.g. *~21.5° at
   22:00*); the *Decision* sensor has it as the `stop_forecast` attribute.
 - The *Cooling rate* sensor shows how fast the room falls now without heating;

@@ -210,6 +210,16 @@ class OptimalTest(unittest.TestCase):
         preset, rule = engine.optimal_schedule(*args, False, 10.0, True)
         self.assertEqual((preset, rule), ("sleep", const.RULE_OPTIMAL_STOP))
 
+    def test_stop_cancelled_when_too_cold(self) -> None:
+        # Comfort of home 22 °C with 0.5 tolerance: 21.5 °C.
+        self.assertEqual(engine.optimal_stop_state(True, False, 21.6, 21.5), (True, True, False))
+        # Colder than expected during the stop: cancelled, home until the change.
+        self.assertEqual(engine.optimal_stop_state(True, False, 21.4, 21.5), (False, False, True))
+        # It does not start again for that change, even when warm again.
+        self.assertEqual(engine.optimal_stop_state(False, True, 22.0, 21.5), (False, False, True))
+        # Below the comfort, no optimal stop starts.
+        self.assertEqual(engine.optimal_stop_state(False, False, 21.4, 21.5), (False, False, False))
+
 
 class VacationPreheatTest(unittest.TestCase):
     def test_schedule_applies_while_far(self) -> None:
