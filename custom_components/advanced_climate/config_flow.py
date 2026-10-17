@@ -1368,14 +1368,21 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
         """Solar gain and valve exercise (TRVs without on / off only)."""
         d = self._shown()
         valves = d[CONF_SOURCE] == SOURCE_CLIMATE and not self._on_off()
-        fields: dict[Any, Any] = {
-            _req(CONF_SOLAR_OFFSET, d, ROOM_DEFAULTS): _number(-3, 0, 0.1, "°C"),
-        }
+        # Solar gain needs the weather entity of the house (sunny or not).
+        entry = self._get_entry()
+        solar = bool({**entry.data, **entry.options}.get(CONF_WEATHER))
+        fields: dict[Any, Any] = {}
+        if solar:
+            fields[_req(CONF_SOLAR_OFFSET, d, ROOM_DEFAULTS)] = _number(-3, 0, 0.1, "°C")
         if valves:
             fields[_req(CONF_VALVE_EXERCISE, d, ROOM_DEFAULTS)] = _bool()
         schema = vol.Schema(fields)
+        if not fields:
+            user_input = {}
         if user_input is not None:
             self._data = _merge(self._data, schema, self._kept(user_input))
+            if not solar:
+                self._data[CONF_SOLAR_OFFSET] = 0.0
             if not valves:
                 self._data[CONF_VALVE_EXERCISE] = False
             if self._data.get(CONF_VALVE_EXERCISE):

@@ -180,6 +180,40 @@ class OptimalTest(unittest.TestCase):
         )
         self.assertEqual((preset, rule), ("sleep", const.RULE_OPTIMAL_STOP))
 
+    def test_start_continues_once_started(self) -> None:
+        # Warm early: without the start already running it would fall back to sleep.
+        change = NOW + timedelta(minutes=20)
+        args = (NOW, "sleep", change, "home", 21.9, LEVELS.get, 1.0, True, 120, False, 30)
+        self.assertEqual(engine.optimal_schedule(*args)[0], "sleep")
+        preset, rule = engine.optimal_schedule(*args, True)
+        self.assertEqual((preset, rule), ("home", const.RULE_OPTIMAL_START))
+
+    def test_started_start_is_still_overridden(self) -> None:
+        d = engine.decide(
+            inputs(schedule_rule=const.RULE_OPTIMAL_START, window_open=True)
+        )
+        self.assertEqual(d.rule, const.RULE_WINDOW)
+
+
+class VacationPreheatTest(unittest.TestCase):
+    def test_schedule_applies_while_far(self) -> None:
+        d = engine.decide(inputs(presence="far", vacation_preheat=True))
+        self.assertEqual(d.rule, const.RULE_SCHEDULE)
+        self.assertEqual(d.target.preset, "home")
+        self.assertIn("preheating", d.description)
+        d = engine.decide(inputs(presence="far"))
+        self.assertEqual(d.rule, const.RULE_FAR)
+
+
+class FrostHoldTest(unittest.TestCase):
+    def test_frost_continues_while_heating(self) -> None:
+        summer = {"mode": const.MODE_SUMMER}
+        self.assertEqual(engine.decide(inputs(current_temp=6.9, **summer)).rule, const.RULE_SAFETY)
+        held = engine.decide(inputs(current_temp=7.1, frost_holding=True, **summer))
+        self.assertEqual(held.rule, const.RULE_SAFETY)
+        self.assertIn("heating up", held.description)
+        self.assertEqual(engine.decide(inputs(current_temp=7.1, **summer)).rule, const.RULE_SUMMER)
+
 
 if __name__ == "__main__":
     unittest.main()

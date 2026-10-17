@@ -93,7 +93,7 @@ home_office: 00:00 sleep, 07:00 comfort, 23:00 sleep
 | Workdays | Workday integration | Holidays come from the Workday integration (including future days) |
 | Calendar | none | An event titled with a profile name selects that profile; a preset name selects that level |
 | Schedule source | internal | Internal schedule or an existing HA **Schedule helper** |
-| Optimal start | off | Start heating early so the next level is reached on time |
+| Optimal start | off | Start heating early so the next level is reached on time; once started it continues until the change (other rules can override it) |
 | Learned heating rate | on with optimal start | °C/h per room, a straight line of the outdoor temperature from the last 30 heating episodes; episodes with an open window sensor are not used |
 | Maximum early start | 2 h | Limit of the optimal start |
 | Optimal stop | off | Lower the target earlier, using the thermal inertia |
@@ -151,7 +151,7 @@ what the schedule asks.
 | Automatic season | 3 days / 15 °C | Starts/ends after X consecutive days below/above the threshold |
 | Outdoor compensation | off | Small adjustment, e.g. +0.5 °C below −5 °C |
 | Forecast | off | Delay heating if the forecast reaches the cutoff soon |
-| Solar gain per room | off | Negative offset while the sun shines |
+| Solar gain per room | off | Negative offset while the sun shines (needs the weather entity) |
 
 ## 7. Manual changes
 
@@ -160,7 +160,7 @@ the integration takes control again.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| Detection | on | Changes made by the integration are told apart by their context |
+| Detection | on | Changes made by the integration are told apart by their context, or because the device only reports the values the integration sent |
 | Duration | configurable, universal | One rule for every manual change, including turning GT off: **fixed duration** (X hours) or **until the next reevaluation** triggered by a change (slot, presence, window, mode). The periodic check does not end it |
 | Scope | room | Whole house only when rooms have their own valves |
 | Pause | – | Switch: no commands at all (frost protection still applies) |
@@ -174,7 +174,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | Mode | What it does | Options |
 | --- | --- | --- |
 | Auto | Schedule + presence + every rule | – |
-| Vacation | `away` in every room | Start and end dates, preheat X hours before the end (default 4 h), automatic vacation after Y hours far away |
+| Vacation | `away` in every room | Start and end dates (only an end: from now), preheat X hours before the end (default 4 h; the schedule applies even while everyone is far), automatic vacation after Y hours far away |
 | Off | Frost protection only (`min_temp` of GT) | – |
 | Summer | Heating off | Automatic switch with the season (section 6) |
 
@@ -192,7 +192,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| Frost protection | on | Lower limit, also in Off and Pause (GT: its minimum temperature) |
+| Frost protection | on | Lower limit, also in Off and Pause (GT: its minimum temperature); once heating, it continues until the device stops asking for heat |
 | Sensor unavailable | device sensor | External sensor down → device sensor → eco, with alert |
 | Device unavailable | alert after 15 min | The other rooms keep working |
 | Command verification | on | Retry once after 2 min, then alert |

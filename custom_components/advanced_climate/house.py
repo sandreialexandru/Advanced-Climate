@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
 import logging
@@ -180,6 +181,8 @@ class House:
         self._last_eval: datetime | None = None
         self._own_contexts: dict[str, None] = {}  # ordered set
         self._started_unsub: Callable[[], None] | None = None
+        # Evaluations never run at the same time (timer, events and services).
+        self._eval_lock = asyncio.Lock()
 
     # ------------------------------------------------------------------
     # Setup / teardown
@@ -368,6 +371,10 @@ class House:
         """Evaluate the house and all rooms, then send commands."""
         if not self.started:
             return
+        async with self._eval_lock:
+            await self._async_evaluate_locked()
+
+    async def _async_evaluate_locked(self) -> None:
         now = dt_util.now()
         self._last_eval = now
         self._sample_outdoor()
@@ -401,7 +408,7 @@ class House:
             candidates.append(self._presence_due)
         if self.guest_until:
             candidates.append(self.guest_until)
-        for moment in (self.vacation_start, self._vacation_resume()):
+        for moment in (self.vacation_start, self._vacation_resume(), self.vacation_end):
             if moment and moment > now:
                 candidates.append(moment)
         candidates = [t for t in candidates if t > now]
@@ -583,10 +590,20 @@ class House:
             return True
         if self.vacation_start is None and self.vacation_end is None:
             return False
+        # Only an end: the vacation runs from now until then.
         start_ok = self.vacation_start is None or now >= self.vacation_start
         resume = self._vacation_resume()
         end_ok = resume is None or now < resume
-        return start_ok and end_ok and self.vacation_start is not None
+        return start_ok and end_ok
+
+    def vacation_preheating(self, now: datetime | None = None) -> bool:
+        """The last hours before the end of a vacation: the schedule applies again."""
+        now = now or dt_util.now()
+        if self.mode == MODE_VACATION or self.auto_vacation or self.vacation_end is None:
+            return False
+        resume = self._vacation_resume()
+        started = self.vacation_start is None or now >= self.vacation_start
+        return started and resume is not None and resume <= now < self.vacation_end
 
     # ------------------------------------------------------------------
     # Calendar / workday
@@ -784,7 +801,7 @@ class House:
             return False
         weather = self.options.get(CONF_WEATHER)
         if not weather:
-            return True
+            return False  # solar gain needs the weather entity
         state = self.hass.states.get(weather)
         return valid(state) and state.state in ("sunny", "clear", "partlycloudy")  # type: ignore[union-attr]
 
@@ -971,6 +988,7 @@ class House:
             "person_classes": self.person_classes,
             "arriving": self.arriving,
             "vacation_active": self.vacation_active(),
+            "vacation_preheating": self.vacation_preheating(),
             "vacation_start": iso(self.vacation_start),
             "vacation_end": iso(self.vacation_end),
             "outdoor_latest": self.outdoor.latest(),

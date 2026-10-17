@@ -17,7 +17,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import AdvancedClimateConfigEntry
-from .const import PRESENCE_STATES, PRESETS, RULES
+from .const import DOMAIN, PRESENCE_STATES, PRESETS, RULES
 from .entity import HOUSE_ENTITY_KEYS, ROOM_ENTITY_KEYS, HouseEntity, RoomEntity, entity_map
 from .house import House
 from .learning import start_gap
@@ -81,6 +81,7 @@ class PresenceSensor(HouseEntity, SensorEntity):
             "arriving": self.house.arriving,
             "guest_mode": self.house.guest,
             "vacation_active": self.house.vacation_active(),
+            "vacation_preheating": self.house.vacation_preheating(),
             "pending": self.house.presence.pending,
             "pending_since": iso(self.house.presence.pending_since),
             "advanced_climate_house": True,
@@ -117,18 +118,27 @@ class _HouseUnitTemperature(SensorEntity):
         return self.house.unit
 
     async def async_added_to_hass(self) -> None:
-        """Show the value in the unit of the house, not the one of Home Assistant."""
+        """Show the value in the unit of the house, not the one of Home Assistant.
+
+        The unit is set when the sensor is new or the unit of the house changes; a
+        display unit chosen later in the entity settings is kept.
+        """
         await super().async_added_to_hass()
         registry = er.async_get(self.hass)
         entry = registry.async_get(self.entity_id)
         if entry is None:
             return
-        if (entry.options.get("sensor") or {}).get("unit_of_measurement") != self.house.unit:
-            registry.async_update_entity_options(
-                self.entity_id,
-                "sensor",
-                {**(entry.options.get("sensor") or {}), "unit_of_measurement": self.house.unit},
-            )
+        applied = (entry.options.get(DOMAIN) or {}).get("unit")
+        if applied == self.house.unit:
+            return
+        registry.async_update_entity_options(
+            self.entity_id,
+            "sensor",
+            {**(entry.options.get("sensor") or {}), "unit_of_measurement": self.house.unit},
+        )
+        registry.async_update_entity_options(
+            self.entity_id, DOMAIN, {**(entry.options.get(DOMAIN) or {}), "unit": self.house.unit}
+        )
 
 
 class OutdoorAverageSensor(HouseEntity, _HouseUnitTemperature):

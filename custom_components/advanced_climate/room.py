@@ -94,6 +94,8 @@ from .const import (
     PRESETS,
     PRESET_NONE,
     ROOM_DEFAULTS,
+    RULE_OPTIMAL_START,
+    RULE_SAFETY,
     RULE_STARTING,
     SCHEDULE_HELPER,
     SOURCE_CLIMATE,
@@ -248,6 +250,11 @@ class Room:
         self.sensor_failed = False
         self.external_failed = False
         self.signature: tuple | None = None
+        # The schedule change an optimal start already began for.
+        self._optimal_for: datetime | None = None
+        # Values of the last commands, per device: a device that reports them
+        # later (e.g. a sleepy Zigbee TRV) is not a manual change.
+        self._sent: dict[str, dict[str, Any]] = {}
 
     # ------------------------------------------------------------------
     # Setup
@@ -513,6 +520,7 @@ class Room:
                 and valid(new)
                 and old.state != new.state
                 and not self.house.is_own_context(event.context)
+                and not self._is_echo(entity_id, old, new)
             ):
                 self._handle_manual_change(entity_id, new)
         if entity_id in as_list(self.config.get(CONF_TEMP_SENSORS)) or entity_id in self.climates:
@@ -536,12 +544,49 @@ class Room:
             return False
         if not self.house.started:
             return False
+        if self._is_echo(event.data["entity_id"], old, new):
+            return False
         if old.state != new.state:
             return True
         for attr in ("preset_mode", ATTR_TEMPERATURE):
             if old.attributes.get(attr) != new.attributes.get(attr):
                 return True
         return False
+
+    def _is_echo(self, entity_id: str, old: State, new: State) -> bool:
+        """True when a device only reports the values the integration sent it.
+
+        Devices that confirm a command late get a new context, so the context
+        alone cannot tell them apart from a person. Every changed value we sent
+        must match it, and at least one must have been sent.
+        """
+        sent = self._sent.get(entity_id)
+        if not sent:
+            return False
+        changed: dict[str, Any] = {}
+        if old.state != new.state:
+            changed["state"] = new.state
+        for attr in ("preset_mode", ATTR_TEMPERATURE):
+            if old.attributes.get(attr) != new.attributes.get(attr):
+                changed[attr] = new.attributes.get(attr)
+        matched = False
+        for key, value in changed.items():
+            if key not in sent:
+                continue
+            if key == ATTR_TEMPERATURE:
+                # The device may round to its own step.
+                step = float_attr(new, "target_temp_step")
+                margin = step / 2 + 0.01 if step else 0.05
+                try:
+                    same = abs(float(value) - float(sent[key])) < margin
+                except (TypeError, ValueError):
+                    same = False
+            else:
+                same = value == sent[key]
+            if not same:
+                return False
+            matched = True
+        return matched
 
     def _handle_manual_change(self, entity_id: str, new: State | None) -> None:
         if self.house.paused:
@@ -642,14 +687,11 @@ class Room:
 
     def external_temperature(self) -> float | None:
         """Aggregated external sensors only."""
-        values = []
-        for entity_id in as_list(self.config.get(CONF_TEMP_SENSORS)):
-            state = self.hass.states.get(entity_id)
-            if valid(state):
-                try:
-                    values.append(float(state.state))  # type: ignore[union-attr]
-                except (TypeError, ValueError):
-                    continue
+        values = [
+            v
+            for entity_id in as_list(self.config.get(CONF_TEMP_SENSORS))
+            if (v := temp_state(self.hass, entity_id)) is not None
+        ]
         return aggregate(values, self.config[CONF_TEMP_AGGREGATION])
 
     def _check_temp_drop(self, now: datetime) -> None:
@@ -876,7 +918,9 @@ class Room:
         calendar_preset = self._calendar_preset()
         if calendar_preset is not None:
             preset = calendar_preset
+            self._optimal_for = None
         elif state is not None:
+            started = self._optimal_for is not None and self._optimal_for == state.next_change
             preset, schedule_rule = optimal_schedule(
                 now,
                 state.preset,
@@ -889,14 +933,18 @@ class Room:
                 float(self.config[CONF_OPTIMAL_START_MAX]),
                 bool(self.config[CONF_OPTIMAL_STOP]),
                 float(self.config[CONF_OPTIMAL_STOP_MINUTES]),
+                started,
             )
+            self._optimal_for = state.next_change if schedule_rule == RULE_OPTIMAL_START else None
 
         vacation = house.vacation_active(now)
+        preheat = not vacation and house.vacation_preheating(now)
         signature = (
             house.mode,
             house.presence_state,
             house.arriving,
             vacation,
+            preheat,
             preset,
             state.profile if state else None,
             self.window_open,
@@ -934,6 +982,8 @@ class Room:
             offsets=self._offsets(),
             supports_off=self._supports_off(),
             unit=self.house.unit,
+            vacation_preheat=preheat,
+            frost_holding=self._frost_holding(),
         )
         decision = decide(inputs)
         self._record(decision, now)
@@ -958,6 +1008,17 @@ class Room:
         if self._exercise_until:
             wakeups.append(self._exercise_until)
         self.next_wakeup = min(wakeups) if wakeups else None
+
+    def _frost_holding(self) -> bool:
+        """Frost protection started (heating off otherwise) and the device still heats."""
+        previous = self.decision
+        return (
+            previous is not None
+            and previous.rule == RULE_SAFETY
+            and previous.target.kind == KIND_TEMPERATURE
+            and previous.target.preset is None
+            and self.heat_demand
+        )
 
     def _supports_off(self) -> bool:
         if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
@@ -1137,34 +1198,29 @@ class Room:
         assert state is not None
         if not force and self._matches(state, target):
             return False
+        self._sent[entity_id] = {}
         modes = list(state.attributes.get("hvac_modes") or [])
         heat_mode = "heat" if "heat" in modes else ("auto" if "auto" in modes else None)
 
         if target.kind == KIND_OFF:
             if STATE_OFF in modes:
-                return await self._call(
-                    "climate", "set_hvac_mode", {ATTR_ENTITY_ID: entity_id, "hvac_mode": STATE_OFF}
+                return await self._send(
+                    entity_id, "set_hvac_mode", "hvac_mode", STATE_OFF, "state"
                 )
             minimum = float_attr(state, "min_temp")
             if minimum is None:
                 return False
-            return await self._call(
-                "climate", "set_temperature", {ATTR_ENTITY_ID: entity_id, ATTR_TEMPERATURE: minimum}
-            )
+            return await self._send(entity_id, "set_temperature", ATTR_TEMPERATURE, minimum)
 
         if state.state == STATE_OFF and heat_mode:
-            await self._call(
-                "climate", "set_hvac_mode", {ATTR_ENTITY_ID: entity_id, "hvac_mode": heat_mode}
-            )
+            await self._send(entity_id, "set_hvac_mode", "hvac_mode", heat_mode, "state")
 
         if target.kind == KIND_PRESET and self.command_mode == COMMAND_PRESET:
             available = list(state.attributes.get("preset_modes") or [])
             name = self._device_preset(target.preset or "", available)
             if name is not None:
                 self.house.clear_alert(f"preset_{self.id}_{target.preset}")
-                return await self._call(
-                    "climate", "set_preset_mode", {ATTR_ENTITY_ID: entity_id, "preset_mode": name}
-                )
+                return await self._send(entity_id, "set_preset_mode", "preset_mode", name)
         temperature = (
             target.temperature
             if target.kind == KIND_TEMPERATURE
@@ -1178,14 +1234,21 @@ class Room:
                 "Configure this preset in the thermostat.",
             )
             return False
-        return await self._call(
-            "climate",
+        return await self._send(
+            entity_id,
             "set_temperature",
-            {
-                ATTR_ENTITY_ID: entity_id,
-                ATTR_TEMPERATURE: round(float(from_celsius(temperature, system_unit(self.hass))), 1),
-            },
+            ATTR_TEMPERATURE,
+            round(float(from_celsius(temperature, system_unit(self.hass))), 1),
         )
+
+    async def _send(
+        self, entity_id: str, service: str, key: str, value: Any, field: str | None = None
+    ) -> bool:
+        """Send one climate command and remember the value it sets."""
+        ok = await self._call("climate", service, {ATTR_ENTITY_ID: entity_id, key: value})
+        if ok:
+            self._sent.setdefault(entity_id, {})[field or key] = value
+        return ok
 
     async def _async_apply_relay(self, target: Target) -> bool:
         """On/off control for switches or climates in hvac_mode command mode."""
@@ -1219,20 +1282,22 @@ class Room:
         ok = True
         if self.source == SOURCE_SWITCH:
             for entity_id in self.switches:
-                ok &= await self._call(
+                sent = await self._call(
                     entity_id.split(".", 1)[0],
                     SERVICE_TURN_ON if want else SERVICE_TURN_OFF,
                     {ATTR_ENTITY_ID: entity_id},
                 )
+                if sent:
+                    self._sent[entity_id] = {"state": STATE_ON if want else STATE_OFF}
+                ok &= sent
         else:
             for entity_id in self.climates:
                 state = self.hass.states.get(entity_id)
                 modes = list(state.attributes.get("hvac_modes") or []) if valid(state) else []  # type: ignore[union-attr]
                 on_mode = "heat" if "heat" in modes else ("auto" if "auto" in modes else "heat")
-                ok &= await self._call(
-                    "climate",
-                    "set_hvac_mode",
-                    {ATTR_ENTITY_ID: entity_id, "hvac_mode": on_mode if want else STATE_OFF},
+                self._sent[entity_id] = {}
+                ok &= await self._send(
+                    entity_id, "set_hvac_mode", "hvac_mode", on_mode if want else STATE_OFF, "state"
                 )
         if ok:
             self._relay_on = want

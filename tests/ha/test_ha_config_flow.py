@@ -209,9 +209,7 @@ async def test_room_subentry_flow(hass: HomeAssistant) -> None:
     assert result["step_id"] == "schedule_optimal"
     assert _keys(result) == {"optimal_start_max_minutes"}
     result = await flow.async_configure(result["flow_id"], {})
-    assert result["step_id"] == "extras"
-    assert _keys(result) == {"solar_offset"}
-    result = await flow.async_configure(result["flow_id"], {})
+    # No weather entity (no solar gain) and no TRVs: nothing more to ask.
     assert result["type"] is FlowResultType.CREATE_ENTRY
 
     subentry = next(iter(entry.subentries.values()))
@@ -237,7 +235,7 @@ async def test_room_with_thermostat_presets(hass: HomeAssistant) -> None:
         "heat",
         {"preset_modes": ["none", "comfort", "eco", "away", "boost"], "preset_mode": "none"},
     )
-    entry = MockConfigEntry(domain=DOMAIN, title="Home", options={})
+    entry = MockConfigEntry(domain=DOMAIN, title="Home", options={"weather": "weather.home"})
     entry.add_to_hass(hass)
     result = await hass.config_entries.subentries.async_init(
         (entry.entry_id, SUBENTRY_ROOM), context={"source": SOURCE_USER}
