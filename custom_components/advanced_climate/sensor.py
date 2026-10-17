@@ -163,6 +163,7 @@ class OutdoorAverageSensor(HouseEntity, _HouseUnitTemperature):
         """Details."""
         return {
             "latest": _t(self.house.outdoor_now, self.house.unit),
+            "average_hours": self.house.average_hours,
             "cutoff_active": self.house.cutoff_active,
             "forecast_cutoff": self.house.forecast_cutoff,
             "heating_season": self.house.season_active,

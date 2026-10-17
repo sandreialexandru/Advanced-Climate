@@ -300,7 +300,7 @@ type: custom:advanced-climate-card
 | --- | --- | --- |
 | `title` | Heating | Card title (empty string hides it) |
 | `rooms` | all | List of room *Decision* sensors to show |
-| `show_house` | `true` | Presence and people, outdoor temperature, season, heat demand, heating time, mode (Auto / Vacation / Off / Summer), Pause, Guests, vacation dates, reevaluate and clear all manual changes |
+| `show_house` | `true` | Presence and people, outdoor average (over the *Average over* hours), season, heat demand, heating time, mode (Auto / Vacation / Off / Summer), Pause, Guests, vacation dates, reevaluate and clear all manual changes |
 | `show_rooms` | `true` | The rooms |
 | `show_timeline` | `true` | Chart of the last 24 hours and the next 12: room temperature, target (colored by level), planned levels and the periods when the room heated. Hover or touch to read the values. Zoom with the buttons (1h, 6h, −, +), double-click, pinch or Ctrl + wheel down to 20 minutes; drag to move in time |
 | `show_quick_override` | `true` | Set a level or a temperature for a number of hours (empty = the configured rule) |

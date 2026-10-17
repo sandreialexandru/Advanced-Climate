@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.10.6";
+const CARD_VERSION = "1.10.7";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -70,7 +70,8 @@ const TEXT = {
     level: "Level",
     remove_profile: "Delete profile",
     presence: "Presence",
-    outdoor: "Outdoor",
+    outdoor: "Outdoor average",
+    outdoor_hours: "Outdoor average ({h} h)",
     season: "Heating season",
     cutoff: "Warm outside",
     demand: "Heat demand",
@@ -172,7 +173,8 @@ const TEXT = {
     level: "Nivel",
     remove_profile: "Șterge profilul",
     presence: "Prezență",
-    outdoor: "Exterior",
+    outdoor: "Medie afară",
+    outdoor_hours: "Medie afară ({h} h)",
     season: "Sezon de încălzire",
     cutoff: "Cald afară",
     demand: "Cerere de căldură",
@@ -564,6 +566,12 @@ class AdvancedClimateCard extends HTMLElement {
     )}</span></button>`;
   }
 
+  /** Label of the outdoor temperature: it is the average of the last hours. */
+  _outdoorLabel(outdoor) {
+    const h = num(outdoor?.attributes?.average_hours);
+    return h === null ? this._t("outdoor") : this._t("outdoor_hours").replace("{h}", String(h));
+  }
+
   /** "~35 min" until the target, from the learned heating rate. */
   _eta(a) {
     const stop = a.stop_forecast;
@@ -656,7 +664,7 @@ class AdvancedClimateCard extends HTMLElement {
           <span class="pill presence-state ${esc(presence?.state)}">${esc(this._label(presence))}</span>
           <span class="pill">${esc(this._label(mode))}</span>
           ${demand?.state === "on" ? `<span class="cicon hot" title="${esc(this._t("heating"))}">${this._icon("fire")}</span>` : ""}
-          <span class="ctemp muted">${this._t("outdoor")} ${esc(this._temp(outdoor?.state))}</span>
+          <span class="ctemp muted">${esc(this._outdoorLabel(outdoor))} ${esc(this._temp(outdoor?.state))}</span>
           <span class="chev"></span>
         </button>`;
     }
@@ -675,7 +683,7 @@ class AdvancedClimateCard extends HTMLElement {
             </div>
           </div>
           <div class="stats">
-            ${stat(this._t("outdoor"), this._temp(outdoor?.state))}
+            ${stat(this._outdoorLabel(outdoor), this._temp(outdoor?.state))}
             ${stat(this._t("season"), onOff(season))}
             ${cutoff?.state === "on" ? stat(this._t("cutoff"), this._t("on"), "warn") : ""}
             ${stat(this._t("demand"), onOff(demand), demand?.state === "on" ? "hot" : "")}
