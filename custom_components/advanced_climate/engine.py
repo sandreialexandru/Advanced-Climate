@@ -353,6 +353,22 @@ def apply_safety(decision: Decision, inputs: RoomInputs) -> Decision:
     return decision
 
 
+def optimal_stop_state(
+    started: bool, cancelled: bool, current_temp: float | None, floor: float | None
+) -> tuple[bool, bool, bool]:
+    """Return (allowed, started, cancelled) for the optimal stop of one change.
+
+    ``floor`` is the comfort of the current level (level minus tolerance). An
+    optimal stop that began is cancelled when the room falls below it, and does
+    not start again before that change: the current level stays until the
+    scheduled time. While the room is below it no optimal stop starts.
+    """
+    below = current_temp is not None and floor is not None and current_temp < floor
+    if cancelled or (started and below):
+        return False, False, True
+    return not below, started, False
+
+
 def optimal_schedule(
     now: datetime,
     current_preset: str,

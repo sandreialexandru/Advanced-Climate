@@ -262,6 +262,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "device_level": room.level_of_device_preset(room.device_preset()),
             "time_to_target": room.time_to_target(room.house.outdoor.latest()),
             "stop_forecast": _forecast(room, unit),
+            "optimal_stop_cancelled": room.stop_cancelled,
             "rate_learned": bool(room.learner.episodes),
             "device_levels": room.device_levels,
             "heat_demand": room.heat_demand,

@@ -96,7 +96,7 @@ home_office: 00:00 sleep, 07:00 comfort, 23:00 sleep
 | Optimal start | off | Start heating early so the next level is reached on time; once started it continues until the change (other rules can override it) |
 | Learned heating rate | on with optimal start | °C/h per room, a straight line of the outdoor temperature from the last 30 heating episodes; episodes with an open window sensor are not used |
 | Maximum early start | 2 h | Limit of the optimal start |
-| Optimal stop | off | Lower the level as early as the room can cool and stay in the comfort of the current level (tolerance: GT cold tolerance, relay hysteresis or a room setting); the cooling is learned from periods without heat demand, as a coefficient of the inside / outside difference; limited by a maximum; continues once started |
+| Optimal stop | off | Lower the level as early as the room can cool and stay in the comfort of the current level (tolerance: GT cold tolerance, relay hysteresis or a room setting); the cooling is learned from periods without heat demand, as a coefficient of the inside / outside difference; limited by a maximum; continues once started, cancelled (current level until the change) if the room falls below the comfort |
 | Day boundary | 00:00 | For night shifts: when the schedule day changes |
 
 ## 4. Presence

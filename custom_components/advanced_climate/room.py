@@ -98,6 +98,7 @@ from .const import (
     RULE_OPTIMAL_START,
     RULE_OPTIMAL_STOP,
     RULE_SAFETY,
+    RULE_SCHEDULE,
     RULE_STARTING,
     SCHEDULE_HELPER,
     SOURCE_CLIMATE,
@@ -118,6 +119,7 @@ from .engine import (
     Target,
     decide,
     optimal_schedule,
+    optimal_stop_state,
 )
 from .learning import CoolingLearner, HeatingRateLearner
 from .schedule import Schedule, ScheduleError, ScheduleState, Slot, parse_schedule
@@ -256,6 +258,9 @@ class Room:
         # The schedule change an optimal start / stop already began for.
         self._optimal_for: datetime | None = None
         self._optimal_rule: str | None = None
+        # The change whose optimal stop was cancelled (the room got too cold).
+        self._stop_cancelled_for: datetime | None = None
+        self.stop_cancelled = False
         # Values of the last commands, per device: a device that reports them
         # later (e.g. a sleepy Zigbee TRV) is not a manual change.
         self._sent: dict[str, dict[str, Any]] = {}
@@ -742,15 +747,19 @@ class Room:
             return float(self.config[CONF_HYSTERESIS])
         return float(self.config.get(CONF_STOP_TOLERANCE, 0.0))
 
+    def comfort_floor(self, preset: str) -> float | None:
+        """Lowest temperature still in the comfort of ``preset`` (optimal stop)."""
+        level = self.level_temp(preset)
+        return None if level is None else level - max(0.0, self.stop_tolerance())
+
     def stop_needed(self, preset: str, outdoor: float | None) -> float | None:
         """Minutes the room can cool and stay in the comfort of ``preset``.
 
         None before any cooling is learned (the longest optimal stop is used).
         """
-        level = self.level_temp(preset)
-        if level is None or self.current_temp is None:
+        floor = self.comfort_floor(preset)
+        if floor is None or self.current_temp is None:
             return None
-        floor = level - max(0.0, self.stop_tolerance())
         return self.cooling.minutes_to_fall(self.current_temp, floor, outdoor)
 
     def stop_forecast(self, now: datetime, outdoor: float | None) -> dict[str, Any] | None:
@@ -966,7 +975,14 @@ class Room:
         elif state is not None:
             same = self._optimal_for is not None and self._optimal_for == state.next_change
             started = same and self._optimal_rule == RULE_OPTIMAL_START
-            stop_started = same and self._optimal_rule == RULE_OPTIMAL_STOP
+            stop_allowed, stop_started, self.stop_cancelled = optimal_stop_state(
+                same and self._optimal_rule == RULE_OPTIMAL_STOP,
+                self._stop_cancelled_for is not None
+                and self._stop_cancelled_for == state.next_change,
+                self.current_temp,
+                self.comfort_floor(state.preset),
+            )
+            self._stop_cancelled_for = state.next_change if self.stop_cancelled else None
             preset, schedule_rule = optimal_schedule(
                 now,
                 state.preset,
@@ -977,7 +993,7 @@ class Room:
                 self.learner.rate(house.outdoor.latest()),
                 bool(self.config[CONF_OPTIMAL_START]),
                 float(self.config[CONF_OPTIMAL_START_MAX]),
-                bool(self.config[CONF_OPTIMAL_STOP]),
+                bool(self.config[CONF_OPTIMAL_STOP]) and stop_allowed,
                 float(self.config[CONF_OPTIMAL_STOP_MINUTES]),
                 started,
                 self.stop_needed(state.preset, house.outdoor.latest()),
@@ -1036,6 +1052,8 @@ class Room:
             frost_holding=self._frost_holding(),
         )
         decision = decide(inputs)
+        if self.stop_cancelled and decision.rule == RULE_SCHEDULE:
+            decision.description += " (optimal stop cancelled: the room got colder than expected)"
         self._record(decision, now)
         self.decision = decision
         self.target_temperature = self._resolve_temperature(decision.target)
