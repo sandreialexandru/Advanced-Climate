@@ -110,6 +110,7 @@ home_office: 00:00 sleep, 07:00 comfort, 23:00 sleep
 | Răcirea învățată | activă cu oprirea anticipată | Un coeficient pe cameră al diferenței interior / exterior (media ultimelor 30 de episoade). Un episod durează de la sfârșitul până la începutul cererii de căldură și se folosește când a durat cel puțin 10 minute și temperatura a scăzut, oricât de puțin; episoadele cu un senzor de fereastră deschis nu se folosesc |
 | Toleranța opririi anticipate | GT: cold tolerance; relee și termostate fără `hvac_action`: histerezis; altele: 0 | Confortul păstrat de oprirea anticipată: cât poate coborî camera sub nivelul curent înainte de schimbare |
 | Oprire anticipată maximă | 30 min | Limita opririi anticipate; până se învață răcirea, nivelul mai mic începe cu atât mai devreme |
+| Temperatura de afară pentru pornirea / oprirea anticipată | automat | Cu prognoză orară a entității meteo: media ponderată în timp a prognozei din perioada în care rulează pornirea / oprirea (fiecare valoare e valabilă pentru ora ei, valoarea măsurată până la următoarea oră din prognoză), recalculată de 3 ori pornind de la perioada găsită înainte; fără o prognoză care acoperă perioada: temperatura de afară de acum. Prognoza se citește la fiecare 30 de minute când o folosește pragul după prognoză sau o cameră cu pornire / oprire anticipată |
 | Oprire anticipată | oprită | Are nevoie de o temperatură de afară (senzor sau meteo; fără ea valorile de afară salvate se șterg). Coboară nivelul cât de devreme se poate răci camera rămânând în confortul nivelului curent (toleranța de mai sus); răcirea se învață din perioadele fără cerere de căldură, ca un coeficient al diferenței interior / exterior; limitată de un maxim; continuă odată începută și se anulează (nivelul curent până la schimbare) dacă camera coboară sub confort |
 | Începutul zilei | 00:00 | Pentru ture de noapte: când se schimbă ziua programului |
 
@@ -221,7 +222,7 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 
 | Entitate / interfață | Arată |
 | --- | --- |
-| `sensor.<room>_decision` | Regula câștigătoare (enum) + motiv, preset, program, următoarea schimbare, planul, timpul până la țintă, temperatura estimată la schimbare în timpul unei opriri anticipate, dacă o oprire anticipată a fost anulată |
+| `sensor.<room>_decision` | Regula câștigătoare (enum) + motiv, preset, program, următoarea schimbare, planul, timpul până la țintă, temperatura estimată la schimbare în timpul unei opriri anticipate, dacă o oprire anticipată a fost anulată, următoarea pornire / oprire anticipată (`next_estimate`: tip, schimbare, preset, minute, început, temperatura de afară și sursa ei, învățat) |
 | `sensor.<room>_target_temperature`, `sensor.<room>_room_temperature` | Ținta și temperatura camerei, în unitatea casei |
 | `sensor.<room>_heating_rate` | Viteza de încălzire învățată pentru temperatura de afară de acum (estimări, episoade) |
 | `sensor.<room>_cooling_rate` | Cât de repede scade camera acum fără încălzire (coeficient, episoade, toleranță) |
@@ -233,7 +234,7 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | `number.*`, `button.*`, `switch.*` | Niveluri, anularea schimbărilor manuale, mod oaspeți, pauză, blocare pentru copii |
 | Servicii | `set_override`, `clear_override`, `set_vacation`, `reevaluate`, `set_schedule` |
 | Evenimente | `advanced_climate_decision_changed` cu camera, ținta veche și nouă și motivul |
-| Cardul Lovelace | Starea și decizia camerei; grafic pe 24 h (temperatură, țintă, încălzire) cu următoarele 12 h planificate și zoom până la minut; program editabil prin tragere (5 minute), copierea unei zile; timpul până la țintă sau, în timpul unei opriri anticipate, temperatura estimată la schimbare; timpul de încălzire pe zi / săptămână / lună; mod compact |
+| Cardul Lovelace | Starea și decizia camerei; grafic pe 24 h (temperatură, țintă, încălzire) cu următoarele 12 h planificate și zoom până la minut; program editabil prin tragere (5 minute), copierea unei zile; timpul până la țintă sau, în timpul unei opriri anticipate, temperatura estimată la schimbare; următoarea pornire / oprire anticipată în detaliile camerei; timpul de încălzire pe zi / săptămână / lună; mod compact |
 | Diagnostic | Configurația și ultimele 100 de decizii |
 
 ## 12. Ierarhia regulilor

@@ -8,7 +8,7 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
-from homeassistant.core import Context
+from homeassistant.core import Context, SupportsResponse
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     async_fire_time_changed,
@@ -19,7 +19,10 @@ from custom_components.advanced_climate.const import DOMAIN, SUBENTRY_ROOM
 
 
 async def _setup(
-    hass: HomeAssistant, freezer: FrozenDateTimeFactory, **extra: object
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    house_options: dict | None = None,
+    **extra: object,
 ) -> MockConfigEntry:
     await hass.config.async_set_time_zone("Europe/Bucharest")
     # Monday 12:00 local time.
@@ -30,7 +33,7 @@ async def _setup(
     entry = MockConfigEntry(
         domain=DOMAIN,
         title="Home",
-        options={"persons": ["person.andrei"], "nearby_zones": []},
+        options={"persons": ["person.andrei"], "nearby_zones": [], **(house_options or {})},
         subentries_data=[
             {
                 "data": {
@@ -561,5 +564,92 @@ async def test_rounded_down_to_the_step_at_the_maximum(
     # The valve exercise is meant to go above the maximum: sent as it is.
     state = hass.states.get("climate.trv")
     assert room._device_value(state, 30.0) == 30.0  # noqa: SLF001
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_optimal_stop_and_start_with_the_forecast(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """The optimal stop / start uses the outdoor temperature forecast for when it runs."""
+    freezer.move_to("2026-10-12 09:00:00+00:00")
+    hass.states.async_set("weather.home", "cloudy", {"temperature": 8.0, "temperature_unit": "°C"})
+    start = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
+    forecast = [
+        # 2 °C until 18:00 UTC, then -3 °C.
+        {"datetime": (start + timedelta(hours=h)).isoformat(), "temperature": 2.0 if h < 9 else -3.0}
+        for h in range(40)
+    ]
+    async_mock_service(
+        hass,
+        "weather",
+        "get_forecasts",
+        response={"weather.home": {"forecast": forecast}},
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.states.async_set("sensor.room_temp", "21.5", {"unit_of_measurement": "°C"})
+    entry = await _setup(
+        hass,
+        freezer,
+        house_options={"weather": "weather.home", "forecast_enabled": False},
+        optimal_start=True,
+        optimal_stop=True,
+    )
+    hass.states.async_set("sensor.room_temp", "21.5", {"unit_of_measurement": "°C"})
+    await _tick(hass, freezer, 15)
+
+    # Monday 12:00 local, sleep at 22:00 (19:00 UTC): nothing learned, the longest
+    # stop (30 min), 18:30-19:00 UTC, all at the forecast -3 °C.
+    estimate = hass.states.get("sensor.bedroom_decision").attributes["next_estimate"]
+    assert estimate["kind"] == "optimal_stop"
+    assert estimate["preset"] == "sleep"
+    assert estimate["minutes"] == 30
+    assert estimate["outdoor"] == -3.0
+    assert estimate["outdoor_source"] == "forecast"
+    assert estimate["learned"] is False
+    assert estimate["started_at"] is None
+    assert dt_util.parse_datetime(estimate["starts_at"]) == dt_util.parse_datetime(
+        "2026-10-12T18:30:00+00:00"
+    )
+
+    # At 18:31 UTC the stop runs and keeps what it started with.
+    await _tick(hass, freezer, 9 * 3600 + 31 * 60 - 15)
+    decision = hass.states.get("sensor.bedroom_decision")
+    assert decision.state == "optimal_stop", decision.attributes["reason"]
+    assert decision.attributes["next_estimate"]["started_at"] is not None
+    assert decision.attributes["next_estimate"]["outdoor"] == -3.0
+
+    # After 22:00 local: home at 06:00 (03:00 UTC) is warmer -> optimal start.
+    await _tick(hass, freezer, 3600)
+    hass.states.async_set("sensor.room_temp", "19.0", {"unit_of_measurement": "°C"})
+    await _tick(hass, freezer, 5)
+    estimate = hass.states.get("sensor.bedroom_decision").attributes["next_estimate"]
+    assert estimate["kind"] == "optimal_start"
+    assert estimate["preset"] == "home"
+    assert estimate["outdoor"] == -3.0
+    assert estimate["outdoor_source"] == "forecast"
+    assert estimate["minutes"] == 120  # 2 °C at the default 1 °C/h
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_estimate_without_forecast_uses_the_value_of_now(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Without an hourly forecast the outdoor temperature of now is used."""
+    freezer.move_to("2026-10-12 09:00:00+00:00")
+    hass.states.async_set("weather.home", "cloudy", {"temperature": 8.0, "temperature_unit": "°C"})
+    hass.states.async_set("sensor.room_temp", "21.5", {"unit_of_measurement": "°C"})
+    entry = await _setup(
+        hass, freezer, house_options={"weather": "weather.home"}, optimal_stop=True
+    )
+    hass.states.async_set("sensor.room_temp", "21.5", {"unit_of_measurement": "°C"})
+    await _tick(hass, freezer, 15)
+    estimate = hass.states.get("sensor.bedroom_decision").attributes["next_estimate"]
+    assert estimate["kind"] == "optimal_stop"
+    assert estimate["outdoor"] == 8.0
+    assert estimate["outdoor_source"] == "now"
+
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()

@@ -14,6 +14,37 @@ MAX_SAMPLE_AGE = timedelta(hours=48)
 MAX_DAILY_MEANS = 30
 
 
+def expected_outdoor(
+    now: datetime,
+    start: datetime,
+    end: datetime,
+    current: float | None,
+    hourly: list[tuple[datetime, float]],
+) -> tuple[float | None, str]:
+    """Mean outdoor temperature expected between ``start`` and ``end``, and its source.
+
+    Each hourly forecast value holds for its hour; the measured temperature
+    (``current``) stands for the time until the next forecast hour. Without a
+    forecast covering the period, ``current`` is returned with the source "now".
+    """
+    start = max(start, now)
+    if end <= start:
+        return current, "now"
+    # The forecast hour that holds at ``now`` and the ones ahead.
+    points = sorted((t, v) for t, v in hourly if t + timedelta(hours=1) > now)
+    if not points or end > points[-1][0] + timedelta(hours=1):
+        return current, "now"
+    first = current if current is not None else points[0][1]
+    series = [(now, first), *[(t, v) for t, v in points if t > now]]
+    total = 0.0
+    for index, (moment, value) in enumerate(series):
+        until = series[index + 1][0] if index + 1 < len(series) else end
+        begin, finish = max(moment, start), min(until, end)
+        if finish > begin:
+            total += value * (finish - begin).total_seconds()
+    return round(total / (end - start).total_seconds(), 2), "forecast"
+
+
 def parse_month_day(value: str) -> tuple[int, int]:
     """Parse ``MM-DD``."""
     month, day = str(value).strip().split("-")

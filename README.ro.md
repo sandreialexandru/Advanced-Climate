@@ -278,9 +278,36 @@ scade de la 22 la 21,5 °C în 40 de minute, sleep începe la 21:20.
   din program și oprirea nu mai pornește pentru acea schimbare. Dacă se
   întâmplă des, micșorează *Maximum early stop*.
 - Cardul arată temperatura estimată la schimbare (de exemplu *~21.5° la
-  22:00*); senzorul *Decision* o are ca atribut `stop_forecast`.
+  22:00*), după răcirea învățată și temperatura de afară așteptată până
+  atunci; senzorul *Decision* o are ca atribut `stop_forecast`.
 - Senzorul *Cooling rate* arată cât de repede scade camera acum fără
   încălzire; atributele arată coeficientul, episoadele și toleranța.
+
+## Prognoza de afară pentru pornirea / oprirea anticipată
+
+Cu o entitate meteo care are prognoză orară, pornirea și oprirea anticipată
+folosesc **temperatura de afară așteptată cât timp rulează**, nu pe cea de
+acum. Pentru o pornire la 05:00 pentru ora 07:00, viteza de încălzire este cea
+învățată pentru media prognozei între 05:00 și 07:00; pentru o oprire, răcirea
+folosește media prognozei din perioada opririi. Perioada depinde de acea
+temperatură, așa că se recalculează de câteva ori (3 treceri) pornind de la
+perioada găsită înainte. Fiecare valoare din prognoză e valabilă pentru ora ei;
+până la următoarea oră din prognoză se folosește temperatura de afară măsurată.
+
+Fără entitate meteo, fără prognoză orară sau când prognoza nu ajunge până la
+schimbare, se folosește temperatura de afară de acum, ca înainte. Prognoza se
+citește la fiecare 30 de minute când entitatea meteo e setată și o folosește
+pragul de oprire după prognoză sau o cameră cu pornire / oprire anticipată.
+
+Cardul arată următoarea pornire sau oprire anticipată în *Detaliile* camerei
+(de exemplu *Pornire spre home la 07:00: începe pe la 05:10, afară prognozat
+2.4°*; *în curs din …* după ce a început; *se învață…* până se învață ceva).
+Senzorul *Decision* o are ca atribut `next_estimate`: `kind` (`optimal_start` /
+`optimal_stop`), `at` (schimbarea), `preset`, `minutes`, `starts_at`,
+`started_at`, `outdoor`, `outdoor_source` (`forecast` / `now`) și `learned`.
+Apare doar când opțiunea e activă pentru cameră și următoarea schimbare e mai
+caldă (pornire) sau mai rece (oprire); oprirea anticipată mai are nevoie de o
+temperatură de afară cunoscută și să nu fie anulată pentru acea schimbare.
 
 ## Servicii
 

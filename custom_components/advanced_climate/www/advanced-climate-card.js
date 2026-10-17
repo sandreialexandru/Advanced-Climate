@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.10.7";
+const CARD_VERSION = "1.11.0";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -144,7 +144,15 @@ const TEXT = {
     eta_learning: "learning…",
     eta_help: "Time until the target at the heating rate learned for the current outdoor temperature.",
     stop_at: "~{temp} at {time}",
-    stop_help: "Optimal stop: expected room temperature at the scheduled change, from the learned cooling.",
+    stop_help: "Optimal stop: expected room temperature at the scheduled change, from the learned cooling and the outdoor temperature expected until then.",
+    est_label: "Optimal start / stop",
+    est_start: "Start for {preset} at {time}",
+    est_stop: "Stop for {preset} at {time}",
+    est_begins: "begins ~{time}",
+    est_running: "running since {time}",
+    est_not_needed: "not needed",
+    est_out_forecast: "outdoor forecast {temp}",
+    est_out_now: "outdoor now {temp}",
     zoom_in: "Zoom in",
     zoom_out: "Zoom out",
     zoom_reset: "Whole period",
@@ -247,7 +255,15 @@ const TEXT = {
     eta_learning: "se învață…",
     eta_help: "Timpul până la țintă, după viteza de încălzire învățată pentru temperatura de afară de acum.",
     stop_at: "~{temp} la {time}",
-    stop_help: "Oprire anticipată: temperatura estimată a camerei la schimbarea din program, după răcirea învățată.",
+    stop_help: "Oprire anticipată: temperatura estimată a camerei la schimbarea din program, după răcirea învățată și temperatura de afară prognozată până atunci.",
+    est_label: "Pornire / oprire anticipată",
+    est_start: "Pornire spre {preset} la {time}",
+    est_stop: "Oprire spre {preset} la {time}",
+    est_begins: "începe pe la {time}",
+    est_running: "în curs din {time}",
+    est_not_needed: "nu e nevoie",
+    est_out_forecast: "afară prognozat {temp}",
+    est_out_now: "afară acum {temp}",
     zoom_in: "Mărește",
     zoom_out: "Micșorează",
     zoom_reset: "Toată perioada",
@@ -590,6 +606,30 @@ class AdvancedClimateCard extends HTMLElement {
     const h = Math.floor(m / 60);
     const r = Math.round((m % 60) / 5) * 5;
     return r ? `~${h} h ${r} min` : `~${h} h`;
+  }
+
+  /** The optimal start / stop expected for the next change, in words. */
+  _estimate(a) {
+    const est = a.next_estimate;
+    if (!est) return "";
+    const head = this._t(est.kind === "optimal_start" ? "est_start" : "est_stop")
+      .replace("{preset}", this._presetName(a, est.preset))
+      .replace("{time}", this._fmtTime(est.at));
+    let when;
+    if (est.started_at) when = this._t("est_running").replace("{time}", this._fmtTime(est.started_at));
+    else if (!est.minutes) when = this._t("est_not_needed");
+    else when = this._t("est_begins").replace("{time}", this._fmtTime(est.starts_at));
+    const parts = [when];
+    if (num(est.outdoor) !== null) {
+      parts.push(
+        this._t(est.outdoor_source === "forecast" ? "est_out_forecast" : "est_out_now").replace(
+          "{temp}",
+          this._temp(est.outdoor)
+        )
+      );
+    }
+    if (!est.learned) parts.push(this._t("eta_learning"));
+    return `${head}: ${parts.join(", ")}`;
   }
 
   /** Current and target temperature, with the estimate under the target. */
@@ -1364,6 +1404,7 @@ class AdvancedClimateCard extends HTMLElement {
         ${runtime ? `<div>${this._runtimeButton(e.heating_runtime, "dt")}</div>` : ""}
         ${devicePreset !== null ? dl(this._t("device_preset"), esc(devicePreset)) : ""}
         ${dl(this._t("adjustments"), esc(offsets))}
+        ${a.next_estimate ? dl(this._t("est_label"), esc(this._estimate(a))) : ""}
       </dl>
       ${
         levelTemps

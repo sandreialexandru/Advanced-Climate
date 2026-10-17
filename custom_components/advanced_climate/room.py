@@ -119,6 +119,7 @@ from .engine import (
     RoomInputs,
     Target,
     decide,
+    optimal_period,
     optimal_schedule,
     optimal_stop_state,
 )
@@ -266,6 +267,8 @@ class Room:
         # The change whose optimal stop was cancelled (the room got too cold).
         self._stop_cancelled_for: datetime | None = None
         self.stop_cancelled = False
+        # Optimal start / stop expected for the next scheduled change.
+        self.next_estimate: dict[str, Any] | None = None
         # Values of the last commands, per device: a device that reports them
         # later (e.g. a sleepy Zigbee TRV) is not a manual change.
         self._sent: dict[str, dict[str, Any]] = {}
@@ -790,7 +793,70 @@ class Room:
             return None
         return self.cooling.minutes_to_fall(self.current_temp, floor, outdoor)
 
-    def stop_forecast(self, now: datetime, outdoor: float | None) -> dict[str, Any] | None:
+    def optimal_estimate(
+        self, now: datetime, state: ScheduleState, outdoor_known: bool, stop_allowed: bool
+    ) -> dict[str, Any] | None:
+        """When the optimal start / stop for the next change begins, and with what.
+
+        The outdoor temperature is the one expected while it runs (hourly
+        forecast), else the one of now. The period depends on that temperature,
+        so it is worked out again a few times from the period found before.
+        """
+        change, next_preset = state.next_change, state.next_preset
+        if change is None or next_preset is None or change <= now or self.current_temp is None:
+            return None
+        now_temp = self.level_temp(state.preset)
+        next_temp = self.level_temp(next_preset)
+        if now_temp is None or next_temp is None:
+            return None
+        house = self.house
+        if next_temp > now_temp and self.config[CONF_OPTIMAL_START]:
+            kind = RULE_OPTIMAL_START
+            limit = float(self.config[CONF_OPTIMAL_START_MAX])
+        elif (
+            next_temp < now_temp
+            and self.config[CONF_OPTIMAL_STOP]
+            and outdoor_known
+            and stop_allowed
+        ):
+            kind = RULE_OPTIMAL_STOP
+            limit = float(self.config[CONF_OPTIMAL_STOP_MINUTES])
+        else:
+            return None
+        gap = next_temp - self.current_temp
+        floor = self.comfort_floor(state.preset)
+
+        def minutes_for(outdoor: float | None) -> float | None:
+            if kind == RULE_OPTIMAL_START:
+                rate = self.learner.rate(outdoor)
+                return gap / rate * 60 if gap > 0 and rate > 0 else 0.0
+            if floor is None:
+                return None
+            return self.cooling.minutes_to_fall(self.current_temp, floor, outdoor)
+
+        minutes, outdoor, source = optimal_period(
+            limit,
+            minutes_for,
+            lambda length: house.outdoor_between(change - timedelta(minutes=length), change),
+            house.outdoor_now,
+        )
+        rate = self.learner.rate(outdoor) if kind == RULE_OPTIMAL_START else None
+        needed = minutes_for(outdoor) if kind == RULE_OPTIMAL_STOP else None
+        return {
+            "kind": kind,
+            "change": change,
+            "preset": next_preset,
+            "minutes": minutes,
+            "rate": rate,
+            "needed": needed,
+            "outdoor": outdoor,
+            "outdoor_source": source,
+            "learned": bool(
+                self.learner.episodes if kind == RULE_OPTIMAL_START else self.cooling.episodes
+            ),
+        }
+
+    def stop_forecast(self, now: datetime) -> dict[str, Any] | None:
         """During an optimal stop: the expected temperature at the scheduled change."""
         state = self.schedule_state
         if (
@@ -802,6 +868,7 @@ class Room:
         ):
             return None
         minutes = max(0.0, (state.next_change - now).total_seconds() / 60)
+        outdoor, _ = self.house.outdoor_between(now, state.next_change)
         value = self.cooling.temperature_after(self.current_temp, outdoor, minutes)
         if value is None:
             return None
@@ -1014,6 +1081,7 @@ class Room:
         preset = state.preset if state else None
         schedule_rule = "schedule"
         calendar_preset = self._calendar_preset()
+        previous_estimate, self.next_estimate = self.next_estimate, None
         if calendar_preset is not None:
             preset = calendar_preset
             self._optimal_for = None
@@ -1030,6 +1098,17 @@ class Room:
             self._stop_cancelled_for = state.next_change if self.stop_cancelled else None
             # The optimal stop needs the outdoor temperature (sensor or weather).
             outdoor_known = house.outdoor_configured and house.outdoor_now is not None
+            estimate = self.optimal_estimate(now, state, outdoor_known, stop_allowed)
+            start_rate = (
+                estimate["rate"]
+                if estimate and estimate["kind"] == RULE_OPTIMAL_START
+                else self.learner.rate(house.outdoor_now)
+            )
+            stop_needed = (
+                estimate["needed"]
+                if estimate and estimate["kind"] == RULE_OPTIMAL_STOP
+                else self.stop_needed(state.preset, house.outdoor_now)
+            )
             preset, schedule_rule = optimal_schedule(
                 now,
                 state.preset,
@@ -1037,18 +1116,32 @@ class Room:
                 state.next_preset,
                 self.current_temp,
                 self.level_temp,
-                self.learner.rate(house.outdoor_now),
+                start_rate,
                 bool(self.config[CONF_OPTIMAL_START]),
                 float(self.config[CONF_OPTIMAL_START_MAX]),
                 bool(self.config[CONF_OPTIMAL_STOP]) and stop_allowed and outdoor_known,
                 float(self.config[CONF_OPTIMAL_STOP_MINUTES]),
                 started,
-                self.stop_needed(state.preset, house.outdoor_now),
+                stop_needed,
                 stop_started,
             )
             optimal = schedule_rule in (RULE_OPTIMAL_START, RULE_OPTIMAL_STOP)
             self._optimal_for = state.next_change if optimal else None
             self._optimal_rule = schedule_rule if optimal else None
+            if (
+                optimal
+                and previous_estimate is not None
+                and previous_estimate.get("started_at") is not None
+                and previous_estimate["change"] == state.next_change
+                and previous_estimate["kind"] == schedule_rule
+            ):
+                # Running: what it started with is kept.
+                estimate = previous_estimate
+            elif estimate is not None:
+                estimate["started_at"] = (
+                    now if optimal and estimate["kind"] == schedule_rule else None
+                )
+            self.next_estimate = estimate
 
         vacation = house.vacation_active(now)
         preheat = not vacation and house.vacation_preheating(now)

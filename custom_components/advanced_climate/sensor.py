@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -212,6 +212,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "custom_levels",
             "device_levels",
             "plan",
+            "next_estimate",
         }
     )
 
@@ -265,6 +266,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "device_level": room.level_of_device_preset(room.device_preset()),
             "time_to_target": room.time_to_target(room.house.outdoor_now),
             "stop_forecast": _forecast(room, unit),
+            "next_estimate": _estimate(room, unit),
             "optimal_stop_cancelled": room.stop_cancelled,
             "rate_learned": bool(room.learner.episodes),
             "device_levels": room.device_levels,
@@ -397,10 +399,30 @@ class HeatingRateSensor(RoomEntity, SensorEntity):
 
 def _forecast(room: Room, unit: str) -> dict[str, Any] | None:
     """Expected temperature at the scheduled change during an optimal stop."""
-    forecast = room.stop_forecast(dt_util.utcnow(), room.house.outdoor_now)
+    forecast = room.stop_forecast(dt_util.utcnow())
     if forecast is None:
         return None
     return {"at": forecast["at"], "temperature": _t(forecast["temperature"], unit, 1)}
+
+
+def _estimate(room: Room, unit: str) -> dict[str, Any] | None:
+    """The optimal start / stop expected for the next scheduled change."""
+    estimate = room.next_estimate
+    if estimate is None:
+        return None
+    change = estimate["change"]
+    started = estimate.get("started_at")
+    return {
+        "kind": estimate["kind"],
+        "at": iso(change),
+        "preset": estimate["preset"],
+        "minutes": round(estimate["minutes"]),
+        "starts_at": iso(change - timedelta(minutes=estimate["minutes"])),
+        "started_at": iso(started) if started else None,
+        "outdoor": _t(estimate["outdoor"], unit, 1),
+        "outdoor_source": estimate["outdoor_source"],
+        "learned": estimate["learned"],
+    }
 
 
 class CoolingRateSensor(RoomEntity, SensorEntity):

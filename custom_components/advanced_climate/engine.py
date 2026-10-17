@@ -397,6 +397,39 @@ def optimal_stop_state(
     return not below, started, False
 
 
+# Passes over the optimal start / stop period to match it to the expected weather.
+ESTIMATE_PASSES = 3
+
+
+def optimal_period(
+    limit: float,
+    minutes_for: Callable[[float | None], float | None],
+    outdoor_for: Callable[[float], tuple[float | None, str]],
+    outdoor_now: float | None,
+    passes: int = ESTIMATE_PASSES,
+) -> tuple[float, float | None, str]:
+    """Length of an optimal start / stop and the outdoor temperature it was found with.
+
+    ``minutes_for(outdoor)`` is the time needed at that outdoor temperature
+    (None when not learned: the longest time, ``limit``, is used).
+    ``outdoor_for(minutes)`` is the outdoor temperature expected during the
+    last ``minutes`` before the change. The length depends on that temperature,
+    so it is worked out again from the period found before, a few times.
+    """
+    outdoor, source = outdoor_now, "now"
+    minutes = 0.0
+    for index in range(passes):
+        needed = minutes_for(outdoor)
+        minutes = limit if needed is None else max(0.0, min(needed, limit))
+        if minutes <= 0 or index == passes - 1:
+            break
+        found = outdoor_for(minutes)
+        if found[0] is None or found == (outdoor, source):
+            break
+        outdoor, source = found
+    return minutes, outdoor, source
+
+
 def optimal_schedule(
     now: datetime,
     current_preset: str,

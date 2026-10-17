@@ -62,6 +62,8 @@ from .const import (
     CONF_NEARBY_GEOMETRIC,
     CONF_NEARBY_ZONES,
     CONF_NOTIFY_SERVICE,
+    CONF_OPTIMAL_START,
+    CONF_OPTIMAL_STOP,
     CONF_OUTDOOR_SENSOR,
     CONF_OVERRIDE_SCOPE,
     CONF_PERSONS,
@@ -103,7 +105,7 @@ from .const import (
     STORAGE_VERSION,
     SUBENTRY_ROOM,
 )
-from .outdoor import OutdoorTracker
+from .outdoor import OutdoorTracker, expected_outdoor
 from .presence import (
     PersonInfo,
     PresenceDebouncer,
@@ -168,6 +170,8 @@ class House:
         self.person_classes: dict[str, str | None] = {}
         self.arriving = False
         self.forecast_cutoff = False
+        # Hourly forecast (UTC moment, °C), for the optimal start / stop.
+        self.hourly_forecast: list[tuple[datetime, float]] = []
         self.calendar_message: str | None = None
         self.heat_demand = False
         self.boiler_on: bool | None = None
@@ -252,7 +256,7 @@ class House:
         self._unsubs.append(
             async_track_time_interval(self.hass, self._async_hourly, timedelta(hours=1))
         )
-        if self.options[CONF_FORECAST_ENABLED] and self.options.get(CONF_WEATHER):
+        if self._forecast_needed():
             self._unsubs.append(
                 async_track_time_interval(
                     self.hass, self._async_refresh_forecast, timedelta(minutes=30)
@@ -787,11 +791,21 @@ class House:
         """Return True inside the heating season."""
         return self.outdoor.season_active
 
+    def _forecast_needed(self) -> bool:
+        """The hourly forecast is read for the forecast cutoff or an optimal start / stop."""
+        if not self.options.get(CONF_WEATHER):
+            return False
+        return bool(self.options[CONF_FORECAST_ENABLED]) or any(
+            room.config.get(CONF_OPTIMAL_START) or room.config.get(CONF_OPTIMAL_STOP)
+            for room in self.rooms.values()
+        )
+
     async def _async_refresh_forecast(self, _now: datetime | None = None) -> None:
-        """Read the hourly forecast: cut off when it will soon be warm enough."""
+        """Read the hourly forecast: for the cutoff (warm soon) and the optimal start / stop."""
         weather = self.options.get(CONF_WEATHER)
-        if not weather or not self.options[CONF_FORECAST_ENABLED]:
+        if not weather or not self._forecast_needed():
             self.forecast_cutoff = False
+            self.hourly_forecast = []
             return
         try:
             response = await self.hass.services.async_call(
@@ -805,21 +819,41 @@ class House:
         except (HomeAssistantError, ValueError) as err:
             _LOGGER.debug("Forecast not available: %s", err)
             self.forecast_cutoff = False
+            self.hourly_forecast = []
             return
         forecast = ((response or {}).get(weather) or {}).get("forecast") or []
         unit = self._weather_unit(self.hass.states.get(weather))
         now = dt_util.utcnow()
         horizon = now + timedelta(hours=float(self.options[CONF_FORECAST_HOURS]))
         temps = []
+        hourly: list[tuple[datetime, float]] = []
         for item in forecast:
             moment = from_iso(item.get("datetime"))
             temp = item.get("temperature")
             if moment is None or temp is None:
                 continue
+            try:
+                value = float(to_celsius(float(temp), unit))
+            except (TypeError, ValueError):
+                continue
+            hourly.append((dt_util.as_utc(moment), value))
             if now <= moment <= horizon:
-                temps.append(float(to_celsius(float(temp), unit)))
-        self.forecast_cutoff = bool(temps) and max(temps) >= float(
-            self.options[CONF_CUTOFF_TEMP]
+                temps.append(value)
+        self.hourly_forecast = sorted(hourly)
+        self.forecast_cutoff = (
+            bool(self.options[CONF_FORECAST_ENABLED])
+            and bool(temps)
+            and max(temps) >= float(self.options[CONF_CUTOFF_TEMP])
+        )
+
+    def outdoor_between(self, start: datetime, end: datetime) -> tuple[float | None, str]:
+        """Mean outdoor temperature expected between two moments ("forecast" or "now")."""
+        return expected_outdoor(
+            dt_util.utcnow(),
+            dt_util.as_utc(start),
+            dt_util.as_utc(end),
+            self.outdoor_now,
+            self.hourly_forecast,
         )
 
     @property

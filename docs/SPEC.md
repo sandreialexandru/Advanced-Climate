@@ -106,6 +106,7 @@ home_office: 00:00 sleep, 07:00 comfort, 23:00 sleep
 | Learned cooling | on with optimal stop | One coefficient per room of the inside / outside difference (mean of the last 30 episodes). An episode lasts from the end to the start of the heat demand and is used when it lasted at least 10 minutes and the temperature fell, however little; episodes with an open window sensor are not used |
 | Optimal stop tolerance | GT: cold tolerance; relays and thermostats without `hvac_action`: hysteresis; others: 0 | The comfort kept by the optimal stop: how far below the current level the room may fall before the change |
 | Maximum early stop | 30 min | Limit of the optimal stop; until the cooling is learned the lower level starts this early |
+| Outdoor temperature of the optimal start / stop | automatic | With an hourly forecast of the weather entity: the time-weighted mean forecast of the period the start / stop runs (each value holds for its hour, the measured value until the next forecast hour), worked out again 3 times from the period found before; without a forecast covering the period: the outdoor temperature of now. The forecast is read every 30 minutes when the forecast cutoff or a room with optimal start / stop uses it |
 | Optimal stop | off | Needs an outdoor temperature (sensor or weather; without one the saved outdoor values are dropped). Lower the level as early as the room can cool and stay in the comfort of the current level (the tolerance above); the cooling is learned from periods without heat demand, as a coefficient of the inside / outside difference; limited by a maximum; continues once started, cancelled (current level until the change) if the room falls below the comfort |
 | Day boundary | 00:00 | For night shifts: when the schedule day changes |
 
@@ -217,7 +218,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 
 | Entity / interface | Shows |
 | --- | --- |
-| `sensor.<room>_decision` | Winning rule (enum) + reason, preset, schedule, next change, plan, time to the target, expected temperature at the change during an optimal stop, whether an optimal stop was cancelled |
+| `sensor.<room>_decision` | Winning rule (enum) + reason, preset, schedule, next change, plan, time to the target, expected temperature at the change during an optimal stop, whether an optimal stop was cancelled, the next optimal start / stop (`next_estimate`: kind, change, preset, minutes, start, outdoor temperature and its source, learned) |
 | `sensor.<room>_target_temperature`, `sensor.<room>_room_temperature` | Target and room temperature, in the unit of the house |
 | `sensor.<room>_heating_rate` | Learned heating rate for the current outdoor temperature (estimates, episodes) |
 | `sensor.<room>_cooling_rate` | How fast the room falls now without heating (coefficient, episodes, tolerance) |
@@ -229,7 +230,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | `number.*`, `button.*`, `switch.*` | Levels, clear overrides, guest mode, pause, child lock |
 | Services | `set_override`, `clear_override`, `set_vacation`, `reevaluate`, `set_schedule` |
 | Events | `advanced_climate_decision_changed` with room, old and new target and reason |
-| Lovelace card | Room state and decision; 24 h chart (temperature, target, heating) with the next 12 h planned and zoom to the minute; schedule editable by dragging (5 minutes), copy of a day; time to the target or, during an optimal stop, the expected temperature at the change; heating time per day / week / month; compact mode |
+| Lovelace card | Room state and decision; 24 h chart (temperature, target, heating) with the next 12 h planned and zoom to the minute; schedule editable by dragging (5 minutes), copy of a day; time to the target or, during an optimal stop, the expected temperature at the change; the next optimal start / stop in the room details; heating time per day / week / month; compact mode |
 | Diagnostics | Configuration and the last 100 decisions |
 
 ## 12. Rule hierarchy

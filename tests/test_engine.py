@@ -177,6 +177,63 @@ class HierarchyTest(unittest.TestCase):
         self.assertEqual(d.rule, const.RULE_OVERRIDE)
 
 
+class OptimalPeriodTest(unittest.TestCase):
+    """The optimal start / stop is worked out with the weather expected while it runs."""
+
+    def test_colder_forecast_starts_earlier(self) -> None:
+        # Rate 2 °C/h at 5 °C outdoor, 1 °C/h at -5 °C; 2 °C to gain.
+        def minutes_for(out):
+            return 2 / (1.0 if out is not None and out < 0 else 2.0) * 60
+
+        minutes, out, source = engine.optimal_period(
+            180, minutes_for, lambda length: (-5.0, "forecast"), 5.0
+        )
+        self.assertEqual((minutes, out, source), (120, -5.0, "forecast"))
+
+    def test_without_forecast_the_value_of_now(self) -> None:
+        calls = []
+
+        def outdoor_for(length):
+            calls.append(length)
+            return 5.0, "now"
+
+        minutes, out, source = engine.optimal_period(180, lambda out: 60, outdoor_for, 5.0)
+        self.assertEqual((minutes, out, source), (60, 5.0, "now"))
+        self.assertEqual(calls, [60])
+
+    def test_capped_and_not_learned(self) -> None:
+        self.assertEqual(
+            engine.optimal_period(30, lambda out: None, lambda length: (0.0, "forecast"), 3.0)[0],
+            30,
+        )
+        self.assertEqual(
+            engine.optimal_period(30, lambda out: 90, lambda length: (0.0, "forecast"), 3.0)[0],
+            30,
+        )
+
+    def test_nothing_needed(self) -> None:
+        self.assertEqual(
+            engine.optimal_period(60, lambda out: 0.0, lambda length: (0.0, "forecast"), 3.0),
+            (0.0, 3.0, "now"),
+        )
+
+    def test_passes_follow_the_period(self) -> None:
+        # The forecast depends on how far back the period reaches.
+        seen = []
+
+        def outdoor_for(length):
+            seen.append(length)
+            return (-4.0 if length > 60 else 0.0), "forecast"
+
+        def minutes_for(out):
+            return 90 if out is not None and out <= 0 and out > -4 else (120 if out == -4.0 else 50)
+
+        minutes, out, _ = engine.optimal_period(180, minutes_for, outdoor_for, 6.0)
+        # 50 min (now 6 °C) -> 0 °C -> 90 min -> -4 °C -> 120 min (last pass).
+        self.assertEqual(seen, [50, 90])
+        self.assertEqual((minutes, out), (120, -4.0))
+
+
 class OptimalTest(unittest.TestCase):
     def test_start(self) -> None:
         change = NOW + timedelta(minutes=50)

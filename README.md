@@ -265,9 +265,36 @@ falls from 22 to 21.5 °C in 40 minutes, sleep starts at 21:20.
   scheduled time and the stop does not start again for that change. If this
   happens often, lower the *Maximum early stop*.
 - The card shows the expected temperature at the change (e.g. *~21.5° at
-  22:00*); the *Decision* sensor has it as the `stop_forecast` attribute.
+  22:00*), from the learned cooling and the outdoor temperature expected until
+  then; the *Decision* sensor has it as the `stop_forecast` attribute.
 - The *Cooling rate* sensor shows how fast the room falls now without heating;
   its attributes show the coefficient, the episodes and the tolerance.
+
+## Outdoor forecast for optimal start / stop
+
+With a weather entity that has an hourly forecast, the optimal start and the
+optimal stop use the **outdoor temperature expected while they run**, not the
+one of now. For a start at 05:00 for 07:00, the heating rate is the one
+learned for the mean forecast between 05:00 and 07:00; for a stop, the cooling
+uses the mean forecast of the stop period. The period depends on that
+temperature, so it is worked out again a few times (3 passes) from the period
+found before. Each forecast value holds for its hour; until the next forecast
+hour the measured outdoor temperature is used.
+
+Without a weather entity, without an hourly forecast or when the forecast
+does not reach the change, the outdoor temperature of now is used, as before.
+The forecast is read every 30 minutes when the weather entity is set and the
+forecast cutoff or a room with optimal start / stop uses it.
+
+The card shows the next optimal start or stop in the room *Details* (e.g.
+*Start for home at 07:00: begins ~05:10, outdoor forecast 2.4°*; *running
+since …* once it began; *learning…* until something is learned). The
+*Decision* sensor has it as the `next_estimate` attribute: `kind`
+(`optimal_start` / `optimal_stop`), `at` (the change), `preset`, `minutes`,
+`starts_at`, `started_at`, `outdoor`, `outdoor_source` (`forecast` / `now`)
+and `learned`. It is shown only when the option is on for the room and the
+next change is warmer (start) or colder (stop); the optimal stop also needs a
+known outdoor temperature and not to be cancelled for that change.
 
 ## Services
 

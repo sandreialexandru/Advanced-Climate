@@ -233,3 +233,68 @@ class CoolingLearnerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ExpectedOutdoorTest(unittest.TestCase):
+    """The outdoor temperature expected during an optimal start / stop."""
+
+    NOW = datetime(2026, 1, 10, 4, 20, tzinfo=timezone.utc)
+
+    def hourly(self, *values: float) -> list:
+        # Forecast hours from 04:00 on.
+        base = datetime(2026, 1, 10, 4, 0, tzinfo=timezone.utc)
+        return [(base + timedelta(hours=i), v) for i, v in enumerate(values)]
+
+    def test_time_weighted_mean(self) -> None:
+        # 05:30-07:00: half an hour at -2 (05:00), an hour at -6 (06:00).
+        value, source = outdoor.expected_outdoor(
+            self.NOW,
+            datetime(2026, 1, 10, 5, 30, tzinfo=timezone.utc),
+            datetime(2026, 1, 10, 7, 0, tzinfo=timezone.utc),
+            1.0,
+            self.hourly(0.0, -2.0, -6.0, -3.0),
+        )
+        self.assertEqual(source, "forecast")
+        self.assertAlmostEqual(value, (-2 * 30 + -6 * 60) / 90, places=2)
+
+    def test_measured_value_until_the_next_forecast_hour(self) -> None:
+        # 04:20-05:20: 40 minutes at the measured 1.0, 20 at -2 (05:00).
+        value, _ = outdoor.expected_outdoor(
+            self.NOW,
+            self.NOW,
+            self.NOW + timedelta(hours=1),
+            1.0,
+            self.hourly(0.0, -2.0, -6.0),
+        )
+        self.assertAlmostEqual(value, (1.0 * 40 - 2.0 * 20) / 60, places=2)
+
+    def test_start_in_the_past_counts_from_now(self) -> None:
+        value, _ = outdoor.expected_outdoor(
+            self.NOW,
+            self.NOW - timedelta(hours=2),
+            self.NOW + timedelta(minutes=50),
+            1.0,
+            self.hourly(0.0, -2.0),
+        )
+        self.assertAlmostEqual(value, (1.0 * 40 - 2.0 * 10) / 50, places=2)
+
+    def test_without_a_covering_forecast_the_value_of_now(self) -> None:
+        end = datetime(2026, 1, 10, 9, 0, tzinfo=timezone.utc)
+        self.assertEqual(
+            outdoor.expected_outdoor(self.NOW, self.NOW, end, 1.5, self.hourly(0.0, -2.0)),
+            (1.5, "now"),
+        )
+        self.assertEqual(outdoor.expected_outdoor(self.NOW, self.NOW, end, 1.5, []), (1.5, "now"))
+        # An old forecast is not used.
+        old = [(self.NOW - timedelta(hours=3), -9.0), (self.NOW - timedelta(hours=2), -9.0)]
+        self.assertEqual(
+            outdoor.expected_outdoor(self.NOW, self.NOW, self.NOW + timedelta(minutes=10), 1.5, old),
+            (1.5, "now"),
+        )
+
+    def test_unknown_measured_value_uses_the_forecast(self) -> None:
+        value, source = outdoor.expected_outdoor(
+            self.NOW, self.NOW, self.NOW + timedelta(minutes=50), None, self.hourly(0.0, -2.0)
+        )
+        self.assertEqual(source, "forecast")
+        self.assertAlmostEqual(value, (0.0 * 40 - 2.0 * 10) / 50, places=2)
