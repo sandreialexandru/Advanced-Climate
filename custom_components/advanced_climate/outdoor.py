@@ -37,12 +37,16 @@ def expected_outdoor(
     first = current if current is not None else points[0][1]
     series = [(now, first), *[(t, v) for t, v in points if t > now]]
     total = 0.0
+    forecast_used = False
     for index, (moment, value) in enumerate(series):
         until = series[index + 1][0] if index + 1 < len(series) else end
         begin, finish = max(moment, start), min(until, end)
         if finish > begin:
             total += value * (finish - begin).total_seconds()
-    return round(total / (end - start).total_seconds(), 2), "forecast"
+            forecast_used = forecast_used or index > 0 or current is None
+    mean = round(total / (end - start).total_seconds(), 2)
+    # The whole period before the next forecast hour: the measured value.
+    return mean, "forecast" if forecast_used else "now"
 
 
 def parse_month_day(value: str) -> tuple[int, int]:

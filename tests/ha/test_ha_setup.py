@@ -612,12 +612,17 @@ async def test_optimal_stop_and_start_with_the_forecast(
         "2026-10-12T18:30:00+00:00"
     )
 
-    # At 18:31 UTC the stop runs and keeps what it started with.
+    # At 18:31 UTC the stop runs. Until the next forecast hour (19:00) the
+    # measured temperature stands; what it started with is kept.
     await _tick(hass, freezer, 9 * 3600 + 31 * 60 - 15)
     decision = hass.states.get("sensor.bedroom_decision")
     assert decision.state == "optimal_stop", decision.attributes["reason"]
-    assert decision.attributes["next_estimate"]["started_at"] is not None
-    assert decision.attributes["next_estimate"]["outdoor"] == -3.0
+    started = decision.attributes["next_estimate"]
+    assert started["started_at"] is not None
+    assert (started["outdoor"], started["outdoor_source"]) == (8.0, "now")
+    hass.states.async_set("weather.home", "cloudy", {"temperature": 7.0, "temperature_unit": "°C"})
+    await _tick(hass, freezer, 60)
+    assert hass.states.get("sensor.bedroom_decision").attributes["next_estimate"] == started
 
     # After 22:00 local: home at 06:00 (03:00 UTC) is warmer -> optimal start.
     await _tick(hass, freezer, 3600)

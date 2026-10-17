@@ -292,6 +292,14 @@ class ExpectedOutdoorTest(unittest.TestCase):
             (1.5, "now"),
         )
 
+    def test_only_the_measured_value_before_the_next_forecast_hour(self) -> None:
+        self.assertEqual(
+            outdoor.expected_outdoor(
+                self.NOW, self.NOW, self.NOW + timedelta(minutes=30), 1.5, self.hourly(0.0, -2.0)
+            ),
+            (1.5, "now"),
+        )
+
     def test_unknown_measured_value_uses_the_forecast(self) -> None:
         value, source = outdoor.expected_outdoor(
             self.NOW, self.NOW, self.NOW + timedelta(minutes=50), None, self.hourly(0.0, -2.0)
