@@ -750,9 +750,25 @@ class Room:
         """How far below a level the room may fall during an optimal stop (its comfort)."""
         if self.source == SOURCE_GT:
             return self.learn_tolerance()  # the cold tolerance of Generic Thermostat
-        if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
+        if (
+            self.source == SOURCE_SWITCH
+            or self.command_mode == COMMAND_HVAC
+            or self.lacks_hvac_action()
+        ):
             return float(self.config[CONF_HYSTERESIS])
         return float(self.config.get(CONF_STOP_TOLERANCE, 0.0))
+
+    def lacks_hvac_action(self) -> bool:
+        """A thermostat of the room does not report hvac_action (or cannot be checked now).
+
+        Such thermostats are handled like relays: their heat demand and the
+        comfort of the optimal stop use the hysteresis.
+        """
+        return any(
+            not valid(state := self.hass.states.get(entity_id))
+            or "hvac_action" not in state.attributes  # type: ignore[union-attr]
+            for entity_id in self.climates
+        )
 
     def comfort_floor(self, preset: str) -> float | None:
         """Lowest temperature still in the comfort of ``preset`` (optimal stop)."""

@@ -1429,8 +1429,13 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
             fields[_req(CONF_OPTIMAL_START_MAX, d, ROOM_DEFAULTS)] = _number(10, 360, 5, "min")
         if d.get(CONF_OPTIMAL_STOP):
             fields[_req(CONF_OPTIMAL_STOP_MINUTES, d, ROOM_DEFAULTS)] = _number(5, 180, 5, "min")
-            # Generic Thermostat uses its cold tolerance, relays their hysteresis.
-            if d[CONF_SOURCE] == SOURCE_CLIMATE and not self._on_off():
+            # Generic Thermostat uses its cold tolerance; relays and thermostats
+            # without hvac_action use the hysteresis.
+            if (
+                d[CONF_SOURCE] == SOURCE_CLIMATE
+                and not self._on_off()
+                and not _no_hvac_action(self.hass, d)
+            ):
                 fields[_req(CONF_STOP_TOLERANCE, d, ROOM_DEFAULTS)] = _number(0, 2, 0.1, "°C")
         schema = vol.Schema(fields)
         if not fields:

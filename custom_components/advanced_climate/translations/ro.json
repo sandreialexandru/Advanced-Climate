@@ -77,7 +77,7 @@
         "description": "Termostatul ține temperatura; integrarea doar trimite nivelul sau temperatura.",
         "data_description": {
           "learn_tolerance": "Cât lasă termostatul camera să scadă sub țintă înainte să încălzească (toleranța lui). Viteza de încălzire se învață din urcările care încep cu cel puțin atât sub țintă.",
-          "hysteresis": "Acest termostat nu raportează când încălzește (fără hvac_action): se consideră că încălzește de la atât sub temperatura setată până la atât peste ea, ca un releu. Se folosește pentru cererea de căldură, centrală, timpul de încălzire și învățare."
+          "hysteresis": "Acest termostat nu raportează când încălzește (fără hvac_action): se consideră că încălzește de la atât sub temperatura setată până la atât peste ea, ca un releu. Se folosește pentru cererea de căldură, centrală, timpul de încălzire, învățare și ca toleranță a opririi anticipate."
         }
       }
     },
@@ -276,7 +276,7 @@
         "description": "Termostatul ține temperatura; integrarea doar trimite nivelul sau temperatura.",
         "data_description": {
           "learn_tolerance": "Cât lasă termostatul camera să scadă sub țintă înainte să încălzească (toleranța lui). Viteza de încălzire se învață din urcările care încep cu cel puțin atât sub țintă.",
-          "hysteresis": "Acest termostat nu raportează când încălzește (fără hvac_action): se consideră că încălzește de la atât sub temperatura setată până la atât peste ea, ca un releu. Se folosește pentru cererea de căldură, centrală, timpul de încălzire și învățare."
+          "hysteresis": "Acest termostat nu raportează când încălzește (fără hvac_action): se consideră că încălzește de la atât sub temperatura setată până la atât peste ea, ca un releu. Se folosește pentru cererea de căldură, centrală, timpul de încălzire, învățare și ca toleranță a opririi anticipate."
         }
       },
       "presence_details": {
@@ -424,7 +424,7 @@
           },
           "data_description": {
             "learn_tolerance": "Cât lasă termostatul camera să scadă sub țintă înainte să încălzească (toleranța lui). Viteza de încălzire se învață din urcările care încep cu cel puțin atât sub țintă.",
-            "hysteresis": "Acest termostat nu raportează când încălzește (fără hvac_action): se consideră că încălzește de la atât sub temperatura setată până la atât peste ea, ca un releu. Se folosește pentru cererea de căldură, centrală, timpul de încălzire și învățare."
+            "hysteresis": "Acest termostat nu raportează când încălzește (fără hvac_action): se consideră că încălzește de la atât sub temperatura setată până la atât peste ea, ca un releu. Se folosește pentru cererea de căldură, centrală, timpul de încălzire, învățare și ca toleranță a opririi anticipate."
           }
         },
         "levels": {
@@ -595,7 +595,7 @@
           "data_description": {
             "optimal_start_max_minutes": "Nu pornește niciodată mai devreme de atât.",
             "optimal_stop_minutes": "Nu se oprește niciodată mai devreme de atât. Până se învață răcirea, nivelul mai mic începe cu atât mai devreme.",
-            "stop_tolerance": "Cât poate coborî camera sub nivelul curent până la schimbarea din program (confortul ei). 0 = camera nu are voie să coboare sub nivel, deci se oprește mai devreme doar când e mai caldă decât nivelul."
+            "stop_tolerance": "Pentru termostatele care raportează hvac_action: cât poate coborî camera sub nivelul curent până la schimbarea din program (confortul ei). 0 = camera nu are voie să coboare sub nivel, deci se oprește mai devreme doar când e mai caldă decât nivelul."
           }
         },
         "extras_valves": {

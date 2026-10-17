@@ -191,7 +191,8 @@ episodes.
   is dropped).
 - The **heat demand** comes from `hvac_action` (heating). Thermostats that do
   not report it count as heating from the *hysteresis* below their set
-  temperature until the hysteresis above it, like a relay; the *Hysteresis*
+  temperature until the hysteresis above it, like a relay (the optimal stop
+  uses the hysteresis as its comfort too); the *Hysteresis*
   setting is shown for them (and for thermostats unavailable during the
   setup, which cannot be checked).
 
@@ -224,8 +225,9 @@ house; without one the option is not shown and no optimal stop is made, and
 the outdoor values saved before are dropped). It lowers the level before the next colder one as early as the
 room can cool and still stay in the comfort of the current level at the
 scheduled time. The comfort is the *tolerance*: the *cold tolerance* of Generic
-Thermostat, the *hysteresis* for relays and on / off control, and the
-*Optimal stop tolerance* room setting for other thermostats (default 0).
+Thermostat, the *hysteresis* for relays, on / off control and thermostats
+that do not report `hvac_action`, and the *Optimal stop tolerance* room setting
+for the other thermostats (default 0).
 Example: home 22 °C until 22:00, tolerance 0.5 °C, 7 °C outside: if the room
 falls from 22 to 21.5 °C in 40 minutes, sleep starts at 21:20.
 

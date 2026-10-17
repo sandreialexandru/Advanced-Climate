@@ -334,3 +334,26 @@ async def test_reconfigure_unit(hass: HomeAssistant) -> None:
     assert result["reason"] == "reconfigure_successful"
     assert entry.options["temperature_unit"] == "fahrenheit"
     assert entry.options["persons"] == []
+
+
+async def test_optimal_stop_tolerance_only_with_hvac_action(hass: HomeAssistant) -> None:
+    """Thermostats without hvac_action use the hysteresis as the comfort of the optimal stop."""
+    entry = MockConfigEntry(domain=DOMAIN, title="Home", options={"outdoor_sensor": "sensor.outdoor"})
+    entry.add_to_hass(hass)
+    flow = hass.config_entries.subentries
+    for attributes, expected in (
+        ({"hvac_action": "idle"}, {"optimal_stop_minutes", "stop_tolerance"}),
+        ({}, {"optimal_stop_minutes"}),
+    ):
+        hass.states.async_set("climate.trv", "heat", {"hvac_modes": ["heat", "off"], **attributes})
+        result = await flow.async_init((entry.entry_id, SUBENTRY_ROOM), context={"source": SOURCE_USER})
+        result = await flow.async_configure(result["flow_id"], {"name": "Office", "source": "climate"})
+        result = await flow.async_configure(
+            result["flow_id"], {"climates": ["climate.trv"], "command_mode": "temperature"}
+        )
+        result = await _until(hass, result, flow, stop={"schedule"})
+        result = await flow.async_configure(result["flow_id"], {"optimal_stop": True})
+        result = await _until(hass, result, flow, stop={"schedule_optimal"})
+        assert result["step_id"] == "schedule_optimal"
+        assert _keys(result) == expected
+        flow.async_abort(result["flow_id"])

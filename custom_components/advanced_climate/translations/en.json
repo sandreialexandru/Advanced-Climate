@@ -77,7 +77,7 @@
         "description": "The thermostat keeps the temperature; the integration only sends the level or the temperature.",
         "data_description": {
           "learn_tolerance": "How far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target.",
-          "hysteresis": "This thermostat does not report when it heats (no hvac_action): it counts as heating from this far below its set temperature until this far above it, like a relay. Used for the heat demand, the boiler, the heating time and the learning."
+          "hysteresis": "This thermostat does not report when it heats (no hvac_action): it counts as heating from this far below its set temperature until this far above it, like a relay. Used for the heat demand, the boiler, the heating time, the learning and as the comfort of the optimal stop."
         }
       }
     },
@@ -276,7 +276,7 @@
         "description": "The thermostat keeps the temperature; the integration only sends the level or the temperature.",
         "data_description": {
           "learn_tolerance": "How far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target.",
-          "hysteresis": "This thermostat does not report when it heats (no hvac_action): it counts as heating from this far below its set temperature until this far above it, like a relay. Used for the heat demand, the boiler, the heating time and the learning."
+          "hysteresis": "This thermostat does not report when it heats (no hvac_action): it counts as heating from this far below its set temperature until this far above it, like a relay. Used for the heat demand, the boiler, the heating time, the learning and as the comfort of the optimal stop."
         }
       },
       "presence_details": {
@@ -424,7 +424,7 @@
           },
           "data_description": {
             "learn_tolerance": "How far below the target the thermostat lets the room fall before heating (its own tolerance). The heating rate is learned from rises that start at least this below the target.",
-            "hysteresis": "This thermostat does not report when it heats (no hvac_action): it counts as heating from this far below its set temperature until this far above it, like a relay. Used for the heat demand, the boiler, the heating time and the learning."
+            "hysteresis": "This thermostat does not report when it heats (no hvac_action): it counts as heating from this far below its set temperature until this far above it, like a relay. Used for the heat demand, the boiler, the heating time, the learning and as the comfort of the optimal stop."
           }
         },
         "levels": {
@@ -595,7 +595,7 @@
           "data_description": {
             "optimal_start_max_minutes": "Never starts earlier than this.",
             "optimal_stop_minutes": "Never stops earlier than this. Until the cooling is learned, the lower level starts this early.",
-            "stop_tolerance": "How far below the current level the room may fall before the scheduled change (its comfort). 0 = the room must not fall below the level, so it stops early only when warmer than the level."
+            "stop_tolerance": "For thermostats that report hvac_action: how far below the current level the room may fall before the scheduled change (its comfort). 0 = the room must not fall below the level, so it stops early only when warmer than the level."
           }
         },
         "extras_valves": {
