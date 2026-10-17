@@ -128,6 +128,10 @@ class RoomInputs:
     supports_off: bool = True
     exercise_temp: float | None = None
     unit: str = "°C"  # only for the texts; every value is in °C
+    # The last hours of a vacation: the schedule applies, so the house is warm on return.
+    vacation_preheat: bool = False
+    # Frost protection is heating: it continues until the device stops asking for heat.
+    frost_holding: bool = False
 
 
 @dataclass(slots=True)
@@ -201,7 +205,7 @@ def base_decision(inputs: RoomInputs) -> Decision:
         return Decision(
             RULE_VACATION, Target(KIND_PRESET, preset=PRESET_AWAY), "Vacation"
         )
-    if not inputs.arriving:
+    if not inputs.arriving and not inputs.vacation_preheat:
         if inputs.presence == PRESENCE_FAR:
             return Decision(
                 RULE_FAR,
@@ -220,7 +224,13 @@ def base_decision(inputs: RoomInputs) -> Decision:
                 Target(KIND_PRESET, preset=PRESET_ECO),
                 "Nobody home, someone nearby",
             )
-    arriving = " (someone is on the way home)" if inputs.arriving else ""
+    arriving = (
+        " (vacation ends soon: preheating)"
+        if inputs.vacation_preheat
+        else " (someone is on the way home)"
+        if inputs.arriving
+        else ""
+    )
     if inputs.schedule_preset is None:
         return Decision(RULE_SCHEDULE, Target(KIND_NONE), "No schedule available")
     preset = inputs.schedule_preset
@@ -330,14 +340,16 @@ def apply_safety(decision: Decision, inputs: RoomInputs) -> Decision:
                 f"Frost protection ({target.preset} is below {fmt_temp(frost, inputs.unit)})",
             )
         return decision
-    # Off or no command: protect against frost.
-    if inputs.current_temp is not None and inputs.current_temp < frost:
-        return Decision(
-            RULE_SAFETY,
-            Target(KIND_TEMPERATURE, temperature=frost),
+    # Off or no command: protect against frost. Once started it continues while the
+    # device still heats, so it does not switch on and off around the limit.
+    if inputs.current_temp is not None and (inputs.current_temp < frost or inputs.frost_holding):
+        text = (
             f"Frost protection: {fmt_temp(inputs.current_temp, inputs.unit)} is below "
-            f"{fmt_temp(frost, inputs.unit)}",
+            f"{fmt_temp(frost, inputs.unit)}"
+            if inputs.current_temp < frost
+            else f"Frost protection: heating up to {fmt_temp(frost, inputs.unit)}"
         )
+        return Decision(RULE_SAFETY, Target(KIND_TEMPERATURE, temperature=frost), text)
     return decision
 
 
@@ -353,8 +365,14 @@ def optimal_schedule(
     start_max_minutes: float,
     stop_enabled: bool,
     stop_minutes: float,
+    started: bool = False,
 ) -> tuple[str, str]:
-    """Return (preset, rule) applying optimal start / stop."""
+    """Return (preset, rule) applying optimal start / stop.
+
+    ``started`` is True when the optimal start for this change already began: it
+    then continues until the change, even if the room is warm early (no switching
+    back and forth). The other rules can still override it.
+    """
     if next_change is None or next_preset is None or next_change <= now:
         return current_preset, RULE_SCHEDULE
     now_temp = level_temp(current_preset)
@@ -362,6 +380,8 @@ def optimal_schedule(
     if now_temp is None or next_temp is None:
         return current_preset, RULE_SCHEDULE
     remaining = next_change - now
+    if start_enabled and next_temp > now_temp and started:
+        return next_preset, RULE_OPTIMAL_START
     if start_enabled and next_temp > now_temp and current_temp is not None:
         if current_temp < next_temp:
             hours = (next_temp - current_temp) / max(rate, 0.1)

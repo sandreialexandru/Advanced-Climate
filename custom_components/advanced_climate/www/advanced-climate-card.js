@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.8.4";
+const CARD_VERSION = "1.8.7";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -54,7 +54,7 @@ const TEXT = {
     target_tag: "Target",
     arriving: "On the way home",
     vacation_none: "not planned",
-    vacation_hint: "During the vacation every room uses away. Heating starts again a few hours before the end.",
+    vacation_hint: "During the vacation every room uses away. A few hours before the end the schedule applies again, so the house is warm when you return. Without a start date the vacation starts now.",
     today: "Today",
     quick_hint: "Keeps a level or a temperature as a manual change. Empty duration = the rule from the options.",
     days_workday: "Monday–Friday, except holidays",
@@ -154,7 +154,7 @@ const TEXT = {
     target_tag: "Țintă",
     arriving: "Pe drum spre casă",
     vacation_none: "neplanificată",
-    vacation_hint: "În vacanță toate zonele folosesc away. Încălzirea repornește cu câteva ore înainte de sfârșit.",
+    vacation_hint: "În vacanță toate zonele folosesc away. Cu câteva ore înainte de sfârșit se aplică iar programul, ca să găsești casa caldă. Fără dată de început, vacanța începe acum.",
     today: "Azi",
     quick_hint: "Păstrează un nivel sau o temperatură ca modificare manuală. Durată goală = regula din opțiuni.",
     days_workday: "Luni–vineri, fără sărbători",
@@ -328,6 +328,7 @@ class AdvancedClimateCard extends HTMLElement {
     if (config && config.show_editor === false) merged.show_schedule_editor = false;
     if (config && config.entity && !config.rooms) merged.rooms = [config.entity];
     this._config = merged;
+    this._housesMemo = null;
     this._runtimePeriod = null;
     this._lastKey = "";
     this._render();
@@ -335,6 +336,7 @@ class AdvancedClimateCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._housesMemo = null; // computed once per update
     this.style.colorScheme = hass?.themes?.darkMode ? "dark" : "light";
     if (this._editing || this._pan) return;
     const active = this.shadowRoot.activeElement;
@@ -370,25 +372,50 @@ class AdvancedClimateCard extends HTMLElement {
     return this._hass?.locale?.language || "en";
   }
 
+  /**
+   * Entity ids of the rooms (Decision sensors) and houses (Presence sensors).
+   * Looking through every entity of Home Assistant is done at most every 30 s,
+   * not on every state change.
+   */
+  _discover() {
+    const states = this._hass.states;
+    const cache = this._found;
+    const fresh =
+      cache &&
+      Date.now() - cache.at < 30000 &&
+      [...cache.rooms, ...cache.houses].every((id) => states[id]);
+    if (fresh) return cache;
+    const rooms = [];
+    const houses = [];
+    for (const [id, s] of Object.entries(states)) {
+      const a = s.attributes;
+      if (!a || !a.entry_id) continue;
+      if (a.room_id && a.schedule) rooms.push(id);
+      else if (a.advanced_climate_house) houses.push(id);
+    }
+    this._found = { at: Date.now(), rooms, houses };
+    return this._found;
+  }
+
   _rooms() {
     if (!this._hass) return [];
-    const all = Object.values(this._hass.states).filter(
-      (s) => s.attributes && s.attributes.room_id && s.attributes.entry_id && s.attributes.schedule
-    );
     const wanted = this._config?.rooms;
     if (Array.isArray(wanted) && wanted.length) {
       return wanted.map((id) => this._hass.states[id]).filter(Boolean);
     }
-    return all.sort((a, b) =>
-      String(a.attributes.room_name).localeCompare(String(b.attributes.room_name))
-    );
+    return this._discover()
+      .rooms.map((id) => this._hass.states[id])
+      .filter(Boolean)
+      .sort((a, b) => String(a.attributes.room_name).localeCompare(String(b.attributes.room_name)));
   }
 
   _houses() {
+    if (this._housesMemo) return this._housesMemo;
     const houses = new Map();
     const filtered = Array.isArray(this._config?.rooms) && this._config.rooms.length;
-    for (const s of Object.values(this._hass.states)) {
-      const a = s.attributes || {};
+    for (const id of this._discover().houses) {
+      const s = this._hass.states[id];
+      const a = s?.attributes || {};
       if (!a.advanced_climate_house || !a.entry_id) continue;
       houses.set(a.entry_id, {
         id: a.entry_id,
@@ -413,7 +440,8 @@ class AdvancedClimateCard extends HTMLElement {
       house.rooms.push(room);
     }
     // With an explicit room list, only the houses of those rooms are shown.
-    return [...houses.values()].filter((h) => !filtered || h.rooms.length);
+    this._housesMemo = [...houses.values()].filter((h) => !filtered || h.rooms.length);
+    return this._housesMemo;
   }
 
   _watched() {
@@ -579,9 +607,12 @@ class AdvancedClimateCard extends HTMLElement {
     const guestUntil = guest?.attributes?.until
       ? `<span class="muted">${this._t("until")} ${esc(this._fmtTime(guest.attributes.until))}</span>`
       : "";
-    const vacationSet = vStart && !Number.isNaN(Date.parse(vStart.state));
+    const isDate = (s) => s && !Number.isNaN(Date.parse(s.state));
+    const vacationSet = isDate(vStart) || isDate(vEnd);
     const vacationSummary = vacationSet
-      ? `${esc(this._fmtTime(vStart.state))} – ${esc(this._fmtTime(vEnd?.state))}`
+      ? `${isDate(vStart) ? esc(this._fmtTime(vStart.state)) : this._t("now_tag")} – ${
+          isDate(vEnd) ? esc(this._fmtTime(vEnd.state)) : "…"
+        }`
       : this._t("vacation_none");
 
     const houseKey = `house-${house.id}`;

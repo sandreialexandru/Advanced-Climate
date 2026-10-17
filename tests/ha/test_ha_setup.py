@@ -8,9 +8,11 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
+from homeassistant.core import Context
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     async_fire_time_changed,
+    async_mock_service,
 )
 
 from custom_components.advanced_climate.const import DOMAIN, SUBENTRY_ROOM
@@ -230,5 +232,85 @@ async def test_fahrenheit_house(hass: HomeAssistant, freezer: FrozenDateTimeFact
     await hass.async_block_till_done()
     room = entry.runtime_data.rooms[next(iter(entry.subentries))]
     assert round(room.levels["home"], 2) == 22.0
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_late_device_report_is_not_manual(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A TRV that confirms a command later (new context) is not a manual change."""
+    await hass.config.async_set_time_zone("Europe/Bucharest")
+    freezer.move_to("2026-10-12 09:00:00+00:00")
+    calls = async_mock_service(hass, "climate", "set_temperature")
+    trv = {
+        "hvac_modes": ["heat", "off"],
+        "current_temperature": 18.0,
+        "temperature": 17.0,
+        "target_temp_step": 0.5,
+    }
+    hass.states.async_set("climate.trv", "heat", trv)
+    hass.states.async_set("person.andrei", "home")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Home",
+        options={"persons": ["person.andrei"], "nearby_zones": []},
+        subentries_data=[
+            {
+                "data": {"source": "climate", "climates": ["climate.trv"], "command_mode": "temperature"},
+                "subentry_type": SUBENTRY_ROOM,
+                "title": "Office",
+                "unique_id": None,
+            }
+        ],
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    await _tick(hass, freezer, 15)
+    assert calls and calls[-1].data["temperature"] == 21.0
+
+    # The device reports the new set point a minute later, with its own context.
+    await _tick(hass, freezer, 60)
+    hass.states.async_set("climate.trv", "heat", {**trv, "temperature": 21.0}, context=Context())
+    await _tick(hass, freezer, 5)
+    assert hass.states.get("binary_sensor.office_manual_change").state == "off"
+    assert hass.states.get("sensor.office_decision").state == "schedule"
+
+    # A person changes it: respected.
+    hass.states.async_set("climate.trv", "heat", {**trv, "temperature": 23.0}, context=Context())
+    await _tick(hass, freezer, 5)
+    assert hass.states.get("binary_sensor.office_manual_change").state == "on"
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_vacation_end_only_and_preheat(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Only an end date starts the vacation now; before the end the schedule applies."""
+    entry = await _setup(hass, freezer)
+    await _tick(hass, freezer, 15)
+    hass.states.async_set("person.andrei", "not_home")
+    await _tick(hass, freezer, 11 * 60)
+    assert hass.states.get("sensor.home_presence").state == "far"
+
+    end = dt_util.now() + timedelta(hours=10)
+    await hass.services.async_call(DOMAIN, "set_vacation", {"end": end}, blocking=True)
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.bedroom_decision").state == "vacation"
+
+    # 4 h before the end (default): the schedule, although nobody is near.
+    await _tick(hass, freezer, 6 * 3600 + 60)
+    decision = hass.states.get("sensor.bedroom_decision")
+    assert decision.state == "schedule", decision.attributes["reason"]
+    assert "preheating" in decision.attributes["reason"]
+    assert hass.states.get("sensor.home_presence").attributes["vacation_preheating"] is True
+
+    # After the end: presence again (far = away).
+    await _tick(hass, freezer, 4 * 3600)
+    assert hass.states.get("sensor.bedroom_decision").state == "presence_far"
+
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()

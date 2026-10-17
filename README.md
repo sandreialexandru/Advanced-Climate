@@ -25,18 +25,26 @@ other thermostats or plain relays are supported as well.
   from the Workday integration, profiles chosen from a calendar, a day boundary
   for night shifts, or an existing Schedule helper.
 - **Optimal start / stop** with a learned heating rate per room (see *Heating rate learning*).
+  Once an optimal start begins it continues until the scheduled time, even if
+  the room is warm early; the rules above the schedule can still override it.
 - **Windows**: open/close delays, frost protection or off, detection from a
   sudden temperature drop, windows of neighbouring rooms, alerts.
 - **Weather**: outdoor cutoff with averaging and hysteresis, heating season
-  (dates or automatic), outdoor compensation, forecast, solar gain per room.
+  (dates or automatic), outdoor compensation, forecast, solar gain per room (needs the weather
+  entity of the house; the setting is shown only when one is set).
 - **Manual changes**: detected automatically and kept for a fixed time or until
-  the next reevaluation (schedule, presence, window or mode change). Child lock,
-  pause and per-room / global clear buttons.
+  the next reevaluation (schedule, presence, window or mode change). A device
+  that only reports, later, the values the integration sent it (e.g. a sleepy
+  Zigbee TRV) is not a manual change. Child lock, pause and per-room / global
+  clear buttons.
 - **Global modes**: Auto, Vacation (with dates, preheating before the return and
-  automatic vacation), Off (frost protection) and Summer.
+  automatic vacation), Off (frost protection) and Summer. During the preheating
+  hours before the end of a vacation the schedule applies even while everyone
+  is still far away. Only an end date: the vacation starts now.
 - **Energy**: dynamic tariff, PV surplus, boiler control from the heat demand
   of the rooms, runtime statistics.
-- **Safety**: frost protection always, maximum temperature, command
+- **Safety**: frost protection always (once it starts heating it continues
+  until the device stops asking for heat), maximum temperature, command
   verification with retry, alerts for unavailable devices, failed sensors, low
   batteries and open windows, valve exercise for TRVs.
 - **Visibility**: a *Decision* sensor per room with the winning rule and the

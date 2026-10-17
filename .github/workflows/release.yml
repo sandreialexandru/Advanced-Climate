@@ -1,14 +1,14 @@
 name: Release
 
-# Creates a GitHub release (and tag) whenever the version in manifest.json
-# changes on main. Run it manually from the Actions tab to (re)check.
+# Creates a GitHub release (and tag) when the version in manifest.json changes
+# on main, only after every test passed (the Tests workflow). Run it manually
+# from the Actions tab to (re)check.
 
 on:
-  push:
+  workflow_run:
+    workflows: [Tests]
+    types: [completed]
     branches: [main]
-    paths:
-      - "custom_components/advanced_climate/**"
-      - ".github/workflows/release.yml"
   workflow_dispatch:
 
 permissions:
@@ -20,11 +20,14 @@ concurrency:
 
 jobs:
   release:
+    # Never release a version whose tests failed.
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Read version
         id: version
@@ -59,9 +62,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           gh release create "$TAG" advanced_climate.zip \
-            --target "$GITHUB_SHA" \
+            --target "$SHA" \
             --title "Advanced Climate $TAG" \
             --generate-notes \
             --latest
