@@ -44,7 +44,9 @@ class HeatingRateLearner:
     episodes: list[list] = field(default_factory=list)
     episode_start: datetime | None = None
     episode_temp: float | None = None
-    episode_outdoor: list[float] = field(default_factory=list)
+    # Sum and count of the outdoor temperatures seen during the episode.
+    episode_outdoor_sum: float = 0.0
+    episode_outdoor_count: int = 0
     episode_disturbed: bool = False
 
     # ------------------------------------------------------------------ model
@@ -114,7 +116,8 @@ class HeatingRateLearner:
             ):
                 self.episode_start = now
                 self.episode_temp = current
-                self.episode_outdoor = [outdoor] if outdoor is not None else []
+                self.episode_outdoor_sum = outdoor if outdoor is not None else 0.0
+                self.episode_outdoor_count = 1 if outdoor is not None else 0
                 self.episode_disturbed = False
             return None
         if self.episode_start is None:
@@ -122,31 +125,40 @@ class HeatingRateLearner:
         if window_open:
             self.episode_disturbed = True
         if outdoor is not None:
-            self.episode_outdoor.append(outdoor)
-        reached = target is not None and current >= target - 0.1
+            self.episode_outdoor_sum += outdoor
+            self.episode_outdoor_count += 1
+        reached = target is not None and current >= target
         if heating and not reached:
             return None
         # Episode finished (target reached or heating stopped).
         minutes = (now - self.episode_start).total_seconds() / 60
         rise = current - (self.episode_temp if self.episode_temp is not None else current)
-        outdoor_values = self.episode_outdoor
+        outdoor_mean = self._outdoor_mean()
         disturbed = self.episode_disturbed
-        self.episode_start = None
-        self.episode_temp = None
-        self.episode_outdoor = []
-        self.episode_disturbed = False
+        self.cancel()
         # The heat demand lasted at least 10 minutes; any rise counts, a slow one
         # too (it may show a problem, but it is real). Without a rise there is
         # no rate to measure.
         if disturbed or minutes < MIN_DEMAND_MINUTES or rise <= 0:
             return None
         measured = round(rise / (minutes / 60), 3)
-        mean_outdoor = (
-            round(sum(outdoor_values) / len(outdoor_values), 1) if outdoor_values else None
-        )
+        mean_outdoor = round(outdoor_mean, 1) if outdoor_mean is not None else None
         self.episodes.append([mean_outdoor, measured, now.isoformat()])
         del self.episodes[:-MAX_EPISODES]
         return measured
+
+    def _outdoor_mean(self) -> float | None:
+        if not self.episode_outdoor_count:
+            return None
+        return self.episode_outdoor_sum / self.episode_outdoor_count
+
+    def cancel(self) -> None:
+        """Drop the episode in progress (e.g. outside the heating season)."""
+        self.episode_start = None
+        self.episode_temp = None
+        self.episode_outdoor_sum = 0.0
+        self.episode_outdoor_count = 0
+        self.episode_disturbed = False
 
     # ----------------------------------------------------------- persistence
     def as_dict(self) -> dict:
@@ -208,7 +220,9 @@ class CoolingLearner:
     episodes: list[list] = field(default_factory=list)
     episode_start: datetime | None = None
     episode_temp: float | None = None
-    episode_outdoor: list[float] = field(default_factory=list)
+    # Sum and count of the outdoor temperatures seen during the episode.
+    episode_outdoor_sum: float = 0.0
+    episode_outdoor_count: int = 0
     episode_disturbed: bool = False
 
     @property
@@ -258,7 +272,8 @@ class CoolingLearner:
             if not window_open:
                 self.episode_start = now
                 self.episode_temp = current
-                self.episode_outdoor = [outdoor] if outdoor is not None else []
+                self.episode_outdoor_sum = outdoor if outdoor is not None else 0.0
+                self.episode_outdoor_count = 1 if outdoor is not None else 0
                 self.episode_disturbed = False
             return None
         if self.episode_start is None:
@@ -266,21 +281,18 @@ class CoolingLearner:
         if window_open:
             self.episode_disturbed = True
         if outdoor is not None:
-            self.episode_outdoor.append(outdoor)
+            self.episode_outdoor_sum += outdoor
+            self.episode_outdoor_count += 1
         if not heating:
             return None
         # The heat demand started again: the episode is finished.
         minutes = (now - self.episode_start).total_seconds() / 60
         start = self.episode_temp
-        outdoor_values = self.episode_outdoor
+        mean_outdoor = self._outdoor_mean()
         disturbed = self.episode_disturbed
-        self.episode_start = None
-        self.episode_temp = None
-        self.episode_outdoor = []
-        self.episode_disturbed = False
-        if disturbed or minutes < MIN_DEMAND_MINUTES or start is None or not outdoor_values:
+        self.cancel()
+        if disturbed or minutes < MIN_DEMAND_MINUTES or start is None or mean_outdoor is None:
             return None
-        mean_outdoor = sum(outdoor_values) / len(outdoor_values)
         k = cooling_coefficient(start, current, mean_outdoor, minutes / 60)
         if k is None:
             return None
@@ -288,6 +300,19 @@ class CoolingLearner:
         self.episodes.append([round(mean_outdoor, 1), k, now.isoformat()])
         del self.episodes[:-MAX_EPISODES]
         return k
+
+    def _outdoor_mean(self) -> float | None:
+        if not self.episode_outdoor_count:
+            return None
+        return self.episode_outdoor_sum / self.episode_outdoor_count
+
+    def cancel(self) -> None:
+        """Drop the episode in progress (e.g. outside the heating season)."""
+        self.episode_start = None
+        self.episode_temp = None
+        self.episode_outdoor_sum = 0.0
+        self.episode_outdoor_count = 0
+        self.episode_disturbed = False
 
     def as_dict(self) -> dict:
         """Serialize."""

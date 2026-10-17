@@ -70,8 +70,10 @@ class LearningTest(unittest.TestCase):
     def test_episode(self) -> None:
         learner = learning.HeatingRateLearner()
         self.assertEqual(learner.rate(5.0), learning.DEFAULT_RATE)
-        rate = self._episode(learner, self.T0, 5.0, rise=2.95)
-        self.assertAlmostEqual(rate, 1.967, places=2)
+        # Just below the target the episode goes on (no margin): it ends at the target.
+        self.assertIsNone(self._episode(learner, self.T0, 5.0, rise=2.95))
+        rate = learner.observe(self.T0 + timedelta(minutes=90), True, 22.0, 22.0, 5.0)
+        self.assertAlmostEqual(rate, 2.0, places=2)
         # One episode: the same rate at every outdoor temperature.
         self.assertAlmostEqual(learner.rate(5.0), rate, places=2)
         self.assertAlmostEqual(learner.rate(-5.0), rate, places=2)
@@ -110,6 +112,17 @@ class LearningTest(unittest.TestCase):
         # Where the line reaches zero the average of the episodes is used.
         mean = sum(r for _, r, *_ in learner.episodes) / len(learner.episodes)
         self.assertAlmostEqual(learner.rate(-30.0), round(mean, 3))
+
+    def test_cancel(self) -> None:
+        # Outside the cold season the episode in progress is dropped.
+        learner = learning.HeatingRateLearner()
+        learner.observe(self.T0, True, 19.0, 22.0, 5.0)
+        learner.cancel()
+        self.assertIsNone(learner.episode_start)
+        cooling = learning.CoolingLearner()
+        cooling.observe(self.T0, False, 22.0, 5.0)
+        cooling.cancel()
+        self.assertIsNone(cooling.observe(self.T0 + timedelta(hours=2), True, 21.0, 5.0))
 
     def test_learning_is_free(self) -> None:
         learner = learning.HeatingRateLearner()

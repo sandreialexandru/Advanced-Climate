@@ -165,7 +165,8 @@ async def test_weather_validation(hass: HomeAssistant) -> None:
 
 async def test_room_subentry_flow(hass: HomeAssistant) -> None:
     """A relay room is added and then reconfigured."""
-    entry = MockConfigEntry(domain=DOMAIN, title="Home", options={})
+    # An outdoor sensor (the optimal stop needs it), no weather (no solar gain).
+    entry = MockConfigEntry(domain=DOMAIN, title="Home", options={"outdoor_sensor": "sensor.outdoor"})
     entry.add_to_hass(hass)
     flow = hass.config_entries.subentries
 
@@ -251,7 +252,8 @@ async def test_room_with_thermostat_presets(hass: HomeAssistant) -> None:
     )
     # TRV with presets: only the thermostat tolerance.
     assert result["step_id"] == "control_thermostat"
-    assert {str(k) for k in result["data_schema"].schema} == {"learn_tolerance"}
+    # This TRV does not report hvac_action: its heat demand uses the hysteresis.
+    assert {str(k) for k in result["data_schema"].schema} == {"learn_tolerance", "hysteresis"}
     result = await hass.config_entries.subentries.async_configure(
         result["flow_id"], {"learn_tolerance": 0.3}
     )

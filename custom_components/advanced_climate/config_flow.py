@@ -590,8 +590,23 @@ def _on_off_schema(d: dict[str, Any], with_sensors: bool) -> vol.Schema:
     return vol.Schema(fields)
 
 
-def _thermostat_schema(d: dict[str, Any]) -> vol.Schema:
-    return vol.Schema({_req(CONF_LEARN_TOLERANCE, d, ROOM_DEFAULTS): _number(0, 2, 0.1, "°C")})
+def _no_hvac_action(hass: Any, d: dict[str, Any]) -> bool:
+    """A chosen thermostat does not report whether it heats (no hvac_action)."""
+    for entity_id in d.get(CONF_CLIMATES) or []:
+        state = hass.states.get(entity_id)
+        if state is not None and "hvac_action" not in state.attributes:
+            return True
+    return False
+
+
+def _thermostat_schema(d: dict[str, Any], hass: Any) -> vol.Schema:
+    fields: dict[Any, Any] = {
+        _req(CONF_LEARN_TOLERANCE, d, ROOM_DEFAULTS): _number(0, 2, 0.1, "°C")
+    }
+    # Without hvac_action the heat demand is decided with the hysteresis.
+    if _no_hvac_action(hass, d):
+        fields[_req(CONF_HYSTERESIS, d, ROOM_DEFAULTS)] = _number(0.1, 3, 0.1, "°C")
+    return vol.Schema(fields)
 
 
 # ---------------------------------------------------------------------------
@@ -674,7 +689,7 @@ class _HouseHeatingSteps:
 
     async def async_step_heating_thermostat(self, user_input: dict[str, Any] | None = None) -> Any:
         """Thermostat tolerance."""
-        schema = _thermostat_schema(_shown(self._zone, self._unit()))  # type: ignore[attr-defined]
+        schema = _thermostat_schema(_shown(self._zone, self._unit()), self.hass)  # type: ignore[attr-defined]
         if user_input is not None:
             self._zone = _merge(self._zone, schema, _kept(user_input, self._unit()))  # type: ignore[attr-defined]
             return await self._async_heating_done(self._zone)
@@ -1051,7 +1066,7 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Thermostat tolerance (temperature / preset command)."""
-        schema = _thermostat_schema(self._shown())
+        schema = _thermostat_schema(self._shown(), self.hass)
         if user_input is not None:
             self._data = _merge(self._data, schema, self._kept(user_input))
             return await self.async_step_levels()
@@ -1282,17 +1297,23 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
     async def async_step_schedule(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """Where the schedule comes from, and optimal start / stop."""
         d = self._shown()
-        schema = vol.Schema(
-            {
-                _req(CONF_SCHEDULE_SOURCE, d, ROOM_DEFAULTS): _select(
-                    [SCHEDULE_INTERNAL, SCHEDULE_HELPER], "schedule_source"
-                ),
-                _req(CONF_OPTIMAL_START, d, ROOM_DEFAULTS): _bool(),
-                _req(CONF_OPTIMAL_STOP, d, ROOM_DEFAULTS): _bool(),
-            }
-        )
+        entry = self._get_entry()
+        house = {**entry.data, **entry.options}
+        # The optimal stop needs the outdoor temperature (a sensor or weather).
+        outdoor = bool(house.get(CONF_OUTDOOR_SENSOR) or house.get(CONF_WEATHER))
+        fields: dict[Any, Any] = {
+            _req(CONF_SCHEDULE_SOURCE, d, ROOM_DEFAULTS): _select(
+                [SCHEDULE_INTERNAL, SCHEDULE_HELPER], "schedule_source"
+            ),
+            _req(CONF_OPTIMAL_START, d, ROOM_DEFAULTS): _bool(),
+        }
+        if outdoor:
+            fields[_req(CONF_OPTIMAL_STOP, d, ROOM_DEFAULTS)] = _bool()
+        schema = vol.Schema(fields)
         if user_input is not None:
             self._data = _merge(self._data, schema, self._kept(user_input))
+            if not outdoor:
+                self._data[CONF_OPTIMAL_STOP] = False
             if user_input[CONF_SCHEDULE_SOURCE] == SCHEDULE_HELPER:
                 return await self.async_step_schedule_helper()
             return await self.async_step_schedule_internal()

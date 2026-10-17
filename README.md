@@ -184,6 +184,13 @@ episodes.
   fewer than 3 episodes, or outdoor temperatures less than 3 °C apart, the
   average of the episodes is used.
 - Until the first episode the rate is 1 °C/h.
+- The heating and the cooling are learned in the **cold season** only: not in
+  mode Off or Summer, nor outside the heating season (an episode in progress
+  is dropped).
+- The **heat demand** comes from `hvac_action` (heating). Thermostats that do
+  not report it count as heating from the *hysteresis* below their set
+  temperature until the hysteresis above it, like a relay; the *Hysteresis*
+  setting is shown for them.
 
 The *Heating rate* sensor shows the rate for the current outdoor temperature;
 its attributes show the estimate at −10 / 0 / 10 / 20 °C, the number of
@@ -200,7 +207,8 @@ the small thermostat cycles.
 
 ## Cooling learning and optimal stop
 
-The cooling is learned the opposite way of the heating, per room:
+The cooling is learned the opposite way of the heating, per room (in the cold
+season only, see above):
 
 - An **episode** starts when the heat demand stops (no window or door sensor
   open) and ends when the heat demand starts again. It is used when it lasted
@@ -211,7 +219,8 @@ The cooling is learned the opposite way of the heating, per room:
   episodes). Walls, radiators and insulation are not modelled: whatever they
   do is in the measured coefficient of that house.
 
-**Optimal stop** lowers the level before the next colder one as early as the
+**Optimal stop** needs an outdoor temperature (sensor or weather entity of the
+house; without one the option is not shown). It lowers the level before the next colder one as early as the
 room can cool and still stay in the comfort of the current level at the
 scheduled time. The comfort is the *tolerance*: the *cold tolerance* of Generic
 Thermostat, the *hysteresis* for relays and on / off control, and the

@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.9.1";
+const CARD_VERSION = "1.9.2";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -555,7 +555,7 @@ class AdvancedClimateCard extends HTMLElement {
     }
     const current = num(a.current_temperature);
     const target = num(a.target_temperature);
-    if (current === null || target === null || target - current <= 0.1) return "";
+    if (current === null || target === null || target - current <= 0) return "";
     if (a.time_to_target === null || a.time_to_target === undefined) return "";
     if (!a.rate_learned) return this._t("eta_learning");
     const m = Math.round(a.time_to_target);
