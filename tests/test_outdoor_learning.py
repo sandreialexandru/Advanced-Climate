@@ -75,13 +75,15 @@ class LearningTest(unittest.TestCase):
         self.assertAlmostEqual(learner.rate(5.0), rate, places=2)
         self.assertAlmostEqual(learner.rate(-5.0), rate, places=2)
 
-    def test_short_episode_learned(self) -> None:
-        # No minimum duration: 0.5 °C in 5 minutes is 6 °C/h.
+    def test_short_demand_ignored(self) -> None:
+        # The heat demand must last at least 10 minutes.
         learner = learning.HeatingRateLearner()
         learner.observe(self.T0, True, 19.0, 22.0, 5.0)
-        rate = learner.observe(self.T0 + timedelta(minutes=5), False, 19.5, 22.0, 5.0)
-        self.assertAlmostEqual(rate, 6.0, places=3)
-        self.assertEqual(len(learner.episodes), 1)
+        self.assertIsNone(learner.observe(self.T0 + timedelta(minutes=9), False, 19.5, 22.0, 5.0))
+        self.assertEqual(learner.episodes, [])
+        learner.observe(self.T0, True, 19.0, 22.0, 5.0)
+        rate = learner.observe(self.T0 + timedelta(minutes=10), False, 19.1, 22.0, 5.0)
+        self.assertAlmostEqual(rate, 0.6, places=3)
 
     def test_window_episode_ignored(self) -> None:
         learner = learning.HeatingRateLearner()
