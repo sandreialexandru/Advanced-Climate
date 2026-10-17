@@ -215,6 +215,7 @@ type: custom:advanced-climate-card
 | `show_schedule_editor` | `true` | Schedule profiles with an editor: drag the start times on the day bar (5-minute steps), copy a profile over another day |
 | `collapsed` | `false` | Rooms start folded; tap the room name to open it |
 | `compact` | `false` | One row per room (name, rule, now → target) and one for the house; tap a row to open it |
+| `runtime_period` | `day` | Heating time shown for `day`, `week` or `month` (calendar periods, from the long-term statistics; tap the value in the card to change it). The *Heating runtime* sensors stay cumulative totals |
 
 Every room also shows its decision, the reason, heating / window / manual change
 badges, the *Profile* select, the *Child lock* switch and *Back to automatic*.

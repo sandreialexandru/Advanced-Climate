@@ -14,9 +14,10 @@
  *   show_schedule_editor: true
  *   collapsed: false             # rooms start folded (header only)
  *   compact: false               # one row per room (and the house); tap a row to open it
+ *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.7.0";
+const CARD_VERSION = "1.8.3";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -41,7 +42,10 @@ const DEFAULTS = {
   show_schedule_editor: true,
   collapsed: false,
   compact: false,
+  runtime_period: "day",
 };
+
+const RUNTIME_PERIODS = ["day", "week", "month"];
 
 const TEXT = {
   en: {
@@ -132,6 +136,10 @@ const TEXT = {
     drag_hint: "Drag the handles on the bar to move a start time in 5-minute steps (arrow keys: 5 min, Shift: 1 h). Levels are chosen in the list.",
     copy_to: "Copy over…",
     new_profile: "new",
+    period_day: "today",
+    period_week: "this week",
+    period_month: "this month",
+    period_hint: "Tap to change the period (today, this week, this month).",
     eta_learning: "learning…",
     eta_help: "Time until the target at the heating rate learned for the current outdoor temperature.",
     zoom_in: "Zoom in",
@@ -228,6 +236,10 @@ const TEXT = {
     drag_hint: "Trage de mânerele de pe bară ca să muți o oră de început din 5 în 5 minute (săgeți: 5 min, Shift: 1 h). Nivelurile se aleg în listă.",
     copy_to: "Copiază peste…",
     new_profile: "nou",
+    period_day: "azi",
+    period_week: "săptămâna aceasta",
+    period_month: "luna aceasta",
+    period_hint: "Apasă ca să schimbi perioada (azi, săptămâna aceasta, luna aceasta).",
     eta_learning: "se învață…",
     eta_help: "Timpul până la țintă, după viteza de încălzire învățată pentru temperatura de afară de acum.",
     zoom_in: "Mărește",
@@ -316,6 +328,7 @@ class AdvancedClimateCard extends HTMLElement {
     if (config && config.show_editor === false) merged.show_schedule_editor = false;
     if (config && config.entity && !config.rooms) merged.rooms = [config.entity];
     this._config = merged;
+    this._runtimePeriod = null;
     this._lastKey = "";
     this._render();
   }
@@ -602,7 +615,7 @@ class AdvancedClimateCard extends HTMLElement {
             ${stat(this._t("season"), onOff(season))}
             ${cutoff?.state === "on" ? stat(this._t("cutoff"), this._t("on"), "warn") : ""}
             ${stat(this._t("demand"), onOff(demand), demand?.state === "on" ? "hot" : "")}
-            ${runtime ? stat(this._t("runtime"), `${num(runtime.state)?.toFixed(1) ?? "–"} h`) : ""}
+            ${runtime ? this._runtimeStat(e.heating_runtime) : ""}
           </div>
         </div>
         <div class="label">${this._t("mode")}</div>
@@ -1249,7 +1262,7 @@ class AdvancedClimateCard extends HTMLElement {
         ${dl(this._t("room_temp"), esc(this._temp(a.current_temperature)))}
         ${dl(this._t("target"), esc(this._temp(a.target_temperature)))}
         ${rate ? dl(this._t("rate"), `${esc(num(rate.state)?.toFixed(2) ?? "–")} °C/h`) : ""}
-        ${runtime ? dl(this._t("runtime"), `${esc(num(runtime.state)?.toFixed(1) ?? "–")} h`) : ""}
+        ${runtime ? `<div>${this._runtimeButton(e.heating_runtime, "dt")}</div>` : ""}
         ${devicePreset !== null ? dl(this._t("device_preset"), esc(devicePreset)) : ""}
         ${dl(this._t("adjustments"), esc(offsets))}
       </dl>
@@ -1603,6 +1616,72 @@ class AdvancedClimateCard extends HTMLElement {
     }
   }
 
+  // ------------------------------------------------------------------ heating time per period
+  _period() {
+    const p = this._runtimePeriod || this._config.runtime_period || "day";
+    return RUNTIME_PERIODS.includes(p) ? p : "day";
+  }
+
+  /** Hours of heating in the current day / week / month, from the long-term statistics. */
+  _runtimeValue(entityId) {
+    const period = this._period();
+    const key = `${entityId}|${period}`;
+    this._runtime = this._runtime || {};
+    const cached = this._runtime[key];
+    if (!cached || (!cached.loading && Date.now() - cached.at > 5 * 60 * 1000)) {
+      this._fetchRuntime(entityId, period, key);
+    }
+    return cached && !cached.failed ? cached.value : null;
+  }
+
+  async _fetchRuntime(entityId, period, key) {
+    this._runtime[key] = { ...(this._runtime[key] || {}), at: Date.now(), loading: true };
+    if (!this._hass?.callWS) return;
+    let value = null;
+    let failed = false;
+    try {
+      const res = await this._hass.callWS({
+        type: "recorder/statistic_during_period",
+        statistic_id: entityId,
+        calendar: { period },
+        types: ["change"],
+      });
+      value = num(res?.change) ?? 0;
+    } catch (err) {
+      failed = true;
+    }
+    this._runtime[key] = { at: Date.now(), loading: false, value, failed };
+    const active = this.shadowRoot.activeElement;
+    if (this._editing || this._drag || this._pan || (active && ["INPUT", "SELECT"].includes(active.tagName))) return;
+    this._lastKey = "";
+    this._render();
+  }
+
+  _runtimeText(entityId) {
+    const value = this._runtimeValue(entityId);
+    if (value === null) return "–";
+    const h = Math.floor(value);
+    const m = Math.round((value - h) * 60);
+    return h ? `${h} h ${String(m).padStart(2, "0")} min` : `${m} min`;
+  }
+
+  /** "Heating time · today" that changes the period when tapped. */
+  _runtimeButton(entityId, kind) {
+    const label = `${this._t("runtime")} · ${this._t(`period_${this._period()}`)}`;
+    const value = esc(this._runtimeText(entityId));
+    const title = esc(this._t("period_hint"));
+    if (kind === "dt") {
+      return `<button class="period" data-action="period" title="${title}"><dt>${esc(label)}</dt><dd>${value}</dd></button>`;
+    }
+    return `<button class="stat period" data-action="period" title="${title}"><span class="k">${esc(
+      label
+    )}</span><span class="v">${value}</span></button>`;
+  }
+
+  _runtimeStat(entityId) {
+    return this._runtimeButton(entityId, "stat");
+  }
+
   _fold(key, title, content) {
     return `<details class="fold" data-fold="${esc(key)}" ${this._open[key] ? "open" : ""}>
       <summary><span>${esc(title)}</span></summary><div class="fold-body">${content}</div></details>`;
@@ -1661,6 +1740,11 @@ class AdvancedClimateCard extends HTMLElement {
       case "fold":
         this._open[key] = el.getAttribute("aria-expanded") !== "true";
         break;
+      case "period": {
+        const next = RUNTIME_PERIODS[(RUNTIME_PERIODS.indexOf(this._period()) + 1) % RUNTIME_PERIODS.length];
+        this._runtimePeriod = next;
+        break;
+      }
       case "zoom": {
         const d = this._charts?.[room];
         if (!d) return;
@@ -1797,6 +1881,11 @@ const STYLE = `
   .stat .k { font-size: 0.75em; color: var(--ac-muted); }
   .stat .v { font-variant-numeric: tabular-nums; font-weight: 600; }
   .stat.hot .v { color: var(--ac-hot); }
+  button.period { font: inherit; color: inherit; text-align: left; cursor: pointer; border: none; background: none; padding: 0; }
+  .details button.period { width: 100%; }
+  .details button.period dt { font-size: 0.75em; color: var(--ac-muted); }
+  .details button.period dd { margin: 2px 0 0; font-variant-numeric: tabular-nums; font-weight: 500; }
+  button.period:hover .k, button.period:hover dt { text-decoration: underline dotted; }
   .stat.warn .v { color: var(--ac-warn); }
   @media (max-width: 520px) { .stats { grid-auto-flow: row; grid-template-columns: 1fr 1fr; } }
 
@@ -2052,6 +2141,19 @@ const EDITOR_SCHEMA = [
       { name: "compact", selector: { boolean: {} } },
     ],
   },
+  {
+    name: "runtime_period",
+    selector: {
+      select: {
+        mode: "dropdown",
+        options: [
+          { value: "day", label: "Day / Zi" },
+          { value: "week", label: "Week / Săptămână" },
+          { value: "month", label: "Month / Lună" },
+        ],
+      },
+    },
+  },
 ];
 
 const EDITOR_LABELS = {
@@ -2067,6 +2169,7 @@ const EDITOR_LABELS = {
     show_schedule_editor: "Schedule editor",
     collapsed: "Rooms start folded",
     compact: "Compact: one row per room, tap to open",
+    runtime_period: "Heating time shown for (tap the value in the card to change it)",
   },
   ro: {
     title: "Titlu",
@@ -2080,6 +2183,7 @@ const EDITOR_LABELS = {
     show_schedule_editor: "Editor de program",
     collapsed: "Camerele pornesc pliate",
     compact: "Compact: un rând pe cameră, se deschide la atingere",
+    runtime_period: "Timpul de încălzire afișat pentru (se schimbă și apăsând valoarea în card)",
   },
 };
 
