@@ -320,8 +320,10 @@ def _unitize(schema: vol.Schema, unit: str | None) -> vol.Schema:
             for bound, rounding in (("min", math.floor), ("max", math.ceil)):
                 if config.get(bound) is not None:
                     value = float(config[bound])
-                    # Rounded outwards, so a converted value at the limit is accepted.
-                    config[bound] = rounding(value * 1.8 + 32 if absolute else value * 1.8)
+                    converted = value * 1.8 + 32 if absolute else value * 1.8
+                    # Rounded outwards to a tenth, so a converted value at the limit
+                    # is accepted and a small minimum (e.g. 0.1 °C) does not become 0.
+                    config[bound] = rounding(round(converted * 10, 6)) / 10
             config["unit_of_measurement"] = "°F"
             field = selector.NumberSelector(selector.NumberSelectorConfig(**config))
         fields[marker] = field

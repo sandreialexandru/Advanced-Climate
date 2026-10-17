@@ -314,6 +314,8 @@ async def test_fahrenheit_forms(hass: HomeAssistant) -> None:
     assert schema["frost_temp"].default() == 44.6
     selector_config = result["data_schema"].schema[schema["frost_temp"]].config
     assert selector_config["unit_of_measurement"] == "°F"
+    # 3 … 15 °C, rounded outwards to a tenth of a degree.
+    assert (selector_config["min"], selector_config["max"]) == (37.4, 59.0)
     result = await flow.async_configure(
         result["flow_id"], {"override_mode": "until_next_reevaluation", "frost_temp": 46.4}
     )
