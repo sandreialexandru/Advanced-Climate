@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.11.0";
+const CARD_VERSION = "1.11.1";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -1404,7 +1404,11 @@ class AdvancedClimateCard extends HTMLElement {
         ${runtime ? `<div>${this._runtimeButton(e.heating_runtime, "dt")}</div>` : ""}
         ${devicePreset !== null ? dl(this._t("device_preset"), esc(devicePreset)) : ""}
         ${dl(this._t("adjustments"), esc(offsets))}
-        ${a.next_estimate ? dl(this._t("est_label"), esc(this._estimate(a))) : ""}
+        ${
+          a.next_estimate
+            ? `<div class="wide"><dt>${esc(this._t("est_label"))}</dt><dd>${esc(this._estimate(a))}</dd></div>`
+            : ""
+        }
       </dl>
       ${
         levelTemps
@@ -2212,6 +2216,7 @@ const STYLE = `
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
   .details { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 0; }
   .details div { background: var(--ac-surface); border-radius: 10px; padding: 8px 10px; }
+  .details div.wide { grid-column: 1 / -1; }
   .details dt { font-size: 0.75em; color: var(--ac-muted); }
   .details dd { margin: 2px 0 0; font-variant-numeric: tabular-nums; font-weight: 500; }
   .levels-line { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.85em; align-items: center; }
