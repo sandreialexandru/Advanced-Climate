@@ -150,7 +150,8 @@ Programul se poate edita și din cardul Lovelace.
 Regulile sunt evaluate de sus în jos; prima care se aplică decide:
 
 1. Siguranță (antiîngheț, temperatură maximă) – aplicată mereu, și unei
-   schimbări manuale și în pauză; antiînghețul pornește singur sursa de căldură
+   schimbări manuale și în pauză (un nivel peste maxim se trimite ca maxim);
+   antiînghețul pornește singur sursa de căldură
 2. Pauză
 3. Mișcarea robinetelor – în orice mod, nu cu o fereastră deschisă
 4. Mod Oprit / Vară / în afara sezonului de încălzire

@@ -541,3 +541,22 @@ async def test_heat_source_unavailable_alert(
     assert "unavailable_input_boolean.boiler" in house._alerts  # noqa: SLF001
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_rounded_down_to_the_step_at_the_maximum(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A thermostat never gets more than the maximum because of its own step."""
+    trv = {"hvac_modes": ["heat", "off"], "current_temperature": 18.0, "temperature": 17.0,
+           "target_temp_step": 0.5, "hvac_action": "idle"}
+    hass.states.async_set("climate.trv", "heat", trv)
+    entry = await _trv_house(hass, freezer, max_temp=24.8, boiler_entity=None)
+    calls = async_mock_service(hass, "climate", "set_temperature")
+    await _tick(hass, freezer, 15)
+    room = next(iter(entry.runtime_data.rooms.values()))
+    room.levels["home"] = 26.0
+    await hass.services.async_call(DOMAIN, "reevaluate", {}, blocking=True)
+    await hass.async_block_till_done()
+    assert calls[-1].data["temperature"] == 24.5  # 24.8 would become 25.0 on the TRV
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

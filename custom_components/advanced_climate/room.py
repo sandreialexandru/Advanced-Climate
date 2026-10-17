@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
+import math
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
 import logging
@@ -983,8 +984,10 @@ class Room:
         local = dt_util.as_local(now)  # the day and time of the exercise are local
         if WEEKDAYS[local.weekday()] != self.config[CONF_VALVE_DAY]:
             return False
-        if self.house.paused or self.window_open:
-            return False  # postponed: it starts when the pause ends or the window closes
+        if self.house.paused or self.window_open or self.override_active:
+            # Postponed: it starts when the pause or the manual change ends, or
+            # the window closes.
+            return False
         start = parse_clock(self.config[CONF_VALVE_TIME])
         start_dt = local.replace(hour=start.hour, minute=start.minute, second=0, microsecond=0)
         today = local.date().isoformat()
@@ -1111,12 +1114,13 @@ class Room:
         if house.season_active and house.mode not in (MODE_OFF, MODE_SUMMER):
             outdoor = house.outdoor_now
             # An episode is not used with a window open, when the outdoor
-            # temperature of a house that has one became unknown, or when the
-            # state of the heat source is unknown.
+            # temperature of a house that has one became unknown, when the
+            # state of the heat source is unknown, or during the valve exercise.
             disturbed = (
                 self._window_sensor_open()
                 or (house.outdoor_configured and outdoor is None)
                 or self.source_unknown
+                or self._exercise_until is not None
             )
             self.learner.observe(
                 now, self.heating, self.current_temp, self.target_temperature,
@@ -1353,7 +1357,7 @@ class Room:
             return True
         # Compared in the unit of the thermostat, as sent.
         current = float_attr(state, ATTR_TEMPERATURE)
-        wanted = round(float(from_celsius(temperature, system_unit(self.hass))), 1)
+        wanted = self._device_value(state, temperature)
         return current is not None and abs(current - wanted) < 0.05
 
     async def _async_apply_climate(self, entity_id: str, target: Target, force: bool) -> bool:
@@ -1401,11 +1405,24 @@ class Room:
             )
             return False
         return await self._send(
-            entity_id,
-            "set_temperature",
-            ATTR_TEMPERATURE,
-            round(float(from_celsius(temperature, system_unit(self.hass))), 1),
+            entity_id, "set_temperature", ATTR_TEMPERATURE, self._device_value(state, temperature)
         )
+
+    def _device_value(self, state: State, temperature: float) -> float:
+        """Temperature to send, in the unit of the thermostat.
+
+        A thermostat rounds to its own step; where that would go above the
+        maximum of the house, the value is rounded down to the step instead, so
+        the thermostat never holds more than the maximum.
+        """
+        unit = system_unit(self.hass)
+        value = round(float(from_celsius(temperature, unit)), 1)
+        step = float_attr(state, "target_temp_step")
+        if step:
+            maximum = float(from_celsius(self.max_temp(), unit))
+            if round(value / step) * step > maximum + 1e-9:
+                value = round(math.floor(maximum / step + 1e-9) * step, 2)
+        return value
 
     async def _send(
         self, entity_id: str, service: str, key: str, value: Any, field: str | None = None

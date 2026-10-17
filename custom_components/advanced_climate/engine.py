@@ -36,6 +36,7 @@ from .const import (
     PRESET_ECO,
     RULE_CUTOFF,
     RULE_FAR,
+    RULE_MAX,
     RULE_MODE_OFF,
     RULE_NEARBY,
     RULE_OPTIMAL_START,
@@ -341,6 +342,12 @@ def apply_safety(decision: Decision, inputs: RoomInputs) -> Decision:
         return decision
     if target.kind == KIND_PRESET:
         level = inputs.level_temp(target.preset or "")
+        if level is not None and level > maximum:
+            return Decision(
+                RULE_MAX,
+                Target(KIND_TEMPERATURE, preset=target.preset, temperature=maximum),
+                f"Maximum temperature ({target.preset} is above {fmt_temp(maximum, inputs.unit)})",
+            )
         if level is not None and level < frost:
             return Decision(
                 RULE_SAFETY,
@@ -356,7 +363,7 @@ def apply_safety(decision: Decision, inputs: RoomInputs) -> Decision:
         and inputs.device_setpoint > maximum
     ):
         return Decision(
-            RULE_SAFETY,
+            RULE_MAX,
             Target(KIND_TEMPERATURE, temperature=maximum),
             f"Maximum temperature: {fmt_temp(inputs.device_setpoint, inputs.unit)} is above "
             f"{fmt_temp(maximum, inputs.unit)}",

@@ -206,10 +206,11 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | Opțiune | Implicit | Descriere |
 | --- | --- | --- |
 | Antiîngheț | activ | Limita de jos, și în modurile Oprit și Pauză (GT: temperatura lui minimă); odată ce încălzește, continuă până când dispozitivul nu mai cere căldură. O cameră în antiîngheț pornește singură sursa de căldură (fără camere necesare, fără camera de referință, și în pauză) |
+| Temperatură maximă | 25 °C | Limita de sus a oricărei ținte: un nivel peste ea se trimite ca maxim, o temperatură setată peste ea (schimbare manuală, pauză) e coborâtă la ea, serviciul și cardul rămân în limită, iar un termostat care rotunjește la pasul lui primește pasul imediat sub maxim. Apare ca regula *Temperatură maximă* |
 | Senzor indisponibil | senzorul dispozitivului | Senzor extern căzut → senzorul dispozitivului → eco, cu alertă |
 | Dispozitiv indisponibil | alertă după 15 min | Celelalte camere funcționează în continuare; și pentru sursa de căldură (atunci nici antiînghețul nu poate încălzi) |
 | Verificarea comenzilor | activă | Reîncearcă o dată după 2 min, apoi alertă |
-| Mișcarea robinetelor | oprită | Deschidere completă săptămânală a TRV-urilor, în orice mod (și vara și în afara sezonului); o pauză sau o fereastră deschisă o amână pentru mai târziu în aceeași zi; nu cere căldură |
+| Mișcarea robinetelor | oprită | Deschidere completă săptămânală a TRV-urilor, în orice mod (și vara și în afara sezonului); o pauză, o schimbare manuală sau o fereastră deschisă o amână pentru mai târziu în aceeași zi; nu cere căldură și perioada ei nu se învață |
 | Baterie descărcată | alertă sub 20 % | TRV-urile și senzorii camerei |
 | Repornire | restaurare | Schimbările manuale, vacanța și datele învățate se păstrează |
 | Reevaluare periodică | 5 min | Pe lângă evenimente |

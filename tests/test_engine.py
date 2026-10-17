@@ -166,8 +166,12 @@ class HierarchyTest(unittest.TestCase):
     def test_maximum_applies_to_manual_changes_and_pause(self) -> None:
         for kwargs in ({"override_active": True}, {"paused": True}):
             d = engine.decide(inputs(device_setpoint=30.0, max_temp=25.0, **kwargs))
-            self.assertEqual(d.rule, const.RULE_SAFETY, kwargs)
+            self.assertEqual(d.rule, const.RULE_MAX, kwargs)
             self.assertEqual(d.target.temperature, 25.0)
+        # A level above the maximum is sent as the maximum.
+        levels = dict(LEVELS, comfort=27.0)
+        d = engine.decide(inputs(schedule_preset="comfort", level_temp=levels.get, max_temp=25.0))
+        self.assertEqual((d.rule, d.target.kind, d.target.temperature), (const.RULE_MAX, "temperature", 25.0))
         # Below the maximum the manual change is respected.
         d = engine.decide(inputs(override_active=True, device_setpoint=24.0, max_temp=25.0))
         self.assertEqual(d.rule, const.RULE_OVERRIDE)

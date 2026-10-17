@@ -67,6 +67,7 @@ MODES: Final = (MODE_AUTO, MODE_VACATION, MODE_OFF, MODE_SUMMER)
 # ---------------------------------------------------------------------------
 RULE_STARTING: Final = "starting"
 RULE_SAFETY: Final = "frost_protection"
+RULE_MAX: Final = "maximum_temperature"
 RULE_PAUSE: Final = "pause"
 RULE_MODE_OFF: Final = "mode_off"
 RULE_SUMMER: Final = "summer"
@@ -87,6 +88,7 @@ RULE_CUTOFF: Final = "outdoor_cutoff"
 RULES: Final = (
     RULE_STARTING,
     RULE_SAFETY,
+    RULE_MAX,
     RULE_PAUSE,
     RULE_MODE_OFF,
     RULE_SUMMER,

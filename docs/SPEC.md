@@ -202,10 +202,11 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | Option | Default | Description |
 | --- | --- | --- |
 | Frost protection | on | Lower limit, also in Off and Pause (GT: its minimum temperature); once heating, it continues until the device stops asking for heat. A room in frost protection starts the heat source on its own (no rooms needed, no reference room, also while paused) |
+| Maximum temperature | 25 °C | Upper limit of every target: a level above it is sent as the maximum, a set point above it (manual change, pause) is lowered to it, the service and the card stay within it, and a thermostat that rounds to its step gets the step just below the maximum. Shown as the rule *Maximum temperature* |
 | Sensor unavailable | device sensor | External sensor down → device sensor → eco, with alert |
 | Device unavailable | alert after 15 min | The other rooms keep working; also for the heat source (then not even frost protection can heat) |
 | Command verification | on | Retry once after 2 min, then alert |
-| Valve exercise | off | Weekly full opening of the TRVs, in every mode (also in summer and outside the season); a pause or an open window postpones it to later the same day; it does not ask for heat |
+| Valve exercise | off | Weekly full opening of the TRVs, in every mode (also in summer and outside the season); a pause, a manual change or an open window postpones it to later the same day; it does not ask for heat and its period is not learned |
 | Low battery | alert below 20 % | TRVs and sensors of the room |
 | Restart | restore | Overrides, vacation and learned data are kept |
 | Periodic reevaluation | 5 min | In addition to events |

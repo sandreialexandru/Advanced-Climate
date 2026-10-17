@@ -139,7 +139,8 @@ edited in the Lovelace card.
 Rules are evaluated from the top; the first one that applies wins:
 
 1. Safety (frost protection, maximum temperature) – always applied, also to a
-   manual change and in pause; frost protection starts the heat source on its own
+   manual change and in pause (a level above the maximum is sent as the
+   maximum); frost protection starts the heat source on its own
 2. Pause
 3. Valve exercise – in every mode, not with a window open
 4. Mode Off / Summer / outside the heating season
