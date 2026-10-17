@@ -366,12 +366,18 @@ def optimal_schedule(
     stop_enabled: bool,
     stop_minutes: float,
     started: bool = False,
+    stop_needed: float | None = None,
+    stop_started: bool = False,
 ) -> tuple[str, str]:
     """Return (preset, rule) applying optimal start / stop.
 
-    ``started`` is True when the optimal start for this change already began: it
-    then continues until the change, even if the room is warm early (no switching
+    ``started`` / ``stop_started`` are True when the optimal start / stop for
+    this change already began: it then continues until the change (no switching
     back and forth). The other rules can still override it.
+
+    ``stop_minutes`` is the longest optimal stop. ``stop_needed`` is how long the
+    room can cool and still stay in the comfort of the current level (from the
+    learned cooling); before any cooling is learned the longest stop is used.
     """
     if next_change is None or next_preset is None or next_change <= now:
         return current_preset, RULE_SCHEDULE
@@ -389,6 +395,9 @@ def optimal_schedule(
             if remaining <= needed:
                 return next_preset, RULE_OPTIMAL_START
     if stop_enabled and next_temp < now_temp:
-        if remaining <= timedelta(minutes=stop_minutes):
+        if stop_started:
+            return next_preset, RULE_OPTIMAL_STOP
+        window = stop_minutes if stop_needed is None else min(stop_needed, stop_minutes)
+        if window > 0 and remaining <= timedelta(minutes=window):
             return next_preset, RULE_OPTIMAL_STOP
     return current_preset, RULE_SCHEDULE

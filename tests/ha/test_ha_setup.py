@@ -71,6 +71,8 @@ async def test_relay_room(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -
     assert hass.states.get("sensor.bedroom_target_temperature").state == "21.0"
     assert hass.states.get("input_boolean.heater").state == "on"
     assert hass.states.get("sensor.home_presence").state == "home"
+    # Nothing learned yet: no cooling rate.
+    assert hass.states.get("sensor.bedroom_cooling_rate").state == "unknown"
 
     # Warm room: the relay turns off.
     hass.states.async_set("sensor.room_temp", "21.5", {"unit_of_measurement": "°C"})

@@ -49,6 +49,7 @@ async def async_setup_entry(
                 CurrentTemperatureSensor(room),
                 NextChangeSensor(room),
                 HeatingRateSensor(room),
+                CoolingRateSensor(room),
                 RoomRuntimeSensor(room),
             ],
             config_subentry_id=room.id,
@@ -260,6 +261,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "device_preset": room.device_preset(),
             "device_level": room.level_of_device_preset(room.device_preset()),
             "time_to_target": room.time_to_target(room.house.outdoor.latest()),
+            "stop_forecast": _forecast(room, unit),
             "rate_learned": bool(room.learner.episodes),
             "device_levels": room.device_levels,
             "heat_demand": room.heat_demand,
@@ -384,6 +386,54 @@ class HeatingRateSensor(RoomEntity, SensorEntity):
             "last_episodes": [
                 {"outdoor": _t(o, unit, 1), "rate": _d(r, unit, 3), "at": at or None}
                 for o, r, at in learner.episodes[-5:]
+            ],
+        }
+
+
+def _forecast(room: Room, unit: str) -> dict[str, Any] | None:
+    """Expected temperature at the scheduled change during an optimal stop."""
+    forecast = room.stop_forecast(dt_util.now(), room.house.outdoor.latest())
+    if forecast is None:
+        return None
+    return {"at": forecast["at"], "temperature": _t(forecast["temperature"], unit, 1)}
+
+
+class CoolingRateSensor(RoomEntity, SensorEntity):
+    """Learned cooling: how fast the room falls now without heating."""
+
+    _unrecorded_attributes = frozenset({"last_episodes"})
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_suggested_display_precision = 2
+
+    def __init__(self, room: Room) -> None:
+        """Initialize."""
+        super().__init__(room, "cooling_rate")
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Degrees of the house per hour."""
+        return f"{self.house.unit}/h"
+
+    @property
+    def native_value(self) -> float | None:
+        """Fall per hour for the current room and outdoor temperatures."""
+        rate = self.room.cooling.rate(self.room.current_temp, self.house.outdoor.latest())
+        return _d(rate, self.house.unit, 3)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Learned coefficient and the last episodes."""
+        cooling = self.room.cooling
+        unit = self.house.unit
+        return {
+            "coefficient_per_hour": cooling.coefficient,
+            "episodes": len(cooling.episodes),
+            "optimal_stop_tolerance": _d(self.room.stop_tolerance(), unit),
+            "last_episodes": [
+                {"outdoor": _t(o, unit, 1), "coefficient": k, "at": at or None}
+                for o, k, at in cooling.episodes[-5:]
             ],
         }
 

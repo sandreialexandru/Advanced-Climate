@@ -194,6 +194,22 @@ class OptimalTest(unittest.TestCase):
         )
         self.assertEqual(d.rule, const.RULE_WINDOW)
 
+    def test_stop_from_learned_cooling(self) -> None:
+        change = NOW + timedelta(minutes=50)
+        args = (NOW, "home", change, "sleep", 22.0, LEVELS.get, 1.0, False, 120, True, 90)
+        # Learned: the room stays in comfort 40 minutes -> not yet with 50 left.
+        self.assertEqual(engine.optimal_schedule(*args, False, 40.0)[0], "home")
+        self.assertEqual(engine.optimal_schedule(*args, False, 55.0)[0], "sleep")
+        # Never earlier than the maximum (90 minutes here).
+        far = NOW + timedelta(minutes=100)
+        args_far = (NOW, "home", far, "sleep", 22.0, LEVELS.get, 1.0, False, 120, True, 90)
+        self.assertEqual(engine.optimal_schedule(*args_far, False, 300.0)[0], "home")
+        # Not learned yet: the maximum is used.
+        self.assertEqual(engine.optimal_schedule(*args, False, None)[0], "sleep")
+        # Once started it continues until the change.
+        preset, rule = engine.optimal_schedule(*args, False, 10.0, True)
+        self.assertEqual((preset, rule), ("sleep", const.RULE_OPTIMAL_STOP))
+
 
 class VacationPreheatTest(unittest.TestCase):
     def test_schedule_applies_while_far(self) -> None:

@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.8.12";
+const CARD_VERSION = "1.9.0";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -142,6 +142,8 @@ const TEXT = {
     period_hint: "Tap to change the period (today, this week, this month).",
     eta_learning: "learning…",
     eta_help: "Time until the target at the heating rate learned for the current outdoor temperature.",
+    stop_at: "~{temp} at {time}",
+    stop_help: "Optimal stop: expected room temperature at the scheduled change, from the learned cooling.",
     zoom_in: "Zoom in",
     zoom_out: "Zoom out",
     zoom_reset: "Whole period",
@@ -242,6 +244,8 @@ const TEXT = {
     period_hint: "Apasă ca să schimbi perioada (azi, săptămâna aceasta, luna aceasta).",
     eta_learning: "se învață…",
     eta_help: "Timpul până la țintă, după viteza de încălzire învățată pentru temperatura de afară de acum.",
+    stop_at: "~{temp} la {time}",
+    stop_help: "Oprire anticipată: temperatura estimată a camerei la schimbarea din program, după răcirea învățată.",
     zoom_in: "Mărește",
     zoom_out: "Micșorează",
     zoom_reset: "Toată perioada",
@@ -543,6 +547,12 @@ class AdvancedClimateCard extends HTMLElement {
 
   /** "~35 min" until the target, from the learned heating rate. */
   _eta(a) {
+    const stop = a.stop_forecast;
+    if (stop && num(stop.temperature) !== null) {
+      return this._t("stop_at")
+        .replace("{temp}", this._temp(stop.temperature))
+        .replace("{time}", this._fmtTime(stop.at));
+    }
     const current = num(a.current_temperature);
     const target = num(a.target_temperature);
     if (current === null || target === null || target - current <= 0.1) return "";
@@ -555,7 +565,7 @@ class AdvancedClimateCard extends HTMLElement {
     return r ? `~${h} h ${r} min` : `~${h} h`;
   }
 
-  _tempPair(current, target, color, eta = "") {
+  _tempPair(current, target, color, eta = "", help = "eta_help") {
     return `<div class="temps">
         <div class="tval"><span class="tag">${this._t("now_tag")}</span><span class="tnum">${this._temp(
           current
@@ -563,7 +573,9 @@ class AdvancedClimateCard extends HTMLElement {
         <div class="tval target" style="--c:${color}"><span class="tag">${this._t(
           "target_tag"
         )}</span><span class="tnum">${this._temp(target)}</span>${
-          eta ? `<span class="eta" title="${esc(this._t("eta_help"))}">${esc(eta)}</span>` : ""
+          eta
+            ? `<span class="eta" title="${esc(this._t(help))}">${esc(eta)}</span>`
+            : ""
         }</div>
       </div>`;
   }
@@ -722,7 +734,13 @@ class AdvancedClimateCard extends HTMLElement {
         <button class="room-title" data-action="fold" data-key="room-${esc(key)}" aria-expanded="${!folded}">
           <span class="chev ${folded ? "" : "open"}"></span><span class="name">${esc(a.room_name)}</span>
         </button>
-        ${this._tempPair(a.current_temperature, a.target_temperature, color, this._eta(a))}
+        ${this._tempPair(
+          a.current_temperature,
+          a.target_temperature,
+          color,
+          this._eta(a),
+          a.stop_forecast ? "stop_help" : "eta_help"
+        )}
       </div>
       <div class="decision"><span class="pill rule" style="--c:${color}">${esc(
         this._label(stateObj)

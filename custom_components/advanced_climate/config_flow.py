@@ -64,6 +64,7 @@ from .const import (
     CONF_HOME_RULE,
     CONF_HYSTERESIS,
     CONF_LEARN_TOLERANCE,
+    CONF_STOP_TOLERANCE,
     CONF_LINKED_WINDOW_SENSORS,
     CONF_MAX_TEMP,
     CONF_MIN_OFF,
@@ -257,6 +258,7 @@ TEMP_DELTA_KEYS = {
     CONF_ROOM_DIFF_ALERT,
     CONF_HYSTERESIS,
     CONF_LEARN_TOLERANCE,
+    CONF_STOP_TOLERANCE,
     CONF_WINDOW_DROP_DEGREES,
     CONF_SOLAR_OFFSET,
 }
@@ -1356,6 +1358,9 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
             fields[_req(CONF_OPTIMAL_START_MAX, d, ROOM_DEFAULTS)] = _number(10, 360, 5, "min")
         if d.get(CONF_OPTIMAL_STOP):
             fields[_req(CONF_OPTIMAL_STOP_MINUTES, d, ROOM_DEFAULTS)] = _number(5, 180, 5, "min")
+            # Generic Thermostat uses its cold tolerance, relays their hysteresis.
+            if d[CONF_SOURCE] == SOURCE_CLIMATE and not self._on_off():
+                fields[_req(CONF_STOP_TOLERANCE, d, ROOM_DEFAULTS)] = _number(0, 2, 0.1, "°C")
         schema = vol.Schema(fields)
         if not fields:
             return await self.async_step_extras()

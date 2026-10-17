@@ -108,6 +108,7 @@ ROOM_ENTITY_KEYS: dict[str, str] = {
     "room_temperature": "sensor",
     "next_change": "sensor",
     "heating_rate": "sensor",
+    "cooling_rate": "sensor",
     "heating_runtime": "sensor",
     "heat_demand": "binary_sensor",
     "window_open": "binary_sensor",

@@ -253,6 +253,7 @@ CONF_CALIBRATION_MODE: Final = "calibration_mode"
 CONF_CALIBRATION_ENTITIES: Final = "calibration_entities"
 CONF_HYSTERESIS: Final = "hysteresis"
 CONF_LEARN_TOLERANCE: Final = "learn_tolerance"  # thermostat tolerance (other thermostats)
+CONF_STOP_TOLERANCE: Final = "stop_tolerance"  # comfort kept by optimal stop (other thermostats)
 CONF_MIN_ON: Final = "min_on_minutes"
 CONF_MIN_OFF: Final = "min_off_minutes"
 CONF_OCCUPANCY_SENSORS: Final = "occupancy_sensors"
@@ -325,6 +326,7 @@ ROOM_DEFAULTS: Final = {
     CONF_CALIBRATION_ENTITIES: [],
     CONF_HYSTERESIS: 0.3,
     CONF_LEARN_TOLERANCE: 0.0,
+    CONF_STOP_TOLERANCE: 0.0,
     CONF_MIN_ON: 5,
     CONF_MIN_OFF: 5,
     CONF_OCCUPANCY_SENSORS: [],

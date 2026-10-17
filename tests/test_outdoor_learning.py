@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+import math
 import unittest
 
 from tests.pure import const, learning, outdoor
@@ -156,6 +157,44 @@ class LearningTest(unittest.TestCase):
         learner.observe(self.T0, True, 21.5, 22.0, 5.0, tolerance=0.5)
         self.assertIsNotNone(learner.episode_start)
         self.assertEqual(learning.start_gap(0.5), 0.5)
+
+
+class CoolingLearnerTest(unittest.TestCase):
+    T0 = datetime(2026, 10, 12, 22, 0, tzinfo=timezone.utc)
+
+    def _cool(self, learner, start, indoor0, indoor1, outdoor, minutes, window=False):
+        learner.observe(start, False, indoor0, outdoor, window)
+        return learner.observe(start + timedelta(minutes=minutes), True, indoor1, outdoor, False)
+
+    def test_coefficient_from_inside_outside_difference(self) -> None:
+        learner = learning.CoolingLearner()
+        # 22 -> 21.5 °C in 1 h with 7 °C outside: k = ln(15 / 14.5).
+        k = self._cool(learner, self.T0, 22.0, 21.5, 7.0, 60)
+        self.assertAlmostEqual(k, math.log(15 / 14.5), places=4)
+        # The same house loses heat faster when it is colder outside.
+        self.assertGreater(learner.rate(22.0, -5.0), learner.rate(22.0, 7.0))
+        # Time to fall from 22 to 21.5 °C at 7 °C outside: 1 h.
+        self.assertAlmostEqual(learner.minutes_to_fall(22.0, 21.5, 7.0), 60.0, delta=0.01)
+        self.assertAlmostEqual(learner.temperature_after(22.0, 7.0, 60), 21.5, delta=0.001)
+
+    def test_episode_conditions(self) -> None:
+        learner = learning.CoolingLearner()
+        # Shorter than 10 minutes without heat demand: not used.
+        self.assertIsNone(self._cool(learner, self.T0, 22.0, 21.9, 7.0, 9))
+        # No fall (sun, cooking): not used.
+        self.assertIsNone(self._cool(learner, self.T0, 22.0, 22.0, 7.0, 60))
+        # A window open: not used.
+        self.assertIsNone(self._cool(learner, self.T0, 22.0, 21.0, 7.0, 60, window=True))
+        # Any fall over at least 10 minutes counts.
+        self.assertIsNotNone(self._cool(learner, self.T0, 22.0, 21.9, 7.0, 10))
+        self.assertEqual(len(learner.episodes), 1)
+
+    def test_restore(self) -> None:
+        learner = learning.CoolingLearner()
+        self._cool(learner, self.T0, 22.0, 21.5, 7.0, 60)
+        again = learning.CoolingLearner.from_dict(learner.as_dict())
+        self.assertEqual(again.episodes, learner.episodes)
+        self.assertIsNone(learning.CoolingLearner.from_dict(None).coefficient)
 
 
 if __name__ == "__main__":

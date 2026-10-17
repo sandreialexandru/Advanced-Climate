@@ -16,10 +16,11 @@ used.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
 from datetime import datetime
 
 # The heat demand must last this long for an episode to be learned.
-MIN_DEMAND_MINUTES = 10
+MIN_DEMAND_MINUTES = 10  # also for cooling: without heat demand
 DEFAULT_RATE = 1.0  # °C per hour, until the first episode
 DATA_VERSION = 3  # learning data of older versions is discarded
 # Version 2 cut the rates to 0.2 … 10 °C/h; episodes at those values are dropped.
@@ -170,5 +171,138 @@ class HeatingRateLearner:
                     obj.episodes.append([outdoor, float(item[1]), str(item[2]) if len(item) > 2 else ""])
                 except (TypeError, ValueError, IndexError):
                     continue
+        del obj.episodes[:-MAX_EPISODES]
+        return obj
+
+
+# ---------------------------------------------------------------------------
+# Cooling
+# ---------------------------------------------------------------------------
+def cooling_coefficient(
+    start: float, end: float, outdoor: float, hours: float
+) -> float | None:
+    """How fast a room cools per degree warmer than outdoors (per hour).
+
+    A room loses heat in proportion to the difference between inside and
+    outside: T(t) = outdoor + (start - outdoor) * exp(-k * t). Returns k, or
+    None when it cannot be measured (no drop, or not warmer than outdoors).
+    """
+    if hours <= 0 or end >= start or end <= outdoor:
+        return None
+    return math.log((start - outdoor) / (end - outdoor)) / hours
+
+
+@dataclass(slots=True)
+class CoolingLearner:
+    """Learn how fast a room cools without heating.
+
+    It is the opposite of the heating learning: an episode starts when the heat
+    demand stops (no window or door sensor open) and ends when the heat demand
+    starts again. It is used when it lasted at least 10 minutes and the
+    temperature fell, however little. The cooling depends on the difference
+    between inside and outside, so one coefficient per room is learned (the
+    walls, radiators and insulation of each house are in it, not modelled).
+    """
+
+    # [outdoor °C, coefficient 1/h, end time ISO]
+    episodes: list[list] = field(default_factory=list)
+    episode_start: datetime | None = None
+    episode_temp: float | None = None
+    episode_outdoor: list[float] = field(default_factory=list)
+    episode_disturbed: bool = False
+
+    @property
+    def coefficient(self) -> float | None:
+        """Mean learned coefficient (1/h), None before the first episode."""
+        if not self.episodes:
+            return None
+        return round(sum(float(k) for _, k, *_ in self.episodes) / len(self.episodes), 5)
+
+    def rate(self, indoor: float | None, outdoor: float | None) -> float | None:
+        """Degrees per hour the room falls now (positive), if known."""
+        k = self.coefficient
+        if k is None or indoor is None or outdoor is None:
+            return None
+        return round(k * (indoor - outdoor), 3)
+
+    def minutes_to_fall(self, indoor: float, floor: float, outdoor: float | None) -> float | None:
+        """Minutes until the room falls from ``indoor`` to ``floor`` without heating."""
+        k = self.coefficient
+        if k is None or outdoor is None or k <= 0:
+            return None
+        if indoor <= floor:
+            return 0.0
+        if floor <= outdoor:
+            return None  # it never gets that cold
+        return math.log((indoor - outdoor) / (floor - outdoor)) / k * 60
+
+    def temperature_after(self, indoor: float, outdoor: float | None, minutes: float) -> float | None:
+        """Room temperature after ``minutes`` without heating."""
+        k = self.coefficient
+        if k is None or outdoor is None:
+            return None
+        return outdoor + (indoor - outdoor) * math.exp(-k * minutes / 60)
+
+    def observe(
+        self,
+        now: datetime,
+        heating: bool,
+        current: float | None,
+        outdoor: float | None,
+        window_open: bool = False,
+    ) -> float | None:
+        """Feed an observation. Returns the coefficient when an episode is used."""
+        if current is None:
+            return None
+        if not heating and self.episode_start is None:
+            if not window_open:
+                self.episode_start = now
+                self.episode_temp = current
+                self.episode_outdoor = [outdoor] if outdoor is not None else []
+                self.episode_disturbed = False
+            return None
+        if self.episode_start is None:
+            return None
+        if window_open:
+            self.episode_disturbed = True
+        if outdoor is not None:
+            self.episode_outdoor.append(outdoor)
+        if not heating:
+            return None
+        # The heat demand started again: the episode is finished.
+        minutes = (now - self.episode_start).total_seconds() / 60
+        start = self.episode_temp
+        outdoor_values = self.episode_outdoor
+        disturbed = self.episode_disturbed
+        self.episode_start = None
+        self.episode_temp = None
+        self.episode_outdoor = []
+        self.episode_disturbed = False
+        if disturbed or minutes < MIN_DEMAND_MINUTES or start is None or not outdoor_values:
+            return None
+        mean_outdoor = sum(outdoor_values) / len(outdoor_values)
+        k = cooling_coefficient(start, current, mean_outdoor, minutes / 60)
+        if k is None:
+            return None
+        k = round(k, 5)
+        self.episodes.append([round(mean_outdoor, 1), k, now.isoformat()])
+        del self.episodes[:-MAX_EPISODES]
+        return k
+
+    def as_dict(self) -> dict:
+        """Serialize."""
+        return {"version": 1, "episodes": self.episodes}
+
+    @classmethod
+    def from_dict(cls, data: dict | None) -> CoolingLearner:
+        """Restore."""
+        obj = cls()
+        if not data or data.get("version") != 1:
+            return obj
+        for item in data.get("episodes") or []:
+            try:
+                obj.episodes.append([float(item[0]), float(item[1]), str(item[2])])
+            except (TypeError, ValueError, IndexError):
+                continue
         del obj.episodes[:-MAX_EPISODES]
         return obj

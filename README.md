@@ -24,7 +24,8 @@ other thermostats or plain relays are supported as well.
 - **Schedules** with `workday` / `weekend` / weekday / custom profiles, holidays
   from the Workday integration, profiles chosen from a calendar, a day boundary
   for night shifts, or an existing Schedule helper.
-- **Optimal start / stop** with a learned heating rate per room (see *Heating rate learning*).
+- **Optimal start / stop** with a learned heating rate and a learned cooling per
+  room (see *Heating rate learning* and *Cooling learning and optimal stop*).
   Once an optimal start begins it continues until the scheduled time, even if
   the room is warm early; the rules above the schedule can still override it.
 - **Windows**: open/close delays, frost protection or off, detection from a
@@ -152,7 +153,7 @@ cutoff* and *Heat demand* (binary sensors), *Outdoor average*, *Heating runtime*
 buttons to clear manual changes, clear the vacation and reevaluate.
 
 Room: *Decision* (enum with the reason in the attributes), *Target temperature*,
-*Room temperature*, *Next change*, *Heating rate*, *Heating runtime*, *Heat
+*Room temperature*, *Next change*, *Heating rate*, *Cooling rate*, *Heating runtime*, *Heat
 demand*, *Window open*, *Manual change*, *Profile* (select), *Child lock*
 (switch), *Clear manual change* (button) and, for rooms without Generic
 Thermostat, the level temperatures (numbers).
@@ -196,6 +197,36 @@ The *Decision* sensor has it as the `time_to_target` attribute (minutes).
 
 Version 1.7 discards the learning data of older versions, which also learned
 the small thermostat cycles.
+
+## Cooling learning and optimal stop
+
+The cooling is learned the opposite way of the heating, per room:
+
+- An **episode** starts when the heat demand stops (no window or door sensor
+  open) and ends when the heat demand starts again. It is used when it lasted
+  at least 10 minutes and the temperature fell, however little. Episodes with
+  an open window sensor are not used.
+- A room cools in proportion to the **difference between inside and
+  outside**, so one coefficient per room is learned (the mean of the last 30
+  episodes). Walls, radiators and insulation are not modelled: whatever they
+  do is in the measured coefficient of that house.
+
+**Optimal stop** lowers the level before the next colder one as early as the
+room can cool and still stay in the comfort of the current level at the
+scheduled time. The comfort is the *tolerance*: the *cold tolerance* of Generic
+Thermostat, the *hysteresis* for relays and on / off control, and the
+*Optimal stop tolerance* room setting for other thermostats (default 0).
+Example: home 22 °C until 22:00, tolerance 0.5 °C, 7 °C outside: if the room
+falls from 22 to 21.5 °C in 40 minutes, sleep starts at 21:20.
+
+- The *Maximum early stop* room setting is the limit; until the first cooling
+  episode the lower level starts that early.
+- Once an optimal stop begins it continues until the scheduled time; the rules
+  above the schedule can still override it.
+- The card shows the expected temperature at the change (e.g. *~21.5° at
+  22:00*); the *Decision* sensor has it as the `stop_forecast` attribute.
+- The *Cooling rate* sensor shows how fast the room falls now without heating;
+  its attributes show the coefficient, the episodes and the tolerance.
 
 ## Services
 

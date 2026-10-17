@@ -41,6 +41,7 @@ from .const import (
     CONF_HELPER_ON_PRESET,
     CONF_HYSTERESIS,
     CONF_LEARN_TOLERANCE,
+    CONF_STOP_TOLERANCE,
     CONF_LINKED_WINDOW_SENSORS,
     CONF_MAX_TEMP,
     CONF_MIN_OFF,
@@ -95,6 +96,7 @@ from .const import (
     PRESET_NONE,
     ROOM_DEFAULTS,
     RULE_OPTIMAL_START,
+    RULE_OPTIMAL_STOP,
     RULE_SAFETY,
     RULE_STARTING,
     SCHEDULE_HELPER,
@@ -117,7 +119,7 @@ from .engine import (
     decide,
     optimal_schedule,
 )
-from .learning import HeatingRateLearner
+from .learning import CoolingLearner, HeatingRateLearner
 from .schedule import Schedule, ScheduleError, ScheduleState, Slot, parse_schedule
 from .util import (
     aggregate,
@@ -214,6 +216,7 @@ class Room:
         if self.profile_select != AUTO_PROFILE and self.profile_select not in self.schedule.profiles:
             self.profile_select = AUTO_PROFILE
         self.learner = HeatingRateLearner.from_dict(stored.get("learner"))
+        self.cooling = CoolingLearner.from_dict(stored.get("cooling"))
         self.runtime_s = float(stored.get("runtime_s", 0.0))
         self.observed_temps: dict[str, float] = {
             str(k): float(v) for k, v in (stored.get("observed_temps") or {}).items()
@@ -250,8 +253,9 @@ class Room:
         self.sensor_failed = False
         self.external_failed = False
         self.signature: tuple | None = None
-        # The schedule change an optimal start already began for.
+        # The schedule change an optimal start / stop already began for.
         self._optimal_for: datetime | None = None
+        self._optimal_rule: str | None = None
         # Values of the last commands, per device: a device that reports them
         # later (e.g. a sleepy Zigbee TRV) is not a manual change.
         self._sent: dict[str, dict[str, Any]] = {}
@@ -330,6 +334,7 @@ class Room:
             "child_lock": self.child_lock,
             "profile_select": self.profile_select,
             "learner": self.learner.as_dict(),
+            "cooling": self.cooling.as_dict(),
             "runtime_s": round(self.runtime_s, 1),
             "observed_temps": self.observed_temps,
             "decisions": list(self.decisions),
@@ -729,6 +734,42 @@ class Room:
             return float(self.config[CONF_HYSTERESIS])
         return float(self.config.get(CONF_LEARN_TOLERANCE, 0.0))
 
+    def stop_tolerance(self) -> float:
+        """How far below a level the room may fall during an optimal stop (its comfort)."""
+        if self.source == SOURCE_GT:
+            return self.learn_tolerance()  # the cold tolerance of Generic Thermostat
+        if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
+            return float(self.config[CONF_HYSTERESIS])
+        return float(self.config.get(CONF_STOP_TOLERANCE, 0.0))
+
+    def stop_needed(self, preset: str, outdoor: float | None) -> float | None:
+        """Minutes the room can cool and stay in the comfort of ``preset``.
+
+        None before any cooling is learned (the longest optimal stop is used).
+        """
+        level = self.level_temp(preset)
+        if level is None or self.current_temp is None:
+            return None
+        floor = level - max(0.0, self.stop_tolerance())
+        return self.cooling.minutes_to_fall(self.current_temp, floor, outdoor)
+
+    def stop_forecast(self, now: datetime, outdoor: float | None) -> dict[str, Any] | None:
+        """During an optimal stop: the expected temperature at the scheduled change."""
+        state = self.schedule_state
+        if (
+            self.decision is None
+            or self.decision.rule != RULE_OPTIMAL_STOP
+            or state is None
+            or state.next_change is None
+            or self.current_temp is None
+        ):
+            return None
+        minutes = max(0.0, (state.next_change - now).total_seconds() / 60)
+        value = self.cooling.temperature_after(self.current_temp, outdoor, minutes)
+        if value is None:
+            return None
+        return {"at": state.next_change.isoformat(), "temperature": value}
+
     def time_to_target(self, outdoor: float | None) -> int | None:
         """Minutes until the target is reached at the learned rate (None when not heating up)."""
         if self.current_temp is None or self.target_temperature is None:
@@ -923,7 +964,9 @@ class Room:
             preset = calendar_preset
             self._optimal_for = None
         elif state is not None:
-            started = self._optimal_for is not None and self._optimal_for == state.next_change
+            same = self._optimal_for is not None and self._optimal_for == state.next_change
+            started = same and self._optimal_rule == RULE_OPTIMAL_START
+            stop_started = same and self._optimal_rule == RULE_OPTIMAL_STOP
             preset, schedule_rule = optimal_schedule(
                 now,
                 state.preset,
@@ -937,8 +980,12 @@ class Room:
                 bool(self.config[CONF_OPTIMAL_STOP]),
                 float(self.config[CONF_OPTIMAL_STOP_MINUTES]),
                 started,
+                self.stop_needed(state.preset, house.outdoor.latest()),
+                stop_started,
             )
-            self._optimal_for = state.next_change if schedule_rule == RULE_OPTIMAL_START else None
+            optimal = schedule_rule in (RULE_OPTIMAL_START, RULE_OPTIMAL_STOP)
+            self._optimal_for = state.next_change if optimal else None
+            self._optimal_rule = schedule_rule if optimal else None
 
         vacation = house.vacation_active(now)
         preheat = not vacation and house.vacation_preheating(now)
@@ -999,6 +1046,10 @@ class Room:
         self.learner.observe(
             now, self.heat_demand, self.current_temp, self.target_temperature,
             house.outdoor.latest(), self._window_sensor_open(), self.learn_tolerance(),
+        )
+        self.cooling.observe(
+            now, self.heat_demand, self.current_temp, house.outdoor.latest(),
+            self._window_sensor_open(),
         )
         self._check_alerts(now)
 
@@ -1569,6 +1620,7 @@ class Room:
             ),
             "levels": {p: self.level_temp(p) for p in PRESETS},
             "learned_rates": self.learner.rates,
+            "cooling_coefficient": self.cooling.coefficient,
             "runtime_hours": round(self.runtime_s / 3600, 2),
             "decisions": list(self.decisions),
         }
