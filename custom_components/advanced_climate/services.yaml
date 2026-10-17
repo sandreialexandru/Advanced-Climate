@@ -25,9 +25,9 @@ set_override:
       selector:
         number:
           min: 5
-          max: 30
+          max: 90
           step: 0.5
-          unit_of_measurement: "°C"
+          mode: box
     duration_hours:
       selector:
         number:

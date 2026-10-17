@@ -10,8 +10,9 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.const import EntityCategory, UnitOfTemperature, UnitOfTime
+from homeassistant.const import EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
@@ -20,6 +21,7 @@ from .const import PRESENCE_STATES, PRESETS, RULES
 from .entity import HOUSE_ENTITY_KEYS, ROOM_ENTITY_KEYS, HouseEntity, RoomEntity, entity_map
 from .house import House
 from .learning import start_gap
+from .util import delta_from_celsius, from_celsius
 from .room import Room
 from .schedule import profiles_to_dict
 from .util import iso
@@ -82,6 +84,7 @@ class PresenceSensor(HouseEntity, SensorEntity):
             "pending": self.house.presence.pending,
             "pending_since": iso(self.house.presence.pending_since),
             "advanced_climate_house": True,
+            "temperature_unit": self.house.unit,
             "entry_id": self.house.entry.entry_id,
             "house_name": self.house.entry.title,
             "house_entities": entity_map(
@@ -90,11 +93,47 @@ class PresenceSensor(HouseEntity, SensorEntity):
         }
 
 
-class OutdoorAverageSensor(HouseEntity, SensorEntity):
-    """Average outdoor temperature used by the cutoff."""
+def _t(value: float | None, unit: str, digits: int = 2) -> float | None:
+    """A temperature kept in °C in the unit of the house."""
+    value = from_celsius(value, unit)
+    return None if value is None else round(value, digits)
+
+
+def _d(value: float | None, unit: str, digits: int = 2) -> float | None:
+    """A temperature difference kept in °C in the unit of the house."""
+    value = delta_from_celsius(value, unit)
+    return None if value is None else round(value, digits)
+
+
+class _HouseUnitTemperature(SensorEntity):
+    """Temperature sensor shown in the unit chosen for the house."""
 
     _attr_device_class = SensorDeviceClass.TEMPERATURE
-    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    house: House
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """The unit of the house."""
+        return self.house.unit
+
+    async def async_added_to_hass(self) -> None:
+        """Show the value in the unit of the house, not the one of Home Assistant."""
+        await super().async_added_to_hass()
+        registry = er.async_get(self.hass)
+        entry = registry.async_get(self.entity_id)
+        if entry is None:
+            return
+        if (entry.options.get("sensor") or {}).get("unit_of_measurement") != self.house.unit:
+            registry.async_update_entity_options(
+                self.entity_id,
+                "sensor",
+                {**(entry.options.get("sensor") or {}), "unit_of_measurement": self.house.unit},
+            )
+
+
+class OutdoorAverageSensor(HouseEntity, _HouseUnitTemperature):
+    """Average outdoor temperature used by the cutoff."""
+
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_suggested_display_precision = 1
@@ -106,13 +145,13 @@ class OutdoorAverageSensor(HouseEntity, SensorEntity):
     @property
     def native_value(self) -> float | None:
         """Average outdoor temperature."""
-        return self.house.outdoor_average
+        return _t(self.house.outdoor_average, self.house.unit)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Details."""
         return {
-            "latest": self.house.outdoor.latest(),
+            "latest": _t(self.house.outdoor.latest(), self.house.unit),
             "cutoff_active": self.house.cutoff_active,
             "forecast_cutoff": self.house.forecast_cutoff,
             "heating_season": self.house.season_active,
@@ -179,6 +218,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
         room = self.room
         decision = room.decision
         state = room.schedule_state
+        unit = room.house.unit
         return {
             "room_id": room.id,
             "entry_id": room.house.entry.entry_id,
@@ -186,9 +226,12 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "reason": decision.description if decision else None,
             "target_kind": decision.target.kind if decision else None,
             "preset": decision.target.preset if decision else None,
-            "target_temperature": room.target_temperature,
-            "current_temperature": room.current_temp,
-            "offsets": [list(o) for o in decision.offsets] if decision else [],
+            "temperature_unit": unit,
+            "target_temperature": _t(room.target_temperature, unit),
+            "current_temperature": _t(room.current_temp, unit),
+            "offsets": [[label, _d(delta, unit)] for label, delta in decision.offsets]
+            if decision
+            else [],
             "presence": room.house.presence_state,
             "window_open": room.window_open,
             "override": room.override_info(),
@@ -202,7 +245,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "schedule_editable": room.config.get("schedule_source", "internal") == "internal",
             "presets": list(PRESETS),
             "preset_names": room.preset_names,
-            "levels": {p: room.level_temp(p) for p in PRESETS},
+            "levels": {p: _t(room.level_temp(p), unit, 1) for p in PRESETS},
             "climate_entities": room.climates,
             "device_preset": room.device_preset(),
             "device_level": room.level_of_device_preset(room.device_preset()),
@@ -221,11 +264,9 @@ class DecisionSensor(RoomEntity, SensorEntity):
         }
 
 
-class TargetTemperatureSensor(RoomEntity, SensorEntity):
+class TargetTemperatureSensor(RoomEntity, _HouseUnitTemperature):
     """The target temperature decided for the room."""
 
-    _attr_device_class = SensorDeviceClass.TEMPERATURE
-    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 1
 
@@ -236,7 +277,7 @@ class TargetTemperatureSensor(RoomEntity, SensorEntity):
     @property
     def native_value(self) -> float | None:
         """Target."""
-        return self.room.target_temperature
+        return _t(self.room.target_temperature, self.house.unit)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -245,11 +286,9 @@ class TargetTemperatureSensor(RoomEntity, SensorEntity):
         return {"preset": decision.target.preset if decision else None}
 
 
-class CurrentTemperatureSensor(RoomEntity, SensorEntity):
+class CurrentTemperatureSensor(RoomEntity, _HouseUnitTemperature):
     """The room temperature used by the integration."""
 
-    _attr_device_class = SensorDeviceClass.TEMPERATURE
-    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 1
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -261,7 +300,7 @@ class CurrentTemperatureSensor(RoomEntity, SensorEntity):
     @property
     def native_value(self) -> float | None:
         """Room temperature."""
-        return self.room.current_temp
+        return _t(self.room.current_temp, self.house.unit)
 
 
 class NextChangeSensor(RoomEntity, SensorEntity):
@@ -294,7 +333,6 @@ class HeatingRateSensor(RoomEntity, SensorEntity):
 
     _unrecorded_attributes = frozenset({"rates", "last_episodes"})
 
-    _attr_native_unit_of_measurement = "°C/h"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_suggested_display_precision = 2
@@ -304,22 +342,38 @@ class HeatingRateSensor(RoomEntity, SensorEntity):
         super().__init__(room, "heating_rate")
 
     @property
-    def native_value(self) -> float:
+    def native_unit_of_measurement(self) -> str:
+        """Degrees of the house per hour."""
+        return f"{self.house.unit}/h"
+
+    @property
+    def native_value(self) -> float | None:
         """Rate for the current outdoor temperature."""
-        return round(self.room.learner.rate(self.house.outdoor.latest()), 3)
+        return _d(self.room.learner.rate(self.house.outdoor.latest()), self.house.unit, 3)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """All buckets."""
         learner = self.room.learner
         line = learner.fit()
+        unit = self.house.unit
+        # Estimates at round outdoor temperatures of the unit of the house.
+        points = (14, 32, 50, 68) if unit == "°F" else (-10, 0, 10, 20)
         return {
-            "rates": learner.rates,
+            "rates": (
+                {
+                    f"{t}{unit}": _d(learner.rate((t - 32) / 1.8 if unit == "°F" else t), unit, 3)
+                    for t in points
+                }
+                if learner.episodes
+                else {}
+            ),
             "episodes": len(learner.episodes),
             "per_degree_outdoor": round(line[1], 3) if line else None,
-            "learning_starts_below_target": start_gap(self.room.learn_tolerance()),
+            "learning_starts_below_target": _d(start_gap(self.room.learn_tolerance()), unit),
             "last_episodes": [
-                {"outdoor": o, "rate": r, "at": at or None} for o, r, at in learner.episodes[-5:]
+                {"outdoor": _t(o, unit, 1), "rate": _d(r, unit, 3), "at": at or None}
+                for o, r, at in learner.episodes[-5:]
             ],
         }
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from homeassistant.components.number import NumberEntity, NumberMode
-from homeassistant.const import EntityCategory, UnitOfTemperature
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -12,6 +12,7 @@ from . import AdvancedClimateConfigEntry
 from .const import CONF_NEARBY_MODE, DOMAIN, NEARBY_TEMPERATURE, PRESETS
 from .entity import RoomEntity
 from .room import Room
+from .util import from_celsius, to_celsius
 
 
 async def async_setup_entry(
@@ -42,13 +43,9 @@ async def async_setup_entry(
 
 
 class LevelNumber(RoomEntity, NumberEntity):
-    """Temperature of one level."""
+    """Temperature of one level, in the unit of the house (kept in °C)."""
 
     _attr_device_class = None
-    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-    _attr_native_min_value = 5.0
-    _attr_native_max_value = 30.0
-    _attr_native_step = 0.5
     _attr_mode = NumberMode.BOX
     _attr_entity_category = EntityCategory.CONFIG
 
@@ -56,6 +53,11 @@ class LevelNumber(RoomEntity, NumberEntity):
         """Initialize."""
         super().__init__(room, f"level_{preset}")
         self.preset = preset
+        fahrenheit = room.house.unit == "°F"
+        self._attr_native_unit_of_measurement = room.house.unit
+        self._attr_native_min_value = 41.0 if fahrenheit else 5.0
+        self._attr_native_max_value = 86.0 if fahrenheit else 30.0
+        self._attr_native_step = 0.5
         if preset != "nearby" and room.preset_names.get(preset, preset) != preset:
             # Custom level name chosen by the user.
             self._attr_translation_key = "level_custom"
@@ -64,10 +66,10 @@ class LevelNumber(RoomEntity, NumberEntity):
     @property
     def native_value(self) -> float:
         """Current value."""
-        if self.preset == "nearby":
-            return self.room.nearby_temp
-        return self.room.levels[self.preset]
+        value = self.room.nearby_temp if self.preset == "nearby" else self.room.levels[self.preset]
+        return round(float(from_celsius(value, self.room.house.unit)), 1)
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the level temperature."""
-        await self.room.async_set_level(self.preset, value)
+        celsius = round(float(to_celsius(value, self.room.house.unit)), 2)
+        await self.room.async_set_level(self.preset, celsius)

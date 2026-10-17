@@ -5,16 +5,28 @@
         "title": "Advanced Climate",
         "description": "Creează casa. Camerele se adaugă apoi cu „Adaugă cameră”; restul opțiunilor sunt în opțiunile integrării.",
         "data": {
+          "temperature_unit": "Unitatea de temperatură",
           "name": "Nume",
           "persons": "Persoane",
           "nearby_zones": "Zone apropiate",
           "home_rule": "Casa e „acasă” când"
         },
         "data_description": {
+          "temperature_unit": "Toate temperaturile acestei case se introduc și se afișează în această unitate. Se poate schimba mai târziu din Reconfigurează; valorile sunt convertite.",
           "name": "Apare pe dispozitive și în card.",
           "persons": "Persoanele a căror locație decide acasă / aproape / departe. Lasă gol doar dacă prezența nu contează: casa e atunci mereu „acasă” și decide doar programul.",
           "nearby_zones": "Zonele în care casa e „aproape” (eco), de ex. orașul. În afara casei și a zonelor = „departe” (away). Lasă gol dacă vrei doar acasă / departe.",
           "home_rule": "„Cel puțin o persoană” se potrivește majorității. „Toți” coboară încălzirea imediat ce pleacă cineva."
+        }
+      },
+      "reconfigure": {
+        "title": "Unitatea de temperatură",
+        "description": "Toate temperaturile acestei case (setări, niveluri, card) sunt afișate în această unitate. Valorile sunt convertite, nu trebuie introduse din nou.",
+        "data": {
+          "temperature_unit": "Unitatea de temperatură"
+        },
+        "data_description": {
+          "temperature_unit": "Toate temperaturile acestei case se introduc și se afișează în această unitate. Se poate schimba mai târziu din Reconfigurează; valorile sunt convertite."
         }
       },
       "heating": {
@@ -70,6 +82,9 @@
     "error": {
       "no_devices": "Alege cel puțin un dispozitiv.",
       "sensor_required": "Releele au nevoie de un senzor de temperatură al camerei."
+    },
+    "abort": {
+      "reconfigure_successful": "Salvat."
     }
   },
   "options": {
@@ -310,9 +325,9 @@
         },
         "data_description": {
           "price_high": "De la acest preț în sus se aplică ajustarea la preț mare.",
-          "price_high_offset": "De obicei negativă, de ex. -1 °C cât energia e scumpă.",
+          "price_high_offset": "De obicei negativă, de ex. -1° cât energia e scumpă.",
           "price_low": "Până la acest preț se aplică ajustarea la preț mic.",
-          "price_low_offset": "De obicei pozitivă, de ex. +1 °C cât energia e ieftină (încălzire electrică, pompă de căldură).",
+          "price_low_offset": "De obicei pozitivă, de ex. +1° cât energia e ieftină (încălzire electrică, pompă de căldură).",
           "pv_threshold": "Surplusul de la care se aplică ajustarea.",
           "pv_offset": "Grade adăugate cât există surplus (de ex. +1)."
         }
@@ -587,6 +602,9 @@
           }
         }
       },
+      "abort": {
+        "reconfigure_successful": "Salvat."
+      },
       "error": {
         "no_devices": "Alege cel puțin un dispozitiv.",
         "duplicate_names": "Două niveluri au același nume.",
@@ -842,6 +860,12 @@
         "sat": "Sâmbătă",
         "sun": "Duminică"
       }
+    },
+    "temperature_unit": {
+      "options": {
+        "celsius": "Celsius (°C)",
+        "fahrenheit": "Fahrenheit (°F)"
+      }
     }
   },
   "services": {
@@ -863,7 +887,7 @@
         },
         "temperature": {
           "name": "Temperatură",
-          "description": "Temperatura de setat."
+          "description": "Temperatura de setat, în unitatea casei (°C sau °F)."
         },
         "duration_hours": {
           "name": "Durată",

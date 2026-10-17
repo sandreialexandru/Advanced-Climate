@@ -294,3 +294,39 @@ async def test_room_with_thermostat_presets(hass: HomeAssistant) -> None:
     assert subentry.data["levels"]["sleep"] == 18.5
     assert subentry.data["preset_names"] == {}
     assert subentry.data["learn_tolerance"] == 0.3
+
+
+async def test_fahrenheit_forms(hass: HomeAssistant) -> None:
+    """Forms of a °F house show and accept °F; values are stored in °C."""
+    entry = MockConfigEntry(
+        domain=DOMAIN, title="Home", options={"temperature_unit": "fahrenheit", "frost_temp": 7.0}
+    )
+    entry.add_to_hass(hass)
+    flow = hass.config_entries.options
+    result = await flow.async_init(entry.entry_id)
+    result = await flow.async_configure(result["flow_id"], {"next_step_id": "behavior"})
+    schema = {str(k): k for k in result["data_schema"].schema}
+    # 7 °C is shown as 44.6 °F
+    assert schema["frost_temp"].default() == 44.6
+    selector_config = result["data_schema"].schema[schema["frost_temp"]].config
+    assert selector_config["unit_of_measurement"] == "°F"
+    result = await flow.async_configure(
+        result["flow_id"], {"override_mode": "until_next_reevaluation", "frost_temp": 46.4}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert round(entry.options["frost_temp"], 2) == 8.0
+
+
+async def test_reconfigure_unit(hass: HomeAssistant) -> None:
+    """The unit of the house is changed with Reconfigure."""
+    entry = MockConfigEntry(domain=DOMAIN, title="Home", options={"persons": []})
+    entry.add_to_hass(hass)
+    result = await entry.start_reconfigure_flow(hass)
+    assert result["step_id"] == "reconfigure"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"temperature_unit": "fahrenheit"}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.options["temperature_unit"] == "fahrenheit"
+    assert entry.options["persons"] == []

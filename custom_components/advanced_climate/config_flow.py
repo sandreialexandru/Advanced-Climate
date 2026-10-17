@@ -113,6 +113,7 @@ from .const import (
     CONF_SOLAR_OFFSET,
     CONF_SOURCE,
     CONF_SWITCHES,
+    CONF_TEMP_UNIT,
     CONF_TEMP_AGGREGATION,
     CONF_TEMP_SENSORS,
     CONF_TRAVEL_TIME,
@@ -159,7 +160,15 @@ from .const import (
 )
 from .outdoor import parse_month_day
 from .schedule import ScheduleError, parse_schedule
-from .util import as_list
+from .util import (
+    as_list,
+    delta_from_celsius,
+    delta_to_celsius,
+    from_celsius,
+    is_fahrenheit,
+    system_unit,
+    to_celsius,
+)
 
 CONF_NAME = "name"
 
@@ -220,6 +229,109 @@ def _merge(current: dict[str, Any], schema: vol.Schema, user_input: dict[str, An
         else:
             result.pop(key, None)
     return result
+
+
+# ---------------------------------------------------------------------------
+# Temperature unit of the house. Values are stored in °C; the forms show them
+# in the unit of the house and convert what the user enters back to °C.
+# ---------------------------------------------------------------------------
+UNIT_CELSIUS = "celsius"
+UNIT_FAHRENHEIT = "fahrenheit"
+
+TEMP_ABSOLUTE_KEYS = {
+    CONF_CUTOFF_TEMP,
+    CONF_SEASON_TEMP,
+    CONF_COMP_BELOW,
+    CONF_WINDOW_IGNORE_ABOVE,
+    CONF_FROST_TEMP,
+    CONF_MAX_TEMP,
+    CONF_NEARBY_TEMP,
+    *(f"temp_{p}" for p in PRESETS),
+}
+TEMP_DELTA_KEYS = {
+    CONF_CUTOFF_HYSTERESIS,
+    CONF_COMP_OFFSET,
+    CONF_PRICE_HIGH_OFFSET,
+    CONF_PRICE_LOW_OFFSET,
+    CONF_PV_OFFSET,
+    CONF_ROOM_DIFF_ALERT,
+    CONF_HYSTERESIS,
+    CONF_LEARN_TOLERANCE,
+    CONF_WINDOW_DROP_DEGREES,
+    CONF_SOLAR_OFFSET,
+}
+
+
+def _fahrenheit(unit: str | None) -> bool:
+    return is_fahrenheit(unit)
+
+
+def _shown(values: dict[str, Any], unit: str | None) -> dict[str, Any]:
+    """Stored values (°C) as the form shows them."""
+    if not _fahrenheit(unit):
+        return dict(values)
+    out = dict(values)
+    for key, value in values.items():
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            continue
+        if key in TEMP_ABSOLUTE_KEYS:
+            out[key] = round(float(from_celsius(value, unit)), 1)
+        elif key in TEMP_DELTA_KEYS:
+            out[key] = round(float(delta_from_celsius(value, unit)), 2)
+    return out
+
+
+def _kept(user_input: dict[str, Any] | None, unit: str | None) -> dict[str, Any]:
+    """What the user entered, converted back to °C for storage."""
+    values = dict(user_input or {})
+    if not _fahrenheit(unit):
+        return values
+    for key, value in list(values.items()):
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            continue
+        if key in TEMP_ABSOLUTE_KEYS:
+            values[key] = round(float(to_celsius(value, unit)), 3)
+        elif key in TEMP_DELTA_KEYS:
+            values[key] = round(float(delta_to_celsius(value, unit)), 3)
+    return values
+
+
+def _unitize(schema: vol.Schema, unit: str | None) -> vol.Schema:
+    """Number fields of temperatures in the unit of the house."""
+    if not _fahrenheit(unit):
+        return schema
+    fields: dict[Any, Any] = {}
+    for marker, field in schema.schema.items():
+        key = str(getattr(marker, "schema", marker))
+        absolute = key in TEMP_ABSOLUTE_KEYS
+        if (absolute or key in TEMP_DELTA_KEYS) and isinstance(field, selector.NumberSelector):
+            config = dict(field.config)
+            for bound in ("min", "max"):
+                if config.get(bound) is not None:
+                    value = float(config[bound])
+                    config[bound] = round(value * 1.8 + 32 if absolute else value * 1.8)
+            config["unit_of_measurement"] = "°F"
+            field = selector.NumberSelector(selector.NumberSelectorConfig(**config))
+        fields[marker] = field
+    return vol.Schema(fields)
+
+
+class _UnitForms:
+    """Forms shown in the unit of the house."""
+
+    def _unit(self) -> str:
+        return UNIT_CELSIUS
+
+    def async_show_form(self, *, step_id: str, data_schema: vol.Schema | None = None, **kwargs: Any) -> Any:
+        if data_schema is not None:
+            data_schema = _unitize(data_schema, self._unit())
+        return super().async_show_form(  # type: ignore[misc]
+            step_id=step_id, data_schema=data_schema, **kwargs
+        )
+
+
+def _unit_select() -> selector.SelectSelector:
+    return _select([UNIT_CELSIUS, UNIT_FAHRENHEIT], "temperature_unit")
 
 
 # ---------------------------------------------------------------------------
@@ -546,13 +658,13 @@ class _HouseHeatingSteps:
         """On / off settings (relays need a temperature sensor)."""
         z = self._zone
         relay = z[CONF_SOURCE] == SOURCE_SWITCH
-        schema = _on_off_schema(z, relay)
+        schema = _on_off_schema(_shown(z, self._unit()), relay)  # type: ignore[attr-defined]
         errors: dict[str, str] = {}
         if user_input is not None:
             if relay and not user_input.get(CONF_TEMP_SENSORS):
                 errors[CONF_TEMP_SENSORS] = "sensor_required"
             else:
-                self._zone = _merge(z, schema, user_input)
+                self._zone = _merge(z, schema, _kept(user_input, self._unit()))  # type: ignore[attr-defined]
                 return await self._async_heating_done(self._zone)
         return self.async_show_form(  # type: ignore[attr-defined]
             step_id="heating_on_off", data_schema=schema, errors=errors
@@ -560,9 +672,9 @@ class _HouseHeatingSteps:
 
     async def async_step_heating_thermostat(self, user_input: dict[str, Any] | None = None) -> Any:
         """Thermostat tolerance."""
-        schema = _thermostat_schema(self._zone)
+        schema = _thermostat_schema(_shown(self._zone, self._unit()))  # type: ignore[attr-defined]
         if user_input is not None:
-            self._zone = _merge(self._zone, schema, user_input)
+            self._zone = _merge(self._zone, schema, _kept(user_input, self._unit()))  # type: ignore[attr-defined]
             return await self._async_heating_done(self._zone)
         return self.async_show_form(  # type: ignore[attr-defined]
             step_id="heating_thermostat", data_schema=schema
@@ -574,7 +686,7 @@ class _HouseHeatingSteps:
 # ---------------------------------------------------------------------------
 
 
-class AdvancedClimateConfigFlow(_HouseHeatingSteps, ConfigFlow, domain=DOMAIN):
+class AdvancedClimateConfigFlow(_UnitForms, _HouseHeatingSteps, ConfigFlow, domain=DOMAIN):
     """Create the house."""
 
     VERSION = 1
@@ -589,8 +701,10 @@ class AdvancedClimateConfigFlow(_HouseHeatingSteps, ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._house = dict(user_input)
             return await self.async_step_heating()
+        default_unit = UNIT_FAHRENHEIT if is_fahrenheit(system_unit(self.hass)) else UNIT_CELSIUS
         schema = vol.Schema(
             {
+                vol.Required(CONF_TEMP_UNIT, default=default_unit): _unit_select(),
                 vol.Required(CONF_NAME, default="Home"): _text(),
                 vol.Required(CONF_PERSONS, default=[]): _entity("person", multiple=True),
                 vol.Required(CONF_NEARBY_ZONES, default=[]): _entity("zone", multiple=True),
@@ -600,6 +714,28 @@ class AdvancedClimateConfigFlow(_HouseHeatingSteps, ConfigFlow, domain=DOMAIN):
             }
         )
         return self.async_show_form(step_id="user", data_schema=schema)
+
+    def _unit(self) -> str:
+        return str(self._house.get(CONF_TEMP_UNIT, UNIT_CELSIUS))
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Change the temperature unit of the house (every value is shown converted)."""
+        entry = self._get_reconfigure_entry()
+        if user_input is not None:
+            self.hass.config_entries.async_update_entry(
+                entry, options={**entry.options, CONF_TEMP_UNIT: user_input[CONF_TEMP_UNIT]}
+            )
+            return self.async_abort(reason="reconfigure_successful")
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_TEMP_UNIT, default=entry.options.get(CONF_TEMP_UNIT, UNIT_CELSIUS)
+                ): _unit_select()
+            }
+        )
+        return self.async_show_form(step_id="reconfigure", data_schema=schema)
 
     async def _async_heating_done(self, data: dict[str, Any] | None) -> ConfigFlowResult:
         options = dict(self._house)
@@ -631,7 +767,7 @@ class AdvancedClimateConfigFlow(_HouseHeatingSteps, ConfigFlow, domain=DOMAIN):
         return {SUBENTRY_ROOM: RoomSubentryFlow}
 
 
-class AdvancedClimateOptionsFlow(_HouseHeatingSteps, OptionsFlow):
+class AdvancedClimateOptionsFlow(_UnitForms, _HouseHeatingSteps, OptionsFlow):
     """House options, grouped in a menu."""
 
     def __init__(self) -> None:
@@ -667,6 +803,9 @@ class AdvancedClimateOptionsFlow(_HouseHeatingSteps, OptionsFlow):
                 return sub
         return rooms[0] if len(rooms) == 1 else None
 
+    def _unit(self) -> str:
+        return str(self.config_entry.options.get(CONF_TEMP_UNIT, UNIT_CELSIUS))
+
     def _zone_base(self) -> dict[str, Any]:
         zone = self._house_zone()
         return dict(zone.data) if zone else {}
@@ -697,16 +836,18 @@ class AdvancedClimateOptionsFlow(_HouseHeatingSteps, OptionsFlow):
 
     @property
     def _values(self) -> dict[str, Any]:
-        return {**HOUSE_DEFAULTS, **self.config_entry.options}
+        return _shown({**HOUSE_DEFAULTS, **self.config_entry.options}, self._unit())
 
     def _save(self, schema: vol.Schema, user_input: dict[str, Any]) -> ConfigFlowResult:
         return self.async_create_entry(
-            data=_merge(dict(self.config_entry.options), schema, user_input)
+            data=_merge(dict(self.config_entry.options), schema, _kept(user_input, self._unit()))
         )
 
     # -- two forms: the choices, then only the values that apply --------------
     def _first(self, schema: vol.Schema, user_input: dict[str, Any]) -> None:
-        self._pending = _merge(dict(self.config_entry.options), schema, user_input)
+        self._pending = _merge(
+            dict(self.config_entry.options), schema, _kept(user_input, self._unit())
+        )
 
     def _second(
         self,
@@ -718,12 +859,14 @@ class AdvancedClimateOptionsFlow(_HouseHeatingSteps, OptionsFlow):
         if not schema.schema:
             return self.async_create_entry(data=self._pending)
         if user_input is not None and not errors:
-            return self.async_create_entry(data=_merge(self._pending, schema, user_input))
+            return self.async_create_entry(
+                data=_merge(self._pending, schema, _kept(user_input, self._unit()))
+            )
         return self.async_show_form(step_id=step_id, data_schema=schema, errors=errors or {})
 
     @property
     def _pending_values(self) -> dict[str, Any]:
-        return {**HOUSE_DEFAULTS, **self._pending}
+        return _shown({**HOUSE_DEFAULTS, **self._pending}, self._unit())
 
     async def async_step_presence(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Presence options."""
@@ -825,7 +968,7 @@ class AdvancedClimateOptionsFlow(_HouseHeatingSteps, OptionsFlow):
 # ---------------------------------------------------------------------------
 
 
-class RoomSubentryFlow(ConfigSubentryFlow):
+class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
     """Add or reconfigure a room."""
 
     def __init__(self) -> None:
@@ -833,6 +976,15 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         self._data: dict[str, Any] = {}
         self._reconfigure = False
         self._subentry_id: str | None = None
+
+    def _unit(self) -> str:
+        return str(self._get_entry().options.get(CONF_TEMP_UNIT, UNIT_CELSIUS))
+
+    def _shown(self) -> dict[str, Any]:
+        return _shown(self._data, self._unit())
+
+    def _kept(self, user_input: dict[str, Any] | None) -> dict[str, Any]:
+        return _kept(user_input, self._unit())
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """Start a new room."""
@@ -861,13 +1013,13 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             }
         )
         if user_input is not None:
-            self._data = _merge(self._data, schema, user_input)
+            self._data = _merge(self._data, schema, self._kept(user_input))
             return await self.async_step_devices()
         return self.async_show_form(step_id="basics", data_schema=schema)
 
     async def async_step_devices(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """The devices that heat the room (and the command for other thermostats)."""
-        d = self._data
+        d = self._shown()
         schema = _devices_schema(d)
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -887,9 +1039,9 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Hysteresis and minimum times (relays and on / off)."""
-        schema = _on_off_schema(self._data, False)
+        schema = _on_off_schema(self._shown(), False)
         if user_input is not None:
-            self._data = _merge(self._data, schema, user_input)
+            self._data = _merge(self._data, schema, self._kept(user_input))
             return await self.async_step_levels()
         return self.async_show_form(step_id="control_on_off", data_schema=schema)
 
@@ -897,9 +1049,9 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Thermostat tolerance (temperature / preset command)."""
-        schema = _thermostat_schema(self._data)
+        schema = _thermostat_schema(self._shown())
         if user_input is not None:
-            self._data = _merge(self._data, schema, user_input)
+            self._data = _merge(self._data, schema, self._kept(user_input))
             return await self.async_step_levels()
         return self.async_show_form(step_id="control_thermostat", data_schema=schema)
 
@@ -927,7 +1079,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
 
     async def async_step_levels(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """Level names or thermostat presets, level temperatures and what 'nearby' means."""
-        d = self._data
+        d = self._shown()
         source = d[CONF_SOURCE]
         uses_presets = source == SOURCE_CLIMATE and d.get(CONF_COMMAND_MODE) == COMMAND_PRESET
         names = dict(d.get(CONF_PRESET_NAMES) or {})
@@ -938,7 +1090,13 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             preset_map = {
                 p: names.get(p) or p for p in PRESETS if (names.get(p) or p) in device_presets
             }
-        levels = self._current_levels()
+        levels = {
+            p: v
+            for p, v in (
+                (p, _shown({f"temp_{p}": v}, self._unit())[f"temp_{p}"])
+                for p, v in self._current_levels().items()
+            )
+        }
 
         fields: dict[Any, Any] = {
             vol.Required(CONF_NEARBY_MODE, default=d[CONF_NEARBY_MODE]): _select(
@@ -998,7 +1156,8 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             else:
                 self._data.pop(CONF_PRESET_MAP, None)
             if source != SOURCE_GT:
-                self._data[CONF_LEVELS] = {p: float(user_input[f"temp_{p}"]) for p in PRESETS}
+                kept = self._kept({f"temp_{p}": user_input[f"temp_{p}"] for p in PRESETS})
+                self._data[CONF_LEVELS] = {p: float(kept[f"temp_{p}"]) for p in PRESETS}
             else:
                 self._data.pop(CONF_LEVELS, None)
             self._data[CONF_NEARBY_MODE] = user_input[CONF_NEARBY_MODE]
@@ -1014,16 +1173,16 @@ class RoomSubentryFlow(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         """Fixed temperature when someone is nearby."""
         schema = vol.Schema(
-            {_req(CONF_NEARBY_TEMP, self._data, ROOM_DEFAULTS): _number(5, 30, 0.5, "°C")}
+            {_req(CONF_NEARBY_TEMP, self._shown(), ROOM_DEFAULTS): _number(5, 30, 0.5, "°C")}
         )
         if user_input is not None:
-            self._data = _merge(self._data, schema, user_input)
+            self._data = _merge(self._data, schema, self._kept(user_input))
             return await self.async_step_sensors()
         return self.async_show_form(step_id="levels_nearby", data_schema=schema)
 
     async def async_step_sensors(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """Temperature, calibration (TRVs only) and occupancy sensors."""
-        d = self._data
+        d = self._shown()
         trv = d[CONF_SOURCE] == SOURCE_CLIMATE
         relay = d[CONF_SOURCE] == SOURCE_SWITCH
         fields: dict[Any, Any] = {
@@ -1044,7 +1203,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             if relay and not user_input.get(CONF_TEMP_SENSORS):
                 errors[CONF_TEMP_SENSORS] = "sensor_required"
             else:
-                self._data = _merge(self._data, schema, user_input)
+                self._data = _merge(self._data, schema, self._kept(user_input))
                 if not trv:
                     self._data[CONF_CALIBRATION_MODE] = CALIBRATION_OFF
                 return await self.async_step_sensors_details()
@@ -1054,7 +1213,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Only what the chosen sensors need."""
-        d = self._data
+        d = self._shown()
         fields: dict[Any, Any] = {}
         if len(as_list(d.get(CONF_TEMP_SENSORS))) > 1:
             fields[_req(CONF_TEMP_AGGREGATION, d, ROOM_DEFAULTS)] = _select(
@@ -1070,13 +1229,13 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         if not fields:
             return await self.async_step_windows()
         if user_input is not None:
-            self._data = _merge(self._data, schema, user_input)
+            self._data = _merge(self._data, schema, self._kept(user_input))
             return await self.async_step_windows()
         return self.async_show_form(step_id="sensors_details", data_schema=schema)
 
     async def async_step_windows(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """Window and door sensors."""
-        d = self._data
+        d = self._shown()
         schema = vol.Schema(
             {
                 _req(CONF_WINDOW_SENSORS, d, ROOM_DEFAULTS): _entity(
@@ -1089,7 +1248,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             }
         )
         if user_input is not None:
-            self._data = _merge(self._data, schema, user_input)
+            self._data = _merge(self._data, schema, self._kept(user_input))
             return await self.async_step_windows_details()
         return self.async_show_form(step_id="windows", data_schema=schema)
 
@@ -1097,7 +1256,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Delays and action, only with window sensors or the temperature drop detection."""
-        d = self._data
+        d = self._shown()
         sensors = as_list(d.get(CONF_WINDOW_SENSORS)) + as_list(d.get(CONF_LINKED_WINDOW_SENSORS))
         drop = bool(d.get(CONF_WINDOW_DROP_DETECT))
         fields: dict[Any, Any] = {}
@@ -1114,13 +1273,13 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         if not fields:
             return await self.async_step_schedule()
         if user_input is not None:
-            self._data = _merge(self._data, schema, user_input)
+            self._data = _merge(self._data, schema, self._kept(user_input))
             return await self.async_step_schedule()
         return self.async_show_form(step_id="windows_details", data_schema=schema)
 
     async def async_step_schedule(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """Where the schedule comes from, and optimal start / stop."""
-        d = self._data
+        d = self._shown()
         schema = vol.Schema(
             {
                 _req(CONF_SCHEDULE_SOURCE, d, ROOM_DEFAULTS): _select(
@@ -1131,7 +1290,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             }
         )
         if user_input is not None:
-            self._data = _merge(self._data, schema, user_input)
+            self._data = _merge(self._data, schema, self._kept(user_input))
             if user_input[CONF_SCHEDULE_SOURCE] == SCHEDULE_HELPER:
                 return await self.async_step_schedule_helper()
             return await self.async_step_schedule_internal()
@@ -1157,7 +1316,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
                 errors[CONF_SCHEDULE] = "invalid_schedule"
                 placeholders["error"] = str(err)
             if not errors:
-                self._data = _merge(self._data, schema, user_input)
+                self._data = _merge(self._data, schema, self._kept(user_input))
                 return await self.async_step_schedule_optimal()
         return self.async_show_form(
             step_id="schedule_internal",
@@ -1183,7 +1342,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             if not user_input.get(CONF_SCHEDULE_HELPER):
                 errors[CONF_SCHEDULE_HELPER] = "helper_required"
             else:
-                self._data = _merge(self._data, schema, user_input)
+                self._data = _merge(self._data, schema, self._kept(user_input))
                 return await self.async_step_schedule_optimal()
         return self.async_show_form(step_id="schedule_helper", data_schema=schema, errors=errors)
 
@@ -1191,7 +1350,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Limits of optimal start / stop (only those turned on)."""
-        d = self._data
+        d = self._shown()
         fields: dict[Any, Any] = {}
         if d.get(CONF_OPTIMAL_START):
             fields[_req(CONF_OPTIMAL_START_MAX, d, ROOM_DEFAULTS)] = _number(10, 360, 5, "min")
@@ -1201,13 +1360,13 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         if not fields:
             return await self.async_step_extras()
         if user_input is not None:
-            self._data = _merge(self._data, schema, user_input)
+            self._data = _merge(self._data, schema, self._kept(user_input))
             return await self.async_step_extras()
         return self.async_show_form(step_id="schedule_optimal", data_schema=schema)
 
     async def async_step_extras(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """Solar gain and valve exercise (TRVs without on / off only)."""
-        d = self._data
+        d = self._shown()
         valves = d[CONF_SOURCE] == SOURCE_CLIMATE and not self._on_off()
         fields: dict[Any, Any] = {
             _req(CONF_SOLAR_OFFSET, d, ROOM_DEFAULTS): _number(-3, 0, 0.1, "°C"),
@@ -1216,7 +1375,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             fields[_req(CONF_VALVE_EXERCISE, d, ROOM_DEFAULTS)] = _bool()
         schema = vol.Schema(fields)
         if user_input is not None:
-            self._data = _merge(self._data, schema, user_input)
+            self._data = _merge(self._data, schema, self._kept(user_input))
             if not valves:
                 self._data[CONF_VALVE_EXERCISE] = False
             if self._data.get(CONF_VALVE_EXERCISE):
@@ -1228,7 +1387,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """When the valves are exercised."""
-        d = self._data
+        d = self._shown()
         schema = vol.Schema(
             {
                 _req(CONF_VALVE_DAY, d, ROOM_DEFAULTS): _select(list(WEEKDAYS), "weekday"),
@@ -1236,7 +1395,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             }
         )
         if user_input is not None:
-            self._data = _merge(self._data, schema, user_input)
+            self._data = _merge(self._data, schema, self._kept(user_input))
             return self._finish()
         return self.async_show_form(step_id="extras_valves", data_schema=schema)
 

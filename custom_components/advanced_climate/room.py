@@ -117,7 +117,22 @@ from .engine import (
 )
 from .learning import HeatingRateLearner
 from .schedule import Schedule, ScheduleError, ScheduleState, Slot, parse_schedule
-from .util import aggregate, as_list, float_attr, from_iso, iso, parse_clock, valid
+from .util import (
+    aggregate,
+    as_list,
+    climate_temp,
+    delta_from_celsius,
+    delta_to_celsius,
+    float_attr,
+    from_celsius,
+    from_iso,
+    iso,
+    parse_clock,
+    system_unit,
+    temp_state,
+    to_celsius,
+    valid,
+)
 
 if TYPE_CHECKING:
     from .house import House
@@ -426,7 +441,7 @@ class Room:
         value = self._gt_options().get(GT_PRESET_KEYS[preset])
         if value is not None:
             try:
-                return float(value)
+                return float(to_celsius(float(value), system_unit(self.hass)))
             except (TypeError, ValueError):
                 pass
         return self.observed_temps.get(preset)
@@ -451,19 +466,19 @@ class Room:
         """Frost protection temperature."""
         if self.source == SOURCE_GT:
             for entity_id in self.climates:
-                value = float_attr(self.hass.states.get(entity_id), "min_temp")
+                value = climate_temp(self.hass, self.hass.states.get(entity_id), "min_temp")
                 if value is not None:
                     return value
             gt_min = self._gt_options().get("min_temp")
             if gt_min is not None:
-                return float(gt_min)
+                return float(to_celsius(float(gt_min), system_unit(self.hass)))
         return float(self.house.options[CONF_FROST_TEMP])
 
     def max_temp(self) -> float:
         """Maximum allowed temperature."""
         maximum = float(self.house.options[CONF_MAX_TEMP])
         for entity_id in self.climates:
-            value = float_attr(self.hass.states.get(entity_id), "max_temp")
+            value = climate_temp(self.hass, self.hass.states.get(entity_id), "max_temp")
             if value is not None:
                 maximum = min(maximum, value) if self.source != SOURCE_GT else maximum
         return maximum
@@ -473,7 +488,7 @@ class Room:
         values = [
             v
             for entity_id in self.climates
-            if (v := float_attr(self.hass.states.get(entity_id), "max_temp")) is not None
+            if (v := climate_temp(self.hass, self.hass.states.get(entity_id), "max_temp")) is not None
         ]
         return min(values) if values else None
 
@@ -510,7 +525,7 @@ class Room:
         if not valid(state):
             return
         preset = self.level_of_device_preset(state.attributes.get("preset_mode"))  # type: ignore[union-attr]
-        temperature = float_attr(state, ATTR_TEMPERATURE)
+        temperature = climate_temp(self.hass, state, ATTR_TEMPERATURE)
         if preset is not None and temperature is not None:
             self.observed_temps[preset] = temperature
 
@@ -541,8 +556,9 @@ class Room:
                 description = "turned off"
             elif new.attributes.get("preset_mode") not in (None, PRESET_NONE):
                 description = f"preset {new.attributes.get('preset_mode')}"
-            elif new.attributes.get(ATTR_TEMPERATURE) is not None:
-                description = f"{new.attributes.get(ATTR_TEMPERATURE)} °C"
+            elif (value := climate_temp(self.hass, new, ATTR_TEMPERATURE)) is not None:
+                unit = self.house.unit
+                description = f"{from_celsius(value, unit):.1f} {unit}"
             elif entity_id in self.switches:
                 description = f"switch {new.state}"
         if self.house.override_scope_house:
@@ -602,19 +618,17 @@ class Room:
         sensors = as_list(self.config.get(CONF_TEMP_SENSORS))
         values = []
         for entity_id in sensors:
-            state = self.hass.states.get(entity_id)
-            if valid(state):
-                try:
-                    values.append(float(state.state))  # type: ignore[union-attr]
-                except (TypeError, ValueError):
-                    continue
+            value = temp_state(self.hass, entity_id)
+            if value is not None:
+                values.append(value)
         external = aggregate(values, self.config[CONF_TEMP_AGGREGATION])
         self.external_failed = bool(sensors) and external is None
         device = None
         device_values = [
             v
             for eid in self.climates
-            if (v := float_attr(self.hass.states.get(eid), "current_temperature")) is not None
+            if (v := climate_temp(self.hass, self.hass.states.get(eid), "current_temperature"))
+            is not None
         ]
         if device_values:
             device = round(sum(device_values) / len(device_values), 2)
@@ -659,7 +673,11 @@ class Room:
         if self.source == SOURCE_GT:
             value = self._gt_options().get("cold_tolerance")
             try:
-                return float(value) if value is not None else 0.0
+                return (
+                    float(delta_to_celsius(float(value), system_unit(self.hass)))
+                    if value is not None
+                    else 0.0
+                )
             except (TypeError, ValueError):
                 return 0.0
         if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
@@ -915,6 +933,7 @@ class Room:
             level_temp=self.level_temp,
             offsets=self._offsets(),
             supports_off=self._supports_off(),
+            unit=self.house.unit,
         )
         decision = decide(inputs)
         self._record(decision, now)
@@ -956,7 +975,7 @@ class Room:
             return self.level_temp(target.preset)
         if target.kind == KIND_NONE:
             for entity_id in self.climates:
-                value = float_attr(self.hass.states.get(entity_id), ATTR_TEMPERATURE)
+                value = climate_temp(self.hass, self.hass.states.get(entity_id), ATTR_TEMPERATURE)
                 if value is not None:
                     return value
         return None
@@ -1007,8 +1026,8 @@ class Room:
                 if action is not None:
                     demand = demand or action == "heating"
                     continue
-                current = float_attr(state, "current_temperature")
-                target = float_attr(state, ATTR_TEMPERATURE)
+                current = climate_temp(self.hass, state, "current_temperature")
+                target = climate_temp(self.hass, state, ATTR_TEMPERATURE)
                 if (
                     state.state != STATE_OFF  # type: ignore[union-attr]
                     and current is not None
@@ -1090,8 +1109,12 @@ class Room:
             if target.kind == KIND_TEMPERATURE
             else self.level_temp(target.preset or "")
         )
+        if temperature is None:
+            return True
+        # Compared in the unit of the thermostat, as sent.
         current = float_attr(state, ATTR_TEMPERATURE)
-        return temperature is None or (current is not None and abs(current - temperature) < 0.05)
+        wanted = round(float(from_celsius(temperature, system_unit(self.hass))), 1)
+        return current is not None and abs(current - wanted) < 0.05
 
     async def _async_apply_climate(self, entity_id: str, target: Target, force: bool) -> bool:
         state = self.hass.states.get(entity_id)
@@ -1144,7 +1167,10 @@ class Room:
         return await self._call(
             "climate",
             "set_temperature",
-            {ATTR_ENTITY_ID: entity_id, ATTR_TEMPERATURE: round(temperature, 1)},
+            {
+                ATTR_ENTITY_ID: entity_id,
+                ATTR_TEMPERATURE: round(float(from_celsius(temperature, system_unit(self.hass))), 1),
+            },
         )
 
     async def _async_apply_relay(self, target: Target) -> bool:
@@ -1238,7 +1264,7 @@ class Room:
                 self.house.notify(
                     f"verify_{self.id}",
                     f"{self.name}: {', '.join(mismatched)} did not accept "
-                    f"{expected.describe()}.",
+                    f"{expected.describe(self.house.unit)}.",
                     repeat=timedelta(hours=6),
                 )
 
@@ -1247,7 +1273,9 @@ class Room:
     async def async_apply_manual(self, target: Target, hours: float | None) -> None:
         """Service: set a manual target and keep it as an override."""
         await self._async_apply(target, force=True)
-        self.set_override(f"set by service: {target.describe()}", hours=hours, target=target)
+        self.set_override(
+            f"set by service: {target.describe(self.house.unit)}", hours=hours, target=target
+        )
 
     # ------------------------------------------------------------------
     # Calibration
@@ -1273,18 +1301,20 @@ class Room:
             minimum = float_attr(number, "min")
             maximum = float_attr(number, "max")
             current = float(number.state)
+            # The TRV number has its own unit (usually °C).
+            number_unit = number.attributes.get("unit_of_measurement") or system_unit(self.hass)
             if mode == CALIBRATION_EXTERNAL:
-                value = external
+                value = float(from_celsius(external, number_unit))
             else:
                 climate_id = self._climate_on_same_device(entity_reg, number_id)
                 device_temp = (
-                    float_attr(self.hass.states.get(climate_id), "current_temperature")
+                    climate_temp(self.hass, self.hass.states.get(climate_id), "current_temperature")
                     if climate_id
                     else None
                 )
                 if device_temp is None:
                     continue
-                value = current + (external - device_temp)
+                value = current + float(delta_from_celsius(external - device_temp, number_unit))
             value = round(round(value / step) * step, 2)
             if minimum is not None:
                 value = max(minimum, value)

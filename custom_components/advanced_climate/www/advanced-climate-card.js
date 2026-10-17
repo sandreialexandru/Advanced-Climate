@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.8.3";
+const CARD_VERSION = "1.8.4";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -1191,15 +1191,19 @@ class AdvancedClimateCard extends HTMLElement {
         )}${num(a.levels?.[p]) !== null ? ` <small>${num(a.levels[p])}°</small>` : ""}</button>`
       )
       .join("");
-    const target = num(a.target_temperature) ?? 21;
+    const unit = a.temperature_unit || "°C";
+    const fahrenheit = unit === "°F";
+    const target = num(a.target_temperature) ?? (fahrenheit ? 70 : 21);
     return this._fold(
       `quick-${a.room_id}`,
       this._t("quick"),
       `<p class="hint">${this._t("quick_hint")}</p>
         <div class="presets">${presets}</div>
         <div class="row wrap">
-          <label class="numfield"><span>${this._t("target_tag")}</span><input type="number" step="0.5" min="5" max="30"
-            data-quick="temp" data-room="${esc(a.room_id)}" value="${target}"><em>°C</em></label>
+          <label class="numfield"><span>${this._t("target_tag")}</span><input type="number" step="0.5" min="${
+            fahrenheit ? 41 : 5
+          }" max="${fahrenheit ? 86 : 30}"
+            data-quick="temp" data-room="${esc(a.room_id)}" value="${target}"><em>${esc(unit)}</em></label>
           <label class="numfield"><span>${this._t("for_hours")}</span><input type="number" step="0.5" min="0.5" max="72"
             data-quick="hours" data-room="${esc(a.room_id)}" placeholder="auto"><em>${this._t("hours")}</em></label>
           ${this._btn(this._t("apply"), `data-action="quick-temp" data-room="${esc(a.room_id)}"`, {
@@ -1225,7 +1229,7 @@ class AdvancedClimateCard extends HTMLElement {
           s.attributes.min ?? 5
         }" max="${s.attributes.max ?? 30}" data-action="number" data-entity="${esc(id)}" value="${esc(
           s.state
-        )}"><em>°C</em></label>`;
+        )}"><em>${esc(s.attributes.unit_of_measurement || "°C")}</em></label>`;
       })
       .join("");
     return this._fold(`levels-${a.room_id}`, this._t("levels"), `<div class="grid">${rows}</div>`);
@@ -1261,7 +1265,14 @@ class AdvancedClimateCard extends HTMLElement {
     const html = `<dl class="details">
         ${dl(this._t("room_temp"), esc(this._temp(a.current_temperature)))}
         ${dl(this._t("target"), esc(this._temp(a.target_temperature)))}
-        ${rate ? dl(this._t("rate"), `${esc(num(rate.state)?.toFixed(2) ?? "–")} °C/h`) : ""}
+        ${
+          rate
+            ? dl(
+                this._t("rate"),
+                `${esc(num(rate.state)?.toFixed(2) ?? "–")} ${esc(rate.attributes.unit_of_measurement || "°C/h")}`
+              )
+            : ""
+        }
         ${runtime ? `<div>${this._runtimeButton(e.heating_runtime, "dt")}</div>` : ""}
         ${devicePreset !== null ? dl(this._t("device_preset"), esc(devicePreset)) : ""}
         ${dl(this._t("adjustments"), esc(offsets))}

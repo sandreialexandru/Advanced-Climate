@@ -45,6 +45,71 @@ def float_attr(state: State | None, attr: str) -> float | None:
         return None
 
 
+# ---------------------------------------------------------------------------
+# Temperature units. Everything is kept in °C inside the integration; values
+# are converted where they come from or go to Home Assistant and the user.
+# ---------------------------------------------------------------------------
+CELSIUS = "°C"
+FAHRENHEIT = "°F"
+
+
+def is_fahrenheit(unit: str | None) -> bool:
+    """Return True for a Fahrenheit unit."""
+    text = str(unit or "").strip().lower()
+    return text.endswith("f") or text.startswith("fahr")
+
+
+def to_celsius(value: float | None, unit: str | None) -> float | None:
+    """Convert an absolute temperature to °C."""
+    if value is None:
+        return None
+    return (value - 32.0) / 1.8 if is_fahrenheit(unit) else value
+
+
+def from_celsius(value: float | None, unit: str | None) -> float | None:
+    """Convert an absolute temperature from °C."""
+    if value is None:
+        return None
+    return value * 1.8 + 32.0 if is_fahrenheit(unit) else value
+
+
+def delta_to_celsius(value: float | None, unit: str | None) -> float | None:
+    """Convert a temperature difference to °C."""
+    if value is None:
+        return None
+    return value / 1.8 if is_fahrenheit(unit) else value
+
+
+def delta_from_celsius(value: float | None, unit: str | None) -> float | None:
+    """Convert a temperature difference from °C."""
+    if value is None:
+        return None
+    return value * 1.8 if is_fahrenheit(unit) else value
+
+
+def system_unit(hass: HomeAssistant) -> str:
+    """Temperature unit of Home Assistant (climate attributes and commands use it)."""
+    try:
+        return str(hass.config.units.temperature_unit)
+    except AttributeError:
+        return CELSIUS
+
+
+def temp_state(hass: HomeAssistant, entity_id: str | None) -> float | None:
+    """Temperature of a sensor in °C (its own unit, else the system unit)."""
+    value = float_state(hass, entity_id)
+    if value is None:
+        return None
+    state = hass.states.get(entity_id)  # type: ignore[arg-type]
+    unit = state.attributes.get("unit_of_measurement") if state else None
+    return to_celsius(value, unit or system_unit(hass))
+
+
+def climate_temp(hass: HomeAssistant, state: State | None, attr: str) -> float | None:
+    """Temperature attribute of a climate entity in °C (climate uses the system unit)."""
+    return to_celsius(float_attr(state, attr), system_unit(hass))
+
+
 def aggregate(values: list[float], method: str) -> float | None:
     """Aggregate temperatures."""
     if not values:

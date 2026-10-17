@@ -60,6 +60,20 @@ KIND_NONE = "none"  # do not send any command
 MAX_TOTAL_OFFSET = 3.0
 
 
+def fmt_temp(value: float, unit: str = "°C") -> str:
+    """A temperature (kept in °C) as text in the unit of the house."""
+    if str(unit).strip().lower().endswith("f"):
+        return f"{value * 1.8 + 32:.1f} °F"
+    return f"{value:.1f} °C"
+
+
+def fmt_delta(value: float, unit: str = "°C") -> str:
+    """A temperature difference (kept in °C) as text in the unit of the house."""
+    if str(unit).strip().lower().endswith("f"):
+        value *= 1.8
+    return f"{value:+.1f}"
+
+
 @dataclass(slots=True)
 class Target:
     """What the room should be set to."""
@@ -72,13 +86,13 @@ class Target:
         """Serialize."""
         return {"kind": self.kind, "preset": self.preset, "temperature": self.temperature}
 
-    def describe(self) -> str:
+    def describe(self, unit: str = "°C") -> str:
         """Short text form."""
         if self.kind == KIND_PRESET:
             return f"preset {self.preset}"
         if self.kind == KIND_TEMPERATURE:
             label = f" ({self.preset})" if self.preset else ""
-            return f"{self.temperature:.1f} °C{label}"
+            return f"{fmt_temp(self.temperature or 0.0, unit)}{label}"
         if self.kind == KIND_OFF:
             return "off"
         return "no command"
@@ -113,6 +127,7 @@ class RoomInputs:
     offsets: list[tuple[str, float]] = field(default_factory=list)
     supports_off: bool = True
     exercise_temp: float | None = None
+    unit: str = "°C"  # only for the texts; every value is in °C
 
 
 @dataclass(slots=True)
@@ -258,7 +273,7 @@ def decide(inputs: RoomInputs) -> Decision:
         decision = Decision(
             RULE_CUTOFF,
             _off(inputs),
-            f"Warm outside: heating off (would be {target.describe()})",
+            f"Warm outside: heating off (would be {target.describe(inputs.unit)})",
         )
         target = decision.target
     elif adjustable and _heating(target) and inputs.offsets:
@@ -276,7 +291,9 @@ def decide(inputs: RoomInputs) -> Decision:
                     preset=target.preset,
                     temperature=round(base + total, 1),
                 )
-                labels = ", ".join(f"{label} {delta:+.1f}" for label, delta in inputs.offsets)
+                labels = ", ".join(
+                    f"{label} {fmt_delta(delta, inputs.unit)}" for label, delta in inputs.offsets
+                )
                 decision = Decision(
                     decision.rule,
                     target,
@@ -300,7 +317,7 @@ def apply_safety(decision: Decision, inputs: RoomInputs) -> Decision:
             decision = Decision(
                 decision.rule,
                 target,
-                f"{decision.description} (limited to {clamped:.1f} °C)",
+                f"{decision.description} (limited to {fmt_temp(clamped, inputs.unit)})",
                 decision.offsets,
             )
         return decision
@@ -310,7 +327,7 @@ def apply_safety(decision: Decision, inputs: RoomInputs) -> Decision:
             return Decision(
                 RULE_SAFETY,
                 Target(KIND_TEMPERATURE, preset=target.preset, temperature=frost),
-                f"Frost protection ({target.preset} is below {frost:.1f} °C)",
+                f"Frost protection ({target.preset} is below {fmt_temp(frost, inputs.unit)})",
             )
         return decision
     # Off or no command: protect against frost.
@@ -318,7 +335,8 @@ def apply_safety(decision: Decision, inputs: RoomInputs) -> Decision:
         return Decision(
             RULE_SAFETY,
             Target(KIND_TEMPERATURE, temperature=frost),
-            f"Frost protection: {inputs.current_temp:.1f} °C is below {frost:.1f} °C",
+            f"Frost protection: {fmt_temp(inputs.current_temp, inputs.unit)} is below "
+            f"{fmt_temp(frost, inputs.unit)}",
         )
     return decision
 

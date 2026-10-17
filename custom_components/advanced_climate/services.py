@@ -15,6 +15,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import CONF_SCHEDULE, DOMAIN, PRESETS, SCHEDULE_INTERNAL, CONF_SCHEDULE_SOURCE
 from .engine import KIND_PRESET, KIND_TEMPERATURE, Target
+from .util import to_celsius
 from .schedule import ScheduleError, format_schedule, parse_schedule, profiles_from_dict
 
 if TYPE_CHECKING:
@@ -155,7 +156,9 @@ def async_setup_services(hass: HomeAssistant) -> None:
                     )
                 target = Target(KIND_PRESET, preset=role)
             else:
-                target = Target(KIND_TEMPERATURE, temperature=float(temperature))
+                # Given in the unit of the house; kept in °C.
+                celsius = to_celsius(float(temperature), room.house.unit)
+                target = Target(KIND_TEMPERATURE, temperature=round(float(celsius), 2))
             await room.async_apply_manual(target, call.data.get(ATTR_HOURS))
             await room.house.async_evaluate_or_notify()
 
