@@ -558,5 +558,8 @@ async def test_rounded_down_to_the_step_at_the_maximum(
     await hass.services.async_call(DOMAIN, "reevaluate", {}, blocking=True)
     await hass.async_block_till_done()
     assert calls[-1].data["temperature"] == 24.5  # 24.8 would become 25.0 on the TRV
+    # The valve exercise is meant to go above the maximum: sent as it is.
+    state = hass.states.get("climate.trv")
+    assert room._device_value(state, 30.0) == 30.0  # noqa: SLF001
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()

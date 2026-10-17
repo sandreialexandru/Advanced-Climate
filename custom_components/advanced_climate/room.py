@@ -1411,16 +1411,18 @@ class Room:
     def _device_value(self, state: State, temperature: float) -> float:
         """Temperature to send, in the unit of the thermostat.
 
-        A thermostat rounds to its own step; where that would go above the
-        maximum of the house, the value is rounded down to the step instead, so
-        the thermostat never holds more than the maximum.
+        A thermostat rounds to its own step; where that would take a value
+        within the maximum of the house above it, the value is rounded down to
+        the step instead, so the thermostat never holds more than the maximum.
+        A value meant to be above the maximum (the valve exercise) is sent as
+        it is.
         """
         unit = system_unit(self.hass)
         value = round(float(from_celsius(temperature, unit)), 1)
         step = float_attr(state, "target_temp_step")
         if step:
             maximum = float(from_celsius(self.max_temp(), unit))
-            if round(value / step) * step > maximum + 1e-9:
+            if value <= maximum + 1e-9 < round(value / step) * step:
                 value = round(math.floor(maximum / step + 1e-9) * step, 2)
         return value
 
