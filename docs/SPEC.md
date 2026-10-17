@@ -18,7 +18,7 @@ fits. Rooms heated by other thermostats, TRVs or plain relays are supported too.
 - **A fixed and explicit rule hierarchy** (section 13), so two rules never fight.
 - **Every decision has a visible reason**: the *Decision* sensor of the room
   shows the winning rule and a text explaining it.
-- **State survives restarts**: overrides, vacation, learned heating rates.
+- **State survives restarts**: overrides, vacation, learned heating and cooling.
 - **Safe defaults**: without extra configuration the integration can neither let
   the house freeze nor overheat it.
 - **Advanced options are optional** and stay off until enabled.
@@ -31,10 +31,12 @@ entry for the **house** (people, zones, global mode, shared settings) and one
 
 | Option | Default | Description |
 | --- | --- | --- |
+| Temperature unit | unit of Home Assistant | °C or °F per house, chosen first at setup and changed with *Reconfigure* (the values are converted). Inside, everything is kept in °C; each device is read and commanded in its own unit, so the house unit may differ from the one of Home Assistant |
 | Heated by | Generic Thermostat | Generic Thermostat, other `climate` entities (TRVs, thermostats) or `switch` / `input_boolean` relays |
 | Command (other thermostats) | temperature | Temperature / preset / on-off via `hvac_mode` |
 | External temperature sensors | none | Used instead of the device sensor; several sensors → mean, minimum or median |
-| TRV calibration | off | Offset calculated from the external sensor, or the external temperature written to the TRV input |
+| TRV calibration | off | Offset calculated from the external sensor, or the external temperature written to the TRV input (in the unit of the TRV entity) |
+| Thermostat tolerance | GT: cold tolerance; relays: hysteresis; others: 0 | How far below the target the thermostat lets the room fall before heating; heating episodes are learned from this far below the target |
 | Boiler | none | Switched on when enough rooms ask for heat (with minimum on/off times) |
 | Rooms needed | 1 | Number of rooms that must ask for heat to start the boiler |
 | Reference room | none | Only this room decides for the boiler |
@@ -93,9 +95,12 @@ home_office: 00:00 sleep, 07:00 comfort, 23:00 sleep
 | Workdays | Workday integration | Holidays come from the Workday integration (including future days) |
 | Calendar | none | An event titled with a profile name selects that profile; a preset name selects that level |
 | Schedule source | internal | Internal schedule or an existing HA **Schedule helper** |
-| Optimal start | off | Start heating early so the next level is reached on time; once started it continues until the change (other rules can override it) |
-| Learned heating rate | on with optimal start | °C/h per room, a straight line of the outdoor temperature from the last 30 heating episodes; episodes with an open window sensor are not used |
-| Maximum early start | 2 h | Limit of the optimal start |
+| Optimal start | off | Start heating early so the next level is reached on time |
+| Learned heating rate | on with optimal start | °C/h per room, a straight line of the outdoor temperature from the last 30 heating episodes (with fewer than 3 episodes or outdoor temperatures less than 3 °C apart: their average). An episode starts at least the thermostat tolerance below the target and is used when the heat demand lasted at least 10 minutes and the temperature rose, however little; episodes with an open window sensor are not used. No minimum or maximum rate; until the first episode 1 °C/h |
+| Maximum early start | 2 h | Limit of the optimal start. Once started, the optimal start continues until the change (the other rules can still override it) |
+| Learned cooling | on with optimal stop | One coefficient per room of the inside / outside difference (mean of the last 30 episodes). An episode lasts from the end to the start of the heat demand and is used when it lasted at least 10 minutes and the temperature fell, however little; episodes with an open window sensor are not used |
+| Optimal stop tolerance | GT: cold tolerance; relays: hysteresis; others: 0 | The comfort kept by the optimal stop: how far below the current level the room may fall before the change |
+| Maximum early stop | 30 min | Limit of the optimal stop; until the cooling is learned the lower level starts this early |
 | Optimal stop | off | Lower the level as early as the room can cool and stay in the comfort of the current level (tolerance: GT cold tolerance, relay hysteresis or a room setting); the cooling is learned from periods without heat demand, as a coefficient of the inside / outside difference; limited by a maximum; continues once started, cancelled (current level until the change) if the room falls below the comfort |
 | Day boundary | 00:00 | For night shifts: when the schedule day changes |
 
@@ -174,7 +179,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | Mode | What it does | Options |
 | --- | --- | --- |
 | Auto | Schedule + presence + every rule | – |
-| Vacation | `away` in every room | Start and end dates (only an end: from now), preheat X hours before the end (default 4 h; the schedule applies even while everyone is far), automatic vacation after Y hours far away |
+| Vacation | `away` in every room | Start and end dates (only an end: from now), preheat X hours before the end (default 4 h; the schedule applies even while everyone is far), automatic vacation after Y hours far away (the preheating before the end of a planned vacation wins over it) |
 | Off | Frost protection only (`min_temp` of GT) | – |
 | Summer | Heating off | Automatic switch with the season (section 6) |
 
@@ -205,8 +210,11 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 
 | Entity / interface | Shows |
 | --- | --- |
-| `sensor.<room>_decision` | Winning rule (enum) + reason, preset, schedule, next change |
-| `sensor.<room>_target_temperature` | Target temperature |
+| `sensor.<room>_decision` | Winning rule (enum) + reason, preset, schedule, next change, plan, time to the target, expected temperature at the change during an optimal stop, whether an optimal stop was cancelled |
+| `sensor.<room>_target_temperature`, `sensor.<room>_room_temperature` | Target and room temperature, in the unit of the house |
+| `sensor.<room>_heating_rate` | Learned heating rate for the current outdoor temperature (estimates, episodes) |
+| `sensor.<room>_cooling_rate` | How fast the room falls now without heating (coefficient, episodes, tolerance) |
+| `sensor.<room>_heating_runtime`, `sensor.<house>_heating_runtime` | Total heating time (total increasing) |
 | `sensor.<room>_next_change` | Next scheduled change |
 | `binary_sensor.<room>_heat_demand` | Whether the room asks for heat |
 | `sensor.<house>_presence` | home / nearby / far |
@@ -214,7 +222,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | `number.*`, `button.*`, `switch.*` | Levels, clear overrides, guest mode, pause, child lock |
 | Services | `set_override`, `clear_override`, `set_vacation`, `reevaluate`, `set_schedule` |
 | Events | `advanced_climate_decision_changed` with room, old and new target and reason |
-| Lovelace card | Editable schedule, room state and decision |
+| Lovelace card | Room state and decision; 24 h chart (temperature, target, heating) with the next 12 h planned and zoom to the minute; schedule editable by dragging (5 minutes), copy of a day; time to the target or, during an optimal stop, the expected temperature at the change; heating time per day / week / month; compact mode |
 | Diagnostics | Configuration and the last 100 decisions |
 
 ## 13. Rule hierarchy
@@ -253,6 +261,10 @@ winning rule.
 | Sezon de încălzire | heating season |
 | Prag de oprire (temperatură exterioară) | outdoor cutoff |
 | Câștig solar | solar gain |
+| Viteză de încălzire / răcire | heating rate / cooling rate |
+| Toleranța termostatului | thermostat tolerance |
+| Toleranța opririi anticipate | optimal stop tolerance |
+| Unitatea de temperatură | temperature unit |
 | Cererea către centrală | heat demand |
 | Mod oaspeți | guest mode |
 | Motiv curent | decision reason |
