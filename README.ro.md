@@ -230,7 +230,9 @@ cameră). Graficul din card arată aceste perioade.
 Senzorul *Heating rate* arată viteza pentru temperatura de afară de acum;
 atributele arată estimarea la −10 / 0 / 10 / 20 °C, numărul de episoade,
 schimbarea pe grad de afară, cât de jos sub țintă începe un episod și ultimele
-episoade. Pornirea anticipată folosește aceeași viteză.
+episoade. Pornirea anticipată folosește aceeași viteză. Cu *Rooms needed* mai
+mare decât 1, o cameră aflată în pornire anticipată așteaptă până cer căldură
+destule camere, deci poate ajunge la țintă mai târziu.
 
 Cât timp o cameră e sub țintă, cardul arată sub temperatura țintă **timpul
 până la țintă** (de exemplu *~35 min*), după viteza învățată pentru

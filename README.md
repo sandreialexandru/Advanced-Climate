@@ -218,7 +218,9 @@ at least one room heats). The chart of the card shows these periods.
 The *Heating rate* sensor shows the rate for the current outdoor temperature;
 its attributes show the estimate at −10 / 0 / 10 / 20 °C, the number of
 episodes, the change per degree outdoors, how far below the target an episode
-starts and the last episodes. Optimal start uses the same rate.
+starts and the last episodes. Optimal start uses the same rate. With *Rooms
+needed* higher than 1, a room in optimal start waits until enough rooms ask
+for heat, so it may reach its target later.
 
 While a room is below its target the card shows the **time to the target**
 (e.g. *~35 min*) under the target temperature, from the learned rate for the
