@@ -100,14 +100,23 @@ class LearningTest(unittest.TestCase):
         self.assertAlmostEqual(learner.rate(10.0), 2.0, delta=0.1)
         # Never seen -3 °C: estimated from the trend.
         self.assertAlmostEqual(learner.rate(-3.0), 0.7, delta=0.1)
-        # Far outside the seen range the line stops 5 °C beyond it.
-        self.assertAlmostEqual(learner.rate(-30.0), learner.rate(-5.0))
+        # No limits: the line is followed further out too (0.4 °C/h at -6 °C).
+        self.assertAlmostEqual(learner.rate(-6.0), 0.4, delta=0.1)
+        # Where the line reaches zero the average of the episodes is used.
+        mean = sum(r for _, r, *_ in learner.episodes) / len(learner.episodes)
+        self.assertAlmostEqual(learner.rate(-30.0), round(mean, 3))
 
-    def test_never_slower_when_warmer(self) -> None:
+    def test_learning_is_free(self) -> None:
         learner = learning.HeatingRateLearner()
+        # Slower when warmer outside is learned as measured.
         for i, (outdoor, minutes) in enumerate([(0.0, 90), (5.0, 120), (10.0, 180)]):
             self._episode(learner, self.T0 + timedelta(days=i), outdoor, minutes=minutes)
-        self.assertEqual(learner.fit()[1], 0.0)
+        self.assertLess(learner.fit()[1], 0.0)
+        # A very slow room is not raised to a minimum: 0.4 °C in 3 h.
+        slow = learning.HeatingRateLearner()
+        slow.observe(self.T0, True, 21.3, 22.0, 7.0, tolerance=0.5)
+        rate = slow.observe(self.T0 + timedelta(hours=3), False, 21.7, 22.0, 7.0, tolerance=0.5)
+        self.assertAlmostEqual(rate, 0.133, places=3)
 
     def test_restore_and_migrate(self) -> None:
         learner = learning.HeatingRateLearner()
@@ -115,6 +124,11 @@ class LearningTest(unittest.TestCase):
         again = learning.HeatingRateLearner.from_dict(learner.as_dict())
         self.assertEqual(again.episodes, learner.episodes)
         # Data of older versions is discarded.
+        # Version 2 cut the rates to 0.2 … 10 °C/h: those episodes are dropped.
+        v2 = learning.HeatingRateLearner.from_dict(
+            {"version": 2, "episodes": [[7.0, 0.2, "a"], [5.0, 0.8, "b"], [1.0, 10.0, "c"]]}
+        )
+        self.assertEqual(v2.episodes, [[5.0, 0.8, "b"]])
         old = learning.HeatingRateLearner.from_dict({"rates": {"above_10": 0.284}})
         self.assertEqual(old.episodes, [])
         self.assertEqual(old.rate(2.0), learning.DEFAULT_RATE)

@@ -173,12 +173,13 @@ episodes.
   one from another room) was open are not used. Rooms without window sensors
   use every episode.
 - The last 30 episodes are kept with the average **outdoor temperature** of
-  each. The rate is a straight line of the outdoor temperature (faster when it
-  is warmer outside, never slower), so every episode helps at every outdoor
-  temperature and a temperature not seen yet is estimated from the trend, up
-  to 5 °C beyond the coldest and warmest seen. With fewer than 3 episodes, or
-  outdoor temperatures less than 3 °C apart, the average of the episodes is
-  used.
+  each. The rate is a straight line of the outdoor temperature, so every
+  episode helps at every outdoor temperature and a temperature not seen yet is
+  estimated from the trend. The learning is free: no minimum or maximum rate
+  and no limit on how the rate changes with the outdoor temperature. Only
+  where the line would reach zero the average of the episodes is used. With
+  fewer than 3 episodes, or outdoor temperatures less than 3 °C apart, the
+  average of the episodes is used.
 - Until the first episode the rate is 1 °C/h.
 
 The *Heating rate* sensor shows the rate for the current outdoor temperature;
