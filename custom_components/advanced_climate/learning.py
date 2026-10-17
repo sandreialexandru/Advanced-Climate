@@ -22,7 +22,6 @@ DEFAULT_RATE = 1.0  # °C per hour, until the first episode
 DATA_VERSION = 3  # learning data of older versions is discarded
 # Version 2 cut the rates to 0.2 … 10 °C/h; episodes at those values are dropped.
 _V2_CLAMPED = (0.2, 10.0)
-MIN_EPISODE_MINUTES = 10
 MAX_EPISODES = 30
 # A line needs a few episodes over a real spread of outdoor temperatures.
 MIN_FIT_EPISODES = 3
@@ -133,9 +132,9 @@ class HeatingRateLearner:
         self.episode_temp = None
         self.episode_outdoor = []
         self.episode_disturbed = False
-        # Any rise counts, a slow one too (it may show a problem, but it is real).
-        # Without a rise there is no rate to measure.
-        if disturbed or minutes < MIN_EPISODE_MINUTES or rise <= 0:
+        # Any rise and any duration count, a slow rise too (it may show a
+        # problem, but it is real). Without a rise there is no rate to measure.
+        if disturbed or minutes <= 0 or rise <= 0:
             return None
         measured = round(rise / (minutes / 60), 3)
         mean_outdoor = (
