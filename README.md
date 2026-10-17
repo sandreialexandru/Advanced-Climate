@@ -221,7 +221,8 @@ season only, see above):
   do is in the measured coefficient of that house.
 
 **Optimal stop** needs an outdoor temperature (sensor or weather entity of the
-house; without one the option is not shown). It lowers the level before the next colder one as early as the
+house; without one the option is not shown and no optimal stop is made, and
+the outdoor values saved before are dropped). It lowers the level before the next colder one as early as the
 room can cool and still stay in the comfort of the current level at the
 scheduled time. The comfort is the *tolerance*: the *cold tolerance* of Generic
 Thermostat, the *hysteresis* for relays and on / off control, and the

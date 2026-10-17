@@ -984,7 +984,7 @@ class Room:
             )
             self._stop_cancelled_for = state.next_change if self.stop_cancelled else None
             # The optimal stop needs the outdoor temperature (sensor or weather).
-            outdoor_known = house.outdoor.latest() is not None
+            outdoor_known = house.outdoor_configured and house.outdoor.latest() is not None
             preset, schedule_rule = optimal_schedule(
                 now,
                 state.preset,
