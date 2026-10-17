@@ -20,6 +20,19 @@ class OutdoorTest(unittest.TestCase):
         self.assertAlmostEqual(tracker.average(t0 + timedelta(hours=6), 6), 15.0)
         self.assertAlmostEqual(tracker.average(t0 + timedelta(hours=6), 3), 20.0)
 
+    def test_unknown_after_the_window(self) -> None:
+        # No new value for the averaging window: the outdoor temperature is unknown.
+        tracker = outdoor.OutdoorTracker(max_age=timedelta(hours=6))
+        t0 = datetime(2026, 10, 12, 0, tzinfo=TZ)
+        tracker.add(t0, 10.0)
+        self.assertEqual(tracker.latest(t0 + timedelta(hours=6)), 10.0)
+        self.assertEqual(tracker.average(t0 + timedelta(hours=6), 6), 10.0)
+        self.assertIsNone(tracker.latest(t0 + timedelta(hours=7)))
+        self.assertIsNone(tracker.average(t0 + timedelta(hours=7), 6))
+        # A short gap is no problem.
+        tracker.add(t0 + timedelta(hours=7), 12.0)
+        self.assertEqual(tracker.latest(t0 + timedelta(hours=8)), 12.0)
+
     def test_cutoff_hysteresis(self) -> None:
         tracker = outdoor.OutdoorTracker()
         self.assertFalse(tracker.update_cutoff(17.5, 18, 1))

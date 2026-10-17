@@ -30,7 +30,9 @@ other thermostats or plain relays are supported as well.
   the room is warm early; the rules above the schedule can still override it.
 - **Windows**: open/close delays, frost protection or off, detection from a
   sudden temperature drop, windows of neighbouring rooms, alerts.
-- **Weather**: outdoor cutoff with averaging and hysteresis, heating season
+- **Weather**: outdoor cutoff with averaging and hysteresis (the averaging time
+  is also how long an outdoor value stays valid when the sensor or weather is
+  unavailable; after it the outdoor temperature is unknown), heating season
   (dates or automatic), outdoor compensation, forecast, solar gain per room (needs the weather
   entity of the house; the setting is shown only when one is set).
 - **Manual changes**: detected automatically and kept for a fixed time or until
