@@ -589,6 +589,9 @@ class Room:
         return matched
 
     def _handle_manual_change(self, entity_id: str, new: State | None) -> None:
+        # From now on the device shows a person's values, not ours: if the person
+        # later sets the value we sent before, that is a manual change too.
+        self._sent.pop(entity_id, None)
         if self.house.paused:
             return
         if self.child_lock and self.decision is not None:

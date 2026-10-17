@@ -586,7 +586,13 @@ class House:
     def vacation_active(self, now: datetime | None = None) -> bool:
         """Return True when the vacation level applies."""
         now = now or dt_util.now()
-        if self.mode == MODE_VACATION or self.auto_vacation:
+        if self.mode == MODE_VACATION:
+            return True
+        # The preheating before the end of a planned vacation wins over the
+        # automatic vacation (everyone has been far away for a long time).
+        if self.vacation_preheating(now):
+            return False
+        if self.auto_vacation:
             return True
         if self.vacation_start is None and self.vacation_end is None:
             return False
@@ -599,7 +605,7 @@ class House:
     def vacation_preheating(self, now: datetime | None = None) -> bool:
         """The last hours before the end of a vacation: the schedule applies again."""
         now = now or dt_util.now()
-        if self.mode == MODE_VACATION or self.auto_vacation or self.vacation_end is None:
+        if self.mode == MODE_VACATION or self.vacation_end is None:
             return False
         resume = self._vacation_resume()
         started = self.vacation_start is None or now >= self.vacation_start
