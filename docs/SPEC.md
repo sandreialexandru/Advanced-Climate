@@ -218,7 +218,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 
 | Entity / interface | Shows |
 | --- | --- |
-| `sensor.<room>_decision` | Winning rule (enum) + reason, preset, schedule, next change, plan, time to the target, expected temperature at the change during an optimal stop, whether an optimal stop was cancelled, the next optimal start / stop (`next_estimate`: kind, change, preset, minutes, start, outdoor temperature and its source, learned) |
+| `sensor.<room>_decision` | Winning rule (enum) + reason, preset, schedule, next change, plan, time to the target, expected temperature at the change during an optimal stop, whether an optimal stop was cancelled, the next optimal start / stop (`next_estimate`: kind, change, preset, sent as preset or temperature, level temperature, minutes, start, outdoor temperature and its source, learned) |
 | `sensor.<room>_target_temperature`, `sensor.<room>_room_temperature` | Target and room temperature, in the unit of the house |
 | `sensor.<room>_heating_rate` | Learned heating rate for the current outdoor temperature (estimates, episodes) |
 | `sensor.<room>_cooling_rate` | How fast the room falls now without heating (coefficient, episodes, tolerance) |
@@ -230,7 +230,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | `number.*`, `button.*`, `switch.*` | Levels, clear overrides, guest mode, pause, child lock |
 | Services | `set_override`, `clear_override`, `set_vacation`, `reevaluate`, `set_schedule` |
 | Events | `advanced_climate_decision_changed` with room, old and new target and reason |
-| Lovelace card | Room state and decision; 24 h chart (temperature, target, heating) with the next 12 h planned and zoom to the minute; schedule editable by dragging (5 minutes), copy of a day; time to the target or, during an optimal stop, the expected temperature at the change; the next optimal start / stop in the room details; heating time per day / week / month; compact mode |
+| Lovelace card | Room state and decision; 24 h chart (temperature, target, heating) with the next 12 h planned and zoom to the minute; schedule editable by dragging (5 minutes), copy of a day; time to the target or, during an optimal stop, the expected temperature at the change; the next optimal start / stop in the room details; chart with a degree grid, the target as a step line and the heating in its own lane; heating time per day / week / month; compact mode |
 | Diagnostics | Configuration and the last 100 decisions |
 
 ## 12. Rule hierarchy

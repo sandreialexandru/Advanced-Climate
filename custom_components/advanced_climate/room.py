@@ -1413,6 +1413,16 @@ class Room:
         if sent and self.house.options[CONF_VERIFY_COMMANDS]:
             self._schedule_verify(target)
 
+    def sends_preset(self, preset: str) -> bool:
+        """The level is sent to the device as a preset (else as a temperature)."""
+        if self.source == SOURCE_GT:
+            return True
+        if self.source != SOURCE_CLIMATE or self.command_mode != COMMAND_PRESET:
+            return False
+        if self.preset_map is None:
+            return False
+        return bool(self.preset_map.get(preset)) or self._legacy_map
+
     def _device_preset(self, preset: str, available: list[str]) -> str | None:
         """Map a level to the device preset name."""
         if self.source == SOURCE_GT:

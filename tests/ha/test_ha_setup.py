@@ -603,6 +603,9 @@ async def test_optimal_stop_and_start_with_the_forecast(
     estimate = hass.states.get("sensor.bedroom_decision").attributes["next_estimate"]
     assert estimate["kind"] == "optimal_stop"
     assert estimate["preset"] == "sleep"
+    # A relay room: the level is a temperature.
+    assert estimate["sent_as"] == "temperature"
+    assert estimate["temperature"] == 18.0
     assert estimate["minutes"] == 30
     assert estimate["outdoor"] == -3.0
     assert estimate["outdoor_source"] == "forecast"

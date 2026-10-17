@@ -416,6 +416,8 @@ def _estimate(room: Room, unit: str) -> dict[str, Any] | None:
         "kind": estimate["kind"],
         "at": iso(change),
         "preset": estimate["preset"],
+        "sent_as": "preset" if room.sends_preset(estimate["preset"]) else "temperature",
+        "temperature": _t(room.level_temp(estimate["preset"]), unit, 1),
         "minutes": round(estimate["minutes"]),
         "starts_at": iso(change - timedelta(minutes=estimate["minutes"])),
         "started_at": iso(started) if started else None,

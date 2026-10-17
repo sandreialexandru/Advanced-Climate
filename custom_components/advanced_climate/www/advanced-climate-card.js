@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.11.1";
+const CARD_VERSION = "1.11.2";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -146,8 +146,10 @@ const TEXT = {
     stop_at: "~{temp} at {time}",
     stop_help: "Optimal stop: expected room temperature at the scheduled change, from the learned cooling and the outdoor temperature expected until then.",
     est_label: "Optimal start / stop",
-    est_start: "Start for {preset} at {time}",
-    est_stop: "Stop for {preset} at {time}",
+    est_start: "Start for {target} at {time}",
+    est_stop: "Stop for {target} at {time}",
+    est_preset: "preset {preset}",
+    est_temperature: "temperature {temp}",
     est_begins: "begins ~{time}",
     est_running: "running since {time}",
     est_not_needed: "not needed",
@@ -257,8 +259,10 @@ const TEXT = {
     stop_at: "~{temp} la {time}",
     stop_help: "Oprire anticipată: temperatura estimată a camerei la schimbarea din program, după răcirea învățată și temperatura de afară prognozată până atunci.",
     est_label: "Pornire / oprire anticipată",
-    est_start: "Pornire spre {preset} la {time}",
-    est_stop: "Oprire spre {preset} la {time}",
+    est_start: "Pornire pentru {target} la {time}",
+    est_stop: "Oprire pentru {target} la {time}",
+    est_preset: "presetul {preset}",
+    est_temperature: "temperatura {temp}",
     est_begins: "începe pe la {time}",
     est_running: "în curs din {time}",
     est_not_needed: "nu e nevoie",
@@ -612,8 +616,15 @@ class AdvancedClimateCard extends HTMLElement {
   _estimate(a) {
     const est = a.next_estimate;
     if (!est) return "";
+    const level = num(est.temperature);
+    const target =
+      est.sent_as === "temperature" && level !== null
+        ? this._t("est_temperature").replace("{temp}", this._temp(level))
+        : `${this._t("est_preset").replace("{preset}", this._presetName(a, est.preset))}${
+            level !== null ? ` (${this._temp(level)})` : ""
+          }`;
     const head = this._t(est.kind === "optimal_start" ? "est_start" : "est_stop")
-      .replace("{preset}", this._presetName(a, est.preset))
+      .replace("{target}", target)
       .replace("{time}", this._fmtTime(est.at));
     let when;
     if (est.started_at) when = this._t("est_running").replace("{time}", this._fmtTime(est.started_at));
@@ -1092,32 +1103,36 @@ class AdvancedClimateCard extends HTMLElement {
     }
     const W = 1000;
     const H = 100;
-    const TOP = 8;
-    const BOTTOM = H - 6;
+    const TOP = 6;
+    // The plot ends above a separate lane for the heating periods.
+    const LANE = 7;
+    const BOTTOM = H - LANE - 4;
     const x = (t) => ((t - view.v0) / (view.v1 - view.v0)) * W;
     const y = (v) => BOTTOM - ((v - d.lo) / (d.hi - d.lo)) * (BOTTOM - TOP);
     const pct = (t) => (x(t) / W) * 100;
     const gid = `g-${String(a.room_id).replace(/[^a-z0-9]/gi, "")}`;
     const nowX = x(d.now);
 
-    const grid = [d.lo, (d.lo + d.hi) / 2, d.hi]
+    const range = d.hi - d.lo;
+    const gstep = range > 8 ? 2 : range > 3 ? 1 : 0.5;
+    const gridValues = [];
+    for (let v = Math.ceil(d.lo / gstep) * gstep; v <= d.hi + 1e-9; v += gstep) gridValues.push(+v.toFixed(1));
+    const grid = gridValues
       .map((v) => `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" class="grid"></line>`)
       .join("");
-    const heat = d.heat
+    const heat = `<rect x="0" y="${H - LANE}" width="${W}" height="${LANE}" class="heatlane"></rect>${d.heat
       .map(
-        ([s, e]) => `<rect x="${x(s)}" y="0" width="${Math.max(1.5, x(e) - x(s))}" height="${H}" class="heatband"></rect>
-          <rect x="${x(s)}" y="${H - 3}" width="${Math.max(1.5, x(e) - x(s))}" height="3" class="heatbar"></rect>`
+        ([s, e]) =>
+          `<rect x="${x(s)}" y="${H - LANE}" width="${Math.max(2, x(e) - x(s))}" height="${LANE}" class="heatbar"></rect>`
       )
-      .join("");
+      .join("")}`;
     const segs = d.segs
       .map((sg) => {
         const c = PRESET_COLORS[sg.preset] || "var(--ac-accent)";
         const x0 = x(sg.s);
         const x1 = x(sg.e);
         const yy = y(sg.v);
-        return `<rect x="${x0}" y="${yy}" width="${Math.max(0, x1 - x0)}" height="${H - yy}" fill="${c}"
-            class="tarea ${sg.future ? "future" : ""}"></rect>
-          <line x1="${x0}" x2="${x1}" y1="${yy}" y2="${yy}" stroke="${c}" class="tline ${sg.future ? "future" : ""}"></line>`;
+        return `<line x1="${x0}" x2="${x1}" y1="${yy}" y2="${yy}" stroke="${c}" class="tline ${sg.future ? "future" : ""}"></line>`;
       })
       .join("");
     const steps = d.segs
@@ -1132,28 +1147,34 @@ class AdvancedClimateCard extends HTMLElement {
     if (d.temp.length > 1) {
       const pts = d.temp.map(([t, v]) => `${x(Math.max(t, d.t0)).toFixed(1)} ${y(v).toFixed(1)}`);
       tempPath = `M${pts.join(" L")}`;
-      tempArea = `${tempPath} L${x(d.temp[d.temp.length - 1][0]).toFixed(1)} ${H} L${x(
+      tempArea = `${tempPath} L${x(d.temp[d.temp.length - 1][0]).toFixed(1)} ${BOTTOM} L${x(
         Math.max(d.temp[0][0], d.t0)
-      ).toFixed(1)} ${H} Z`;
+      ).toFixed(1)} ${BOTTOM} Z`;
     }
     const last = d.temp.length ? d.temp[d.temp.length - 1] : null;
 
     // Labels of the levels (HTML, so the text is not stretched).
     const visible = (sg) => [Math.max(0, x(sg.s)), Math.min(W, x(sg.e))];
+    // A label for each level wide enough, not over another label.
+    const placed = [];
     const labels = d.segs
       .filter((sg) => {
         const [xs, xe] = visible(sg);
-        return xe - xs >= 85;
+        const yy = y(sg.v);
+        if (xe - xs < 110 || placed.some(([lx, ly]) => Math.abs(xs - lx) < 190 && Math.abs(yy - ly) < 14)) {
+          return false;
+        }
+        placed.push([xs, yy]);
+        return true;
       })
       .map((sg) => {
-        const [xs, xe] = visible(sg);
-        const mid = Math.min(0.92, Math.max(0.08, (xs + xe) / 2 / W));
-        return `<span class="lvl ${sg.future ? "future" : ""}" style="left:${mid * 100}%;top:${
+        const [xs] = visible(sg);
+        return `<span class="lvl ${sg.future ? "future" : ""}" style="left:${(xs / W) * 100}%;top:${
           (y(sg.v) / H) * 100
-        }%">${esc(this._presetName(a, sg.preset) || "")} ${sg.v}°</span>`;
+        }%;--c:${PRESET_COLORS[sg.preset] || "var(--ac-accent)"}">${esc(this._presetName(a, sg.preset) || "")} ${sg.v}°</span>`;
       })
       .join("");
-    const yLabels = [d.lo, d.hi]
+    const yLabels = gridValues
       .map((v) => `<span style="top:${(y(v) / H) * 100}%">${v}°</span>`)
       .join("");
 
@@ -1202,14 +1223,14 @@ class AdvancedClimateCard extends HTMLElement {
         <div class="hchart ${view.zoomed ? "zoomed" : ""}" data-chart="${esc(a.room_id)}">
           <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(this._t("chart_label"))}">
             <defs><linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0" stop-color="var(--ac-accent)" stop-opacity="0.22"></stop>
+              <stop offset="0" stop-color="var(--ac-accent)" stop-opacity="0.14"></stop>
               <stop offset="1" stop-color="var(--ac-accent)" stop-opacity="0"></stop>
             </linearGradient></defs>
-            <rect x="${Math.min(W, Math.max(0, nowX))}" y="0" width="${W - Math.min(W, Math.max(0, nowX))}" height="${H}" class="futurebg"></rect>
+            <rect x="${Math.min(W, Math.max(0, nowX))}" y="0" width="${W - Math.min(W, Math.max(0, nowX))}" height="${BOTTOM}" class="futurebg"></rect>
             ${grid}${heat}${segs}${steps}
             ${tempArea ? `<path d="${tempArea}" fill="url(#${gid})" class="tempfill"></path>` : ""}
             ${tempPath ? `<path d="${tempPath}" class="templine"></path>` : ""}
-            <line x1="${nowX}" x2="${nowX}" y1="0" y2="${H}" class="now"></line>
+            <line x1="${nowX}" x2="${nowX}" y1="0" y2="${BOTTOM}" class="now"></line>
           </svg>
           <div class="overlay">
             ${labels}
@@ -2140,7 +2161,7 @@ const STYLE = `
   .reason { margin: 0; color: var(--ac-muted); font-size: 0.9em; }
   .chart-card { border-radius: 14px; background: var(--ac-surface); padding: 12px 12px 10px;
     box-shadow: inset 0 0 0 1px var(--ac-line); display: flex; flex-direction: column; gap: 4px; }
-  .hchart { position: relative; height: 150px; touch-action: pan-y; cursor: crosshair; user-select: none; }
+  .hchart { position: relative; height: 170px; margin-left: 32px; touch-action: pan-y; cursor: crosshair; user-select: none; }
   .hchart svg { width: 100%; height: 100%; display: block; overflow: hidden; }
   .hchart.zoomed { cursor: grab; }
   .hchart.zoomed:active { cursor: grabbing; }
@@ -2152,32 +2173,31 @@ const STYLE = `
   .zbtn:hover { background: var(--card-background-color); }
   .zbtn.active { background: var(--card-background-color); color: var(--ac-accent); font-weight: 600;
     box-shadow: 0 1px 2px rgba(0,0,0,.15); }
-  .hchart .grid { stroke: var(--ac-line); stroke-width: 1; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; }
-  .hchart .futurebg { fill: var(--primary-text-color); opacity: 0.035; }
-  .hchart .heatband { fill: var(--ac-hot); opacity: 0.09; }
-  .hchart .heatbar { fill: var(--ac-hot); opacity: 0.85; }
-  .hchart .tarea { opacity: 0.11; }
-  .hchart .tarea.future { opacity: 0.06; }
+  .hchart .grid { stroke: var(--ac-line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .hchart .futurebg { fill: var(--primary-text-color); opacity: 0.03; }
+  .hchart .heatlane { fill: var(--primary-text-color); opacity: 0.05; }
+  .hchart .heatbar { fill: var(--ac-hot); opacity: 0.9; }
   .hchart .tline { stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-linecap: round; }
-  .hchart .tline.future { stroke-dasharray: 5 4; opacity: 0.8; }
-  .hchart .tstep { stroke: var(--primary-text-color); opacity: 0.18; stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .hchart .tline.future { stroke-dasharray: 6 5; opacity: 0.75; }
+  .hchart .tstep { stroke: var(--primary-text-color); opacity: 0.25; stroke-width: 1; stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; }
   .hchart .templine { fill: none; stroke: var(--ac-accent); stroke-width: 2.25; vector-effect: non-scaling-stroke;
     stroke-linejoin: round; stroke-linecap: round; }
   .hchart .now { stroke: var(--primary-text-color); stroke-width: 1.25; opacity: 0.55; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
   .overlay { position: absolute; inset: 0; pointer-events: none; }
-  .overlay .lvl { position: absolute; transform: translate(-50%, calc(-100% - 3px)); font-size: 0.72em; white-space: nowrap;
-    padding: 1px 6px; border-radius: 6px; background: color-mix(in srgb, var(--card-background-color) 75%, transparent);
-    color: var(--primary-text-color); }
+  .overlay .lvl { position: absolute; transform: translate(4px, calc(-100% - 4px)); font-size: 0.7em; white-space: nowrap;
+    padding: 1px 6px; border-radius: 6px; background: color-mix(in srgb, var(--card-background-color) 88%, transparent);
+    color: var(--primary-text-color); display: inline-flex; align-items: center; gap: 5px; }
+  .overlay .lvl::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
   .overlay .lvl.future { color: var(--ac-muted); }
-  .ylabels span { position: absolute; right: 0; transform: translateY(-50%); font-size: 0.68em; color: var(--ac-muted);
-    font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--card-background-color) 70%, transparent);
-    padding: 0 3px; border-radius: 4px; }
+  .ylabels span { position: absolute; right: calc(100% + 6px); transform: translateY(-50%); font-size: 0.68em;
+    color: var(--ac-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .nowlabel { position: absolute; top: -2px; transform: translate(-50%, -100%); font-size: 0.65em; color: var(--ac-muted);
     text-transform: uppercase; letter-spacing: 0.06em; }
   .nowdot { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: var(--ac-accent);
     transform: translate(-50%, -50%); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ac-accent) 25%, transparent); }
   .cross { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid var(--primary-text-color); opacity: 0.45; }
-  .ticks { position: relative; height: 14px; font-size: 0.68em; color: var(--ac-muted); }
+  .ticks { position: relative; height: 14px; margin-left: 32px; font-size: 0.68em; color: var(--ac-muted); }
+  .cross[hidden], .tip[hidden] { display: none; }
   .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
   .readout { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 0.78em; color: var(--ac-muted);
     min-height: 20px; font-variant-numeric: tabular-nums; }

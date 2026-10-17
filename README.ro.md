@@ -300,11 +300,12 @@ citește la fiecare 30 de minute când entitatea meteo e setată și o foloseșt
 pragul de oprire după prognoză sau o cameră cu pornire / oprire anticipată.
 
 Cardul arată următoarea pornire sau oprire anticipată în *Detaliile* camerei
-(de exemplu *Pornire spre home la 07:00: începe pe la 05:10, afară prognozat
-2.4°*; *în curs din …* după ce a început; *se învață…* până se învață ceva).
+(de exemplu *Pornire pentru presetul home (21.0°) la 07:00: începe pe la 05:10, afară
+prognozat 2.4°*, sau *Pornire pentru temperatura 21.0° la …* când nivelul se trimite ca temperatură; *în curs din …* după ce a început; *se învață…* până se învață ceva).
 Senzorul *Decision* o are ca atribut `next_estimate`: `kind` (`optimal_start` /
 `optimal_stop`), `at` (schimbarea), `preset`, `minutes`, `starts_at`,
-`started_at`, `outdoor`, `outdoor_source` (`forecast` / `now`) și `learned`.
+`started_at`, `outdoor`, `outdoor_source` (`forecast` / `now`), `learned`,
+`sent_as` (`preset` / `temperature`) și `temperature` (a nivelului).
 Apare doar când opțiunea e activă pentru cameră și următoarea schimbare e mai
 caldă (pornire) sau mai rece (oprire); oprirea anticipată mai are nevoie de o
 temperatură de afară cunoscută și să nu fie anulată pentru acea schimbare.

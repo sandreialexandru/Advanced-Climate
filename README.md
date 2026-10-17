@@ -287,12 +287,12 @@ The forecast is read every 30 minutes when the weather entity is set and the
 forecast cutoff or a room with optimal start / stop uses it.
 
 The card shows the next optimal start or stop in the room *Details* (e.g.
-*Start for home at 07:00: begins ~05:10, outdoor forecast 2.4°*; *running
+*Start for preset home (21.0°) at 07:00: begins ~05:10, outdoor forecast 2.4°*, or *Start for temperature 21.0° at …* when the level is sent as a temperature; *running
 since …* once it began; *learning…* until something is learned). The
 *Decision* sensor has it as the `next_estimate` attribute: `kind`
 (`optimal_start` / `optimal_stop`), `at` (the change), `preset`, `minutes`,
-`starts_at`, `started_at`, `outdoor`, `outdoor_source` (`forecast` / `now`)
-and `learned`. It is shown only when the option is on for the room and the
+`starts_at`, `started_at`, `outdoor`, `outdoor_source` (`forecast` / `now`),
+`learned`, `sent_as` (`preset` / `temperature`) and `temperature` (of the level). It is shown only when the option is on for the room and the
 next change is warmer (start) or colder (stop); the optimal stop also needs a
 known outdoor temperature and not to be cancelled for that change.
 
