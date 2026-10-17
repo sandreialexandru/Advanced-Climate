@@ -968,11 +968,20 @@ class Room:
                 return STATE_OFF in (state.attributes.get("hvac_modes") or [])  # type: ignore[union-attr]
         return True
 
+    def _override_target(self) -> Target | None:
+        """Level or temperature of a manual change set by the card or a service."""
+        stored = (self.override or {}).get("target")
+        if not isinstance(stored, dict) or stored.get("kind") not in (KIND_TEMPERATURE, KIND_PRESET):
+            return None
+        return Target(stored["kind"], preset=stored.get("preset"), temperature=stored.get("temperature"))
+
     def _resolve_temperature(self, target: Target) -> float | None:
         if target.kind == KIND_TEMPERATURE:
             return target.temperature
         if target.kind == KIND_PRESET and target.preset:
             return self.level_temp(target.preset)
+        if target.kind == KIND_NONE and (stored := self._override_target()) is not None:
+            return self._resolve_temperature(stored)
         if target.kind == KIND_NONE:
             for entity_id in self.climates:
                 value = climate_temp(self.hass, self.hass.states.get(entity_id), ATTR_TEMPERATURE)
@@ -1065,10 +1074,15 @@ class Room:
 
     async def _async_apply(self, target: Target, *, force: bool = False) -> None:
         """Send the commands needed to reach ``target``."""
+        on_off = self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC
         if target.kind == KIND_NONE:
-            return
+            # Relays keep regulating around a manual temperature set by the card or a service.
+            stored = self._override_target() if on_off else None
+            if stored is None:
+                return
+            target = stored
         sent = False
-        if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
+        if on_off:
             sent = await self._async_apply_relay(target)
         else:
             for entity_id in self.climates:
