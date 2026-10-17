@@ -282,6 +282,12 @@ async def test_late_device_report_is_not_manual(
     await _tick(hass, freezer, 5)
     assert hass.states.get("binary_sensor.office_manual_change").state == "on"
 
+    # Back to the value the integration sent before: still a person's change.
+    hass.states.async_set("climate.trv", "heat", {**trv, "temperature": 21.0}, context=Context())
+    await _tick(hass, freezer, 5)
+    override = hass.states.get("binary_sensor.office_manual_change").attributes
+    assert override["description"] == "21.0 °C"
+
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
 
@@ -291,6 +297,8 @@ async def test_vacation_end_only_and_preheat(
 ) -> None:
     """Only an end date starts the vacation now; before the end the schedule applies."""
     entry = await _setup(hass, freezer)
+    # Automatic vacation after 1 h far away must not block the preheating.
+    entry.runtime_data.options["auto_vacation_hours"] = 1.0
     await _tick(hass, freezer, 15)
     hass.states.async_set("person.andrei", "not_home")
     await _tick(hass, freezer, 11 * 60)
@@ -308,9 +316,9 @@ async def test_vacation_end_only_and_preheat(
     assert "preheating" in decision.attributes["reason"]
     assert hass.states.get("sensor.home_presence").attributes["vacation_preheating"] is True
 
-    # After the end: presence again (far = away).
+    # After the end, still far away for hours: the automatic vacation again.
     await _tick(hass, freezer, 4 * 3600)
-    assert hass.states.get("sensor.bedroom_decision").state == "presence_far"
+    assert hass.states.get("sensor.bedroom_decision").state == "vacation"
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
