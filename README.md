@@ -190,7 +190,8 @@ episodes.
 - The **heat demand** comes from `hvac_action` (heating). Thermostats that do
   not report it count as heating from the *hysteresis* below their set
   temperature until the hysteresis above it, like a relay; the *Hysteresis*
-  setting is shown for them.
+  setting is shown for them (and for thermostats unavailable during the
+  setup, which cannot be checked).
 
 The *Heating rate* sensor shows the rate for the current outdoor temperature;
 its attributes show the estimate at −10 / 0 / 10 / 20 °C, the number of

@@ -591,10 +591,18 @@ def _on_off_schema(d: dict[str, Any], with_sensors: bool) -> vol.Schema:
 
 
 def _no_hvac_action(hass: Any, d: dict[str, Any]) -> bool:
-    """A chosen thermostat does not report whether it heats (no hvac_action)."""
+    """A chosen thermostat may not report whether it heats (no hvac_action).
+
+    Also True when a thermostat is unavailable now: it cannot be checked, so the
+    hysteresis is asked for instead of assumed.
+    """
     for entity_id in d.get(CONF_CLIMATES) or []:
         state = hass.states.get(entity_id)
-        if state is not None and "hvac_action" not in state.attributes:
+        if (
+            state is None
+            or state.state in ("unknown", "unavailable")
+            or "hvac_action" not in state.attributes
+        ):
             return True
     return False
 

@@ -37,7 +37,7 @@ entry for the **house** (people, zones, global mode, shared settings) and one
 | External temperature sensors | none | Used instead of the device sensor; several sensors → mean, minimum or median |
 | TRV calibration | off | Offset calculated from the external sensor, or the external temperature written to the TRV input (in the unit of the TRV entity) |
 | Thermostat tolerance | GT: cold tolerance; relays: hysteresis; others: 0 | How far below the target the thermostat lets the room fall before heating; heating episodes are learned from this far below the target |
-| Heat demand | `hvac_action` | Thermostats without `hvac_action` count as heating from the hysteresis below their set temperature to the hysteresis above it, like a relay |
+| Heat demand | `hvac_action` | Thermostats without `hvac_action` count as heating from the hysteresis below their set temperature to the hysteresis above it, like a relay; the hysteresis is asked for when a thermostat does not report `hvac_action` or is unavailable during the setup |
 | Boiler | none | Switched on when enough rooms ask for heat (with minimum on/off times) |
 | Rooms needed | 1 | Number of rooms that must ask for heat to start the boiler |
 | Reference room | none | Only this room decides for the boiler |
