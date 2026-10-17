@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.11.3";
+const CARD_VERSION = "1.11.4";
 
 // A target that is only a temperature (no level): neutral.
 const TEMP_COLOR = "var(--ac-fixed)";
@@ -162,6 +162,7 @@ const TEXT = {
     zoom_reset: "Whole period",
     zoom_1h: "Last hour",
     zoom_6h: "Last 6 hours",
+    nav_help: "Drag the window (or tap a place) to move the zoomed chart.",
   },
   ro: {
     title: "Încălzire",
@@ -275,6 +276,7 @@ const TEXT = {
     zoom_reset: "Toată perioada",
     zoom_1h: "Ultima oră",
     zoom_6h: "Ultimele 6 ore",
+    nav_help: "Trage fereastra (sau atinge un loc) ca să muți graficul mărit.",
   },
 };
 
@@ -1253,6 +1255,7 @@ class AdvancedClimateCard extends HTMLElement {
           </div>
         </div>
         <div class="ticks">${ticks.join("")}</div>
+        ${view.zoomed ? this._navHtml(a.room_id, d, view) : ""}
         <div class="readout">
           <span class="lg"><i class="lg-temp"></i>${this._t("legend_temp")}</span>
           <span class="lg"><i class="lg-target"></i>${this._t("legend_target")}</span>
@@ -1262,6 +1265,20 @@ class AdvancedClimateCard extends HTMLElement {
         <div class="meta"><span>${this._t("today")}: <b>${esc(a.profile || "–")}</b></span>${next}</div>`;
     if (innerOnly) return inner;
     return `<div class="chart-card" data-chartcard="${esc(a.room_id)}">${inner}</div>`;
+  }
+
+  /** Bar of the whole period with the visible window (only when zoomed). */
+  _navHtml(room, d, view) {
+    const total = d.t1 - d.t0;
+    const pc = (t) => (((Math.min(d.t1, Math.max(d.t0, t)) - d.t0) / total) * 100).toFixed(2);
+    const heat = d.heat
+      .map(([s, e]) => `<i class="navheat" style="left:${pc(s)}%;width:${Math.max(0.3, pc(e) - pc(s))}%"></i>`)
+      .join("");
+    return `<div class="navbar" data-nav="${esc(room)}" role="scrollbar" aria-label="${esc(this._t("nav_help"))}"
+        title="${esc(this._t("nav_help"))}">
+        ${heat}<i class="navnow" style="left:${pc(d.now)}%"></i>
+        <i class="navwin" style="left:${pc(view.v0)}%;width:${(pc(view.v1) - pc(view.v0)).toFixed(2)}%"></i>
+      </div>`;
   }
 
   /** Crosshair and values under the pointer (the legend stays visible). */
@@ -1687,14 +1704,46 @@ class AdvancedClimateCard extends HTMLElement {
       this._setView(p.room, center - (center - p.v0) * factor, center + (p.v1 - center) * factor);
       return true;
     }
-    const dx = ev.clientX - p.startX;
-    if (Math.abs(dx) > 4) p.moved = true;
-    if (p.moved && this._view?.[p.room]) {
-      const shift = (-dx / rect.width) * span;
-      this._setView(p.room, p.v0 + shift, p.v1 + shift);
-      return true;
-    }
+    // One finger or the mouse moves the values cursor (the bar under the chart pans).
+    if (Math.abs(ev.clientX - p.startX) > 4) p.moved = true;
     return false;
+  }
+
+  /** Bar under a zoomed chart: drag the window (or tap a place) to move the chart. */
+  _navPointerDown(ev) {
+    const nav = ev.target.closest?.(".navbar");
+    if (!nav) return false;
+    const room = nav.dataset.nav;
+    const d = this._charts?.[room];
+    if (!d) return true;
+    ev.preventDefault();
+    const card = nav.closest(".chart-card");
+    try {
+      card.setPointerCapture(ev.pointerId);
+    } catch (err) {
+      /* ignore */
+    }
+    const rect = nav.getBoundingClientRect();
+    const at = d.t0 + ((ev.clientX - rect.left) / rect.width) * (d.t1 - d.t0);
+    const span = d.v1 - d.v0;
+    // On the window: keep where it was grabbed; elsewhere: centre the window there.
+    const grab = at >= d.v0 && at <= d.v1 ? at - d.v0 : span / 2;
+    this._nav = { room, card, grab, span, pointer: ev.pointerId };
+    this._navAt = Date.now();
+    this._setView(room, at - grab, at - grab + span);
+    return true;
+  }
+
+  _navPointerMove(ev) {
+    const n = this._nav;
+    if (!n || ev.pointerId !== n.pointer) return false;
+    const d = this._charts?.[n.room];
+    const nav = n.card.querySelector(".navbar");
+    if (!d || !nav) return true;
+    const rect = nav.getBoundingClientRect();
+    const at = d.t0 + ((ev.clientX - rect.left) / rect.width) * (d.t1 - d.t0);
+    this._setView(n.room, at - n.grab, at - n.grab + n.span);
+    return true;
   }
 
   /** End a pan or pinch; a tap without moving shows the values under it. */
@@ -1731,6 +1780,8 @@ class AdvancedClimateCard extends HTMLElement {
     // With the pointer captured by the chart card the event target is the card itself.
     const chart = ev.target.closest?.(".hchart") || ev.target.closest?.(".chart-card")?.querySelector(".hchart");
     if (ev.target.closest?.(".zoombar")) return;
+    // Two taps on the bar under the chart move it; they do not zoom.
+    if (ev.target.closest?.(".navbar") || Date.now() - (this._navAt || 0) < 700) return;
     if (!chart) return;
     const d = this._charts?.[chart.dataset.chart];
     if (!d) return;
@@ -1741,6 +1792,7 @@ class AdvancedClimateCard extends HTMLElement {
 
   /** Pointer pressed: chart pan, or dragging a handle of the schedule editor. */
   _pointerDown(ev) {
+    if (this._navPointerDown(ev)) return;
     if (this._chartPointerDown(ev)) return;
     const handle = ev.target.closest?.("[data-handle]");
     if (!handle || !this._draft) return;
@@ -1757,6 +1809,7 @@ class AdvancedClimateCard extends HTMLElement {
 
   /** Pointer moved: chart pan / hover, or moving a schedule handle (5 minutes). */
   _pointerMove(ev) {
+    if (this._navPointerMove(ev)) return;
     if (!this._drag) {
       if (this._chartPointerMove(ev)) {
         const tip = this._pan?.card?.querySelector(".tip");
@@ -1779,6 +1832,10 @@ class AdvancedClimateCard extends HTMLElement {
 
   /** Pointer released: end the pan or the drag. */
   _pointerUp(ev) {
+    if (this._nav && (!ev || ev.pointerId === this._nav.pointer)) {
+      this._nav = null;
+      return;
+    }
     if (ev) this._chartPointerUp(ev);
     if (!this._drag) return;
     this._drag = null;
@@ -2207,6 +2264,14 @@ const STYLE = `
   .cross { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid var(--primary-text-color); opacity: 0.45; }
   .ticks { position: relative; height: 14px; margin-left: 32px; font-size: 0.68em; color: var(--ac-muted); }
   .cross[hidden], .tip[hidden] { display: none; }
+  .navbar { position: relative; height: 18px; margin: 6px 0 2px 32px; border-radius: 6px; background: var(--ac-surface-2);
+    cursor: pointer; touch-action: none; user-select: none; overflow: hidden; }
+  .navbar i { position: absolute; top: 0; bottom: 0; display: block; }
+  .navbar .navheat { top: auto; height: 4px; bottom: 0; background: var(--ac-hot); opacity: 0.7; }
+  .navbar .navnow { width: 0; border-left: 1px dashed var(--primary-text-color); opacity: 0.5; }
+  .navbar .navwin { border-radius: 6px; cursor: grab; background: color-mix(in srgb, var(--ac-accent) 22%, transparent);
+    box-shadow: inset 0 0 0 1.5px var(--ac-accent); min-width: 6px; }
+  .navbar:active .navwin { cursor: grabbing; }
   .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
   .readout { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 0.78em; color: var(--ac-muted);
     min-height: 20px; font-variant-numeric: tabular-nums; }

@@ -346,7 +346,7 @@ type: custom:advanced-climate-card
 | `rooms` | toate | Lista senzorilor *Decision* ai camerelor de arătat |
 | `show_house` | `true` | Prezența și persoanele, media temperaturii de afară (pe orele din *Medie pe*), sezonul, cererea de căldură, timpul de încălzire, modul (Auto / Vacanță / Oprit / Vară), Pauză, Oaspeți, datele vacanței, reevaluare și anularea tuturor schimbărilor manuale |
 | `show_rooms` | `true` | Camerele |
-| `show_timeline` | `true` | Graficul ultimelor 24 de ore și al următoarelor 12: temperatura camerei, ținta (colorată după nivel), nivelurile planificate și perioadele în care camera s-a încălzit. Valorile se citesc cu mouse-ul sau la atingere. Zoom cu butoanele (1h, 6h, −, +), dublu clic, ciupire sau Ctrl + rotiță, până la 20 de minute; tragere pentru deplasare în timp |
+| `show_timeline` | `true` | Graficul ultimelor 24 de ore și al următoarelor 12: temperatura camerei, ținta (colorată după nivel), nivelurile planificate și perioadele în care camera s-a încălzit. Valorile se citesc cu mouse-ul, la atingere sau trăgând pe grafic. Zoom cu butoanele (1h, 6h, −, +), dublu clic, ciupire sau Ctrl + rotiță, până la 20 de minute; când e mărit, deplasarea în timp se face trăgând fereastra din bara de sub grafic (sau atingând un loc pe ea) |
 | `show_quick_override` | `true` | Setează un nivel sau o temperatură pentru un număr de ore (gol = regula configurată) |
 | `show_levels` | `true` | Temperaturile nivelurilor (camere fără Generic Thermostat, temperatura fixă pentru *aproape*) |
 | `show_details` | `true` | Temperatura camerei și ținta, viteza de încălzire, timpul de încălzire, ajustările active, temperaturile nivelurilor |

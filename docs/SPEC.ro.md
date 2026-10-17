@@ -234,7 +234,7 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | `number.*`, `button.*`, `switch.*` | Niveluri, anularea schimbărilor manuale, mod oaspeți, pauză, blocare pentru copii |
 | Servicii | `set_override`, `clear_override`, `set_vacation`, `reevaluate`, `set_schedule` |
 | Evenimente | `advanced_climate_decision_changed` cu camera, ținta veche și nouă și motivul |
-| Cardul Lovelace | Starea și decizia camerei; grafic pe 24 h (temperatură, țintă, încălzire) cu următoarele 12 h planificate și zoom până la minut; program editabil prin tragere (5 minute), copierea unei zile; timpul până la țintă sau, în timpul unei opriri anticipate, temperatura estimată la schimbare; următoarea pornire / oprire anticipată în detaliile camerei; grafic cu grilă pe grade, ținta ca linie în trepte și încălzirea pe o bandă separată; timpul de încălzire pe zi / săptămână / lună; mod compact |
+| Cardul Lovelace | Starea și decizia camerei; grafic pe 24 h (temperatură, țintă, încălzire) cu următoarele 12 h planificate și zoom până la minut (o bară sub graficul mărit îl mută; tragerea pe grafic citește valorile); program editabil prin tragere (5 minute), copierea unei zile; timpul până la țintă sau, în timpul unei opriri anticipate, temperatura estimată la schimbare; următoarea pornire / oprire anticipată în detaliile camerei; grafic cu grilă pe grade, ținta ca linie în trepte și încălzirea pe o bandă separată; timpul de încălzire pe zi / săptămână / lună; mod compact |
 | Diagnostic | Configurația și ultimele 100 de decizii |
 
 ## 12. Ierarhia regulilor

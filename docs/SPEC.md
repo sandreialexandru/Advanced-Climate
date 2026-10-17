@@ -230,7 +230,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | `number.*`, `button.*`, `switch.*` | Levels, clear overrides, guest mode, pause, child lock |
 | Services | `set_override`, `clear_override`, `set_vacation`, `reevaluate`, `set_schedule` |
 | Events | `advanced_climate_decision_changed` with room, old and new target and reason |
-| Lovelace card | Room state and decision; 24 h chart (temperature, target, heating) with the next 12 h planned and zoom to the minute; schedule editable by dragging (5 minutes), copy of a day; time to the target or, during an optimal stop, the expected temperature at the change; the next optimal start / stop in the room details; chart with a degree grid, the target as a step line and the heating in its own lane; heating time per day / week / month; compact mode |
+| Lovelace card | Room state and decision; 24 h chart (temperature, target, heating) with the next 12 h planned and zoom to the minute (a bar under the zoomed chart moves it; dragging on the chart reads the values); schedule editable by dragging (5 minutes), copy of a day; time to the target or, during an optimal stop, the expected temperature at the change; the next optimal start / stop in the room details; chart with a degree grid, the target as a step line and the heating in its own lane; heating time per day / week / month; compact mode |
 | Diagnostics | Configuration and the last 100 decisions |
 
 ## 12. Rule hierarchy
