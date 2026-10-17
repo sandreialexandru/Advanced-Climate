@@ -1019,7 +1019,7 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
 
     async def async_step_devices(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         """The devices that heat the room (and the command for other thermostats)."""
-        d = self._shown()
+        d = self._data
         schema = _devices_schema(d)
         errors: dict[str, str] = {}
         if user_input is not None:
