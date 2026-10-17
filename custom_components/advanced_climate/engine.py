@@ -154,6 +154,7 @@ class Decision:
 
 
 def _heating(target: Target) -> bool:
+    """True for targets that heat (a preset or a temperature)."""
     return target.kind in (KIND_PRESET, KIND_TEMPERATURE)
 
 
@@ -259,6 +260,7 @@ def base_decision(inputs: RoomInputs) -> Decision:
 
 
 def _warmer(inputs: RoomInputs, preset: str, than: str) -> bool:
+    """True when ``preset`` is warmer than ``than`` (by name when a temperature is unknown)."""
     a = inputs.level_temp(preset)
     b = inputs.level_temp(than)
     if a is None or b is None:

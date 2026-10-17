@@ -179,6 +179,7 @@ CONF_NAME = "name"
 
 
 def _entity(domain: str | list[str], *, multiple: bool = False, **kwargs: Any) -> selector.EntitySelector:
+    """Entity picker for one or more domains."""
     return selector.EntitySelector(
         selector.EntitySelectorConfig(domain=domain, multiple=multiple, **kwargs)
     )
@@ -187,6 +188,7 @@ def _entity(domain: str | list[str], *, multiple: bool = False, **kwargs: Any) -
 def _number(
     minimum: float, maximum: float, step: float = 1, unit: str | None = None
 ) -> selector.NumberSelector:
+    """Number box with limits, step and unit."""
     config = selector.NumberSelectorConfig(
         min=minimum, max=maximum, step=step, mode=selector.NumberSelectorMode.BOX
     )
@@ -196,6 +198,7 @@ def _number(
 
 
 def _select(options: list[str], key: str) -> selector.SelectSelector:
+    """Drop-down list whose labels come from the translations (``key``)."""
     return selector.SelectSelector(
         selector.SelectSelectorConfig(
             options=options, translation_key=key, mode=selector.SelectSelectorMode.DROPDOWN
@@ -204,10 +207,12 @@ def _select(options: list[str], key: str) -> selector.SelectSelector:
 
 
 def _bool() -> selector.BooleanSelector:
+    """On / off switch."""
     return selector.BooleanSelector()
 
 
 def _text(multiline: bool = False) -> selector.TextSelector:
+    """Text field, on one or more lines."""
     return selector.TextSelector(selector.TextSelectorConfig(multiline=multiline))
 
 
@@ -217,6 +222,7 @@ def _opt(key: str, values: dict[str, Any]) -> vol.Optional:
 
 
 def _req(key: str, values: dict[str, Any], defaults: dict[str, Any]) -> vol.Required:
+    """Required field with the current value, else the default."""
     return vol.Required(key, default=values.get(key, defaults.get(key)))
 
 
@@ -265,6 +271,7 @@ TEMP_DELTA_KEYS = {
 
 
 def _fahrenheit(unit: str | None) -> bool:
+    """True when the forms are in °F."""
     return is_fahrenheit(unit)
 
 
@@ -322,9 +329,11 @@ class _UnitForms:
     """Forms shown in the unit of the house."""
 
     def _unit(self) -> str:
+        """Unit the forms of this flow use."""
         return UNIT_CELSIUS
 
     def async_show_form(self, *, step_id: str, data_schema: vol.Schema | None = None, **kwargs: Any) -> Any:
+        """Show a form with its temperature fields in the unit of the house."""
         if data_schema is not None:
             data_schema = _unitize(data_schema, self._unit())
         return super().async_show_form(  # type: ignore[misc]
@@ -333,6 +342,7 @@ class _UnitForms:
 
 
 def _unit_select() -> selector.SelectSelector:
+    """Choice between °C and °F."""
     return _select([UNIT_CELSIUS, UNIT_FAHRENHEIT], "temperature_unit")
 
 
@@ -344,6 +354,7 @@ def _unit_select() -> selector.SelectSelector:
 
 
 def _presence_schema(v: dict[str, Any]) -> vol.Schema:
+    """People, home rule, nearby zones and what presence information is used."""
     d = HOUSE_DEFAULTS
     return vol.Schema(
         {
@@ -365,6 +376,7 @@ def _presence_schema(v: dict[str, Any]) -> vol.Schema:
 
 
 def _presence_details(v: dict[str, Any]) -> vol.Schema:
+    """Values that apply to the presence choices (delays, distances, guests)."""
     d = HOUSE_DEFAULTS
     fields: dict[Any, Any] = {}
     if v.get(CONF_PROXIMITY_DISTANCE):
@@ -375,6 +387,7 @@ def _presence_details(v: dict[str, Any]) -> vol.Schema:
 
 
 def _calendar_schema(v: dict[str, Any]) -> vol.Schema:
+    """Calendar and Workday sensor that choose the schedule profile."""
     d = HOUSE_DEFAULTS
     return vol.Schema(
         {
@@ -386,6 +399,7 @@ def _calendar_schema(v: dict[str, Any]) -> vol.Schema:
 
 
 def _weather_schema(v: dict[str, Any]) -> vol.Schema:
+    """Outdoor source and which weather features are used."""
     d = HOUSE_DEFAULTS
     return vol.Schema(
         {
@@ -403,6 +417,7 @@ def _weather_schema(v: dict[str, Any]) -> vol.Schema:
 
 
 def _weather_details(v: dict[str, Any]) -> vol.Schema:
+    """Values of the chosen weather features (cutoff, season, compensation, forecast)."""
     d = HOUSE_DEFAULTS
     fields: dict[Any, Any] = {}
     if v.get(CONF_CUTOFF_ENABLED) or v.get(CONF_FORECAST_ENABLED):
@@ -425,6 +440,7 @@ def _weather_details(v: dict[str, Any]) -> vol.Schema:
 
 
 def _weather_errors(user_input: dict[str, Any]) -> dict[str, str]:
+    """Check the heating season dates (MM-DD)."""
     errors: dict[str, str] = {}
     for key in (CONF_SEASON_START, CONF_SEASON_END):
         if key in user_input:
@@ -436,6 +452,7 @@ def _weather_errors(user_input: dict[str, Any]) -> dict[str, str]:
 
 
 def _energy_schema(v: dict[str, Any]) -> vol.Schema:
+    """Tariff and PV sensors."""
     return vol.Schema(
         {
             _opt(CONF_PRICE_SENSOR, v): _entity("sensor"),
@@ -445,6 +462,7 @@ def _energy_schema(v: dict[str, Any]) -> vol.Schema:
 
 
 def _energy_details(v: dict[str, Any]) -> vol.Schema:
+    """Price limits and adjustments for the chosen energy sensors."""
     d = HOUSE_DEFAULTS
     fields: dict[Any, Any] = {}
     if v.get(CONF_PRICE_SENSOR):
@@ -459,6 +477,7 @@ def _energy_details(v: dict[str, Any]) -> vol.Schema:
 
 
 def _boiler_schema(v: dict[str, Any]) -> vol.Schema:
+    """Boiler entity and room-difference alert."""
     d = HOUSE_DEFAULTS
     return vol.Schema(
         {
@@ -469,6 +488,7 @@ def _boiler_schema(v: dict[str, Any]) -> vol.Schema:
 
 
 def _boiler_details(v: dict[str, Any], rooms: list[selector.SelectOptionDict]) -> vol.Schema:
+    """Boiler timing and the rooms that decide it (reference room only with several rooms)."""
     d = HOUSE_DEFAULTS
     fields: dict[Any, Any] = {}
     if v.get(CONF_BOILER_ENTITY):
@@ -485,6 +505,7 @@ def _boiler_details(v: dict[str, Any], rooms: list[selector.SelectOptionDict]) -
 
 
 def _behavior_schema(v: dict[str, Any]) -> vol.Schema:
+    """Manual changes, vacation and safety choices."""
     d = HOUSE_DEFAULTS
     return vol.Schema(
         {
@@ -502,6 +523,7 @@ def _behavior_schema(v: dict[str, Any]) -> vol.Schema:
 
 
 def _behavior_details(v: dict[str, Any]) -> vol.Schema:
+    """Values that apply to the behavior choices."""
     d = HOUSE_DEFAULTS
     if v.get(CONF_OVERRIDE_MODE) == OVERRIDE_FIXED:
         return vol.Schema({_req(CONF_OVERRIDE_HOURS, v, d): _number(0.25, 72, 0.25, "h")})
@@ -509,6 +531,7 @@ def _behavior_details(v: dict[str, Any]) -> vol.Schema:
 
 
 def _alerts_schema(v: dict[str, Any]) -> vol.Schema:
+    """Notifications: service, unavailable devices, batteries, windows."""
     d = HOUSE_DEFAULTS
     return vol.Schema(
         {
@@ -579,6 +602,7 @@ def _is_on_off(d: dict[str, Any]) -> bool:
 
 
 def _on_off_schema(d: dict[str, Any], with_sensors: bool) -> vol.Schema:
+    """Relay control: hysteresis and minimum on / off times (and sensors when needed)."""
     fields: dict[Any, Any] = {}
     if with_sensors:
         fields[_req(CONF_TEMP_SENSORS, d, ROOM_DEFAULTS)] = _entity(
@@ -608,6 +632,7 @@ def _no_hvac_action(hass: Any, d: dict[str, Any]) -> bool:
 
 
 def _thermostat_schema(d: dict[str, Any], hass: Any) -> vol.Schema:
+    """Thermostat tolerance, and the hysteresis for thermostats that may not report hvac_action."""
     fields: dict[Any, Any] = {
         _req(CONF_LEARN_TOLERANCE, d, ROOM_DEFAULTS): _number(0, 2, 0.1, "°C")
     }
@@ -635,6 +660,7 @@ class _HouseHeatingSteps:
         return {}
 
     def _zone_title(self) -> str:
+        """Title of the whole-house zone."""
         return HOUSE_ZONE_TITLE
 
     async def _async_heating_done(self, data: dict[str, Any] | None) -> Any:
@@ -741,6 +767,7 @@ class AdvancedClimateConfigFlow(_UnitForms, _HouseHeatingSteps, ConfigFlow, doma
         return self.async_show_form(step_id="user", data_schema=schema)
 
     def _unit(self) -> str:
+        """Unit the forms of this flow use."""
         return str(self._house.get(CONF_TEMP_UNIT, UNIT_CELSIUS))
 
     async def async_step_reconfigure(
@@ -763,6 +790,7 @@ class AdvancedClimateConfigFlow(_UnitForms, _HouseHeatingSteps, ConfigFlow, doma
         return self.async_show_form(step_id="reconfigure", data_schema=schema)
 
     async def _async_heating_done(self, data: dict[str, Any] | None) -> ConfigFlowResult:
+        """Save the whole-house zone (None = no heating devices)."""
         options = dict(self._house)
         name = options.pop(CONF_NAME)
         subentries = []
@@ -829,17 +857,21 @@ class AdvancedClimateOptionsFlow(_UnitForms, _HouseHeatingSteps, OptionsFlow):
         return rooms[0] if len(rooms) == 1 else None
 
     def _unit(self) -> str:
+        """Unit the forms of this flow use."""
         return str(self.config_entry.options.get(CONF_TEMP_UNIT, UNIT_CELSIUS))
 
     def _zone_base(self) -> dict[str, Any]:
+        """Current data of the whole-house zone (empty for a new one)."""
         zone = self._house_zone()
         return dict(zone.data) if zone else {}
 
     def _zone_title(self) -> str:
+        """Title of the whole-house zone."""
         zone = self._house_zone()
         return zone.title if zone else HOUSE_ZONE_TITLE
 
     async def _async_heating_done(self, data: dict[str, Any] | None) -> ConfigFlowResult:
+        """Save the whole-house zone (None = no heating devices)."""
         zone = self._house_zone()
         entries = self.hass.config_entries
         if data is None:
@@ -861,15 +893,18 @@ class AdvancedClimateOptionsFlow(_UnitForms, _HouseHeatingSteps, OptionsFlow):
 
     @property
     def _values(self) -> dict[str, Any]:
+        """Current options, as the forms show them."""
         return _shown({**HOUSE_DEFAULTS, **self.config_entry.options}, self._unit())
 
     def _save(self, schema: vol.Schema, user_input: dict[str, Any]) -> ConfigFlowResult:
+        """Store one form of options and close the flow."""
         return self.async_create_entry(
             data=_merge(dict(self.config_entry.options), schema, _kept(user_input, self._unit()))
         )
 
     # -- two forms: the choices, then only the values that apply --------------
     def _first(self, schema: vol.Schema, user_input: dict[str, Any]) -> None:
+        """Keep the first form (the choices) until the second one is filled."""
         self._pending = _merge(
             dict(self.config_entry.options), schema, _kept(user_input, self._unit())
         )
@@ -881,6 +916,7 @@ class AdvancedClimateOptionsFlow(_UnitForms, _HouseHeatingSteps, OptionsFlow):
         user_input: dict[str, Any] | None,
         errors: dict[str, str] | None = None,
     ) -> ConfigFlowResult:
+        """Second form with the values that apply; skipped when there are none."""
         if not schema.schema:
             return self.async_create_entry(data=self._pending)
         if user_input is not None and not errors:
@@ -891,6 +927,7 @@ class AdvancedClimateOptionsFlow(_UnitForms, _HouseHeatingSteps, OptionsFlow):
 
     @property
     def _pending_values(self) -> dict[str, Any]:
+        """Options with the first form applied, as the forms show them."""
         return _shown({**HOUSE_DEFAULTS, **self._pending}, self._unit())
 
     async def async_step_presence(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
@@ -945,6 +982,7 @@ class AdvancedClimateOptionsFlow(_UnitForms, _HouseHeatingSteps, OptionsFlow):
         return self._second("energy_details", _energy_details(self._pending_values), user_input)
 
     def _room_options(self) -> list[selector.SelectOptionDict]:
+        """Rooms of the house, for the reference room choice."""
         return [
             selector.SelectOptionDict(value=sub.subentry_id, label=sub.title)
             for sub in self.config_entry.subentries.values()
@@ -1003,12 +1041,15 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
         self._subentry_id: str | None = None
 
     def _unit(self) -> str:
+        """Unit the forms of this flow use."""
         return str(self._get_entry().options.get(CONF_TEMP_UNIT, UNIT_CELSIUS))
 
     def _shown(self) -> dict[str, Any]:
+        """Room values as the forms show them (unit of the house)."""
         return _shown(self._data, self._unit())
 
     def _kept(self, user_input: dict[str, Any] | None) -> dict[str, Any]:
+        """What the user entered, converted to °C for storage."""
         return _kept(user_input, self._unit())
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
@@ -1058,6 +1099,7 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
         return self.async_show_form(step_id="devices", data_schema=schema, errors=errors)
 
     def _on_off(self) -> bool:
+        """True when the room is controlled on / off (relays or hvac_mode)."""
         return _is_on_off(self._data)
 
     async def async_step_control_on_off(
@@ -1111,7 +1153,7 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
         device_presets = self._device_presets() if uses_presets else []
         preset_map = d.get(CONF_PRESET_MAP)
         if preset_map is None:
-            # First time (or a room made before 1.4): same name on the thermostat.
+            # No choice saved yet: the thermostat preset with the same name.
             preset_map = {
                 p: names.get(p) or p for p in PRESETS if (names.get(p) or p) in device_presets
             }
@@ -1441,6 +1483,7 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
         return self.async_show_form(step_id="extras_valves", data_schema=schema)
 
     def _finish(self) -> SubentryFlowResult:
+        """Create or update the room with the collected values."""
         data = dict(self._data)
         title = str(data.pop(CONF_NAME, "Room")).strip() or "Room"
         if self._reconfigure:

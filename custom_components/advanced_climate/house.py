@@ -201,7 +201,7 @@ class House:
         self.presence = PresenceDebouncer.from_dict(house.get("presence"))
         self.outdoor = OutdoorTracker.from_dict(house.get("outdoor"))
         if not self.outdoor_configured:
-            # No outdoor sensor or weather any more: the saved values are not used.
+            # No outdoor sensor or weather: the saved outdoor values are not used.
             season = self.outdoor.season_active
             self.outdoor = OutdoorTracker()
             self.outdoor.season_active = season
@@ -232,6 +232,7 @@ class House:
             )
 
     async def _async_on_ha_started(self, _event: Event) -> None:
+        """Start controlling a little after Home Assistant has started."""
         self._started_unsub = None
         self._unsubs.append(async_call_later(self.hass, STARTUP_DELAY, self._async_start))
 
@@ -309,6 +310,7 @@ class House:
 
     @callback
     def _async_house_entity_changed(self, event: Event[EventStateChangedData]) -> None:
+        """A house entity changed (person, sensor, weather...): evaluate again."""
         entity_id = event.data["entity_id"]
         new = event.data["new_state"]
         if entity_id in (self.options.get(CONF_OUTDOOR_SENSOR), self.options.get(CONF_WEATHER)):
@@ -319,6 +321,7 @@ class House:
 
     @callback
     def _async_boiler_changed(self, event: Event[EventStateChangedData]) -> None:
+        """The boiler changed outside the integration: refresh the entities."""
         if event.context.id in self._own_contexts:
             return
         self.async_notify_listeners()
@@ -327,6 +330,7 @@ class House:
     # Persistence
     # ------------------------------------------------------------------
     def _data_to_save(self) -> dict[str, Any]:
+        """State kept between restarts."""
         return {
             "house": {
                 "mode": self.mode,
@@ -362,15 +366,18 @@ class House:
             return
 
         async def _run(_now: datetime) -> None:
+            """Run the requested evaluation."""
             self._eval_unsub = None
             await self.async_evaluate()
 
         self._eval_unsub = async_call_later(self.hass, delay, _run)
 
     async def _async_periodic(self, _now: datetime) -> None:
+        """Periodic evaluation, in addition to the events."""
         await self.async_evaluate()
 
     async def _async_hourly(self, _now: datetime) -> None:
+        """Hourly checks: batteries and the Workday calendar."""
         for room in self.rooms.values():
             room.check_batteries()
         await self._async_refresh_workdays()
@@ -383,6 +390,7 @@ class House:
             await self._async_evaluate_locked()
 
     async def _async_evaluate_locked(self) -> None:
+        """Evaluate the house and every room, then send the commands."""
         now = dt_util.now()
         self._last_eval = now
         self._sample_outdoor()
@@ -428,6 +436,7 @@ class House:
         when = min(candidates) + timedelta(seconds=1)
 
         async def _fire(_now: datetime) -> None:
+            """Evaluate at the planned moment."""
             self._timer_unsub = None
             await self.async_evaluate()
 
@@ -437,6 +446,7 @@ class House:
     # Presence
     # ------------------------------------------------------------------
     def _zones(self) -> list[ZoneInfo]:
+        """Every zone of Home Assistant with its position and radius."""
         zones = []
         for state in self.hass.states.async_all("zone"):
             zones.append(
@@ -451,6 +461,7 @@ class House:
         return zones
 
     def _update_presence(self, now: datetime) -> None:
+        """Classify the people, debounce the house presence and detect who is coming home."""
         opts = self.options
         zones = self._zones()
         nearby_ids = set(as_list(opts.get(CONF_NEARBY_ZONES)))
@@ -534,6 +545,7 @@ class House:
         return self.presence.current
 
     def _update_guest(self, now: datetime) -> None:
+        """End guest mode when it expires."""
         if self.guest and self.guest_until and now >= self.guest_until:
             self.guest = False
             self.guest_until = None
@@ -581,12 +593,14 @@ class House:
     # Vacation
     # ------------------------------------------------------------------
     def _vacation_resume(self) -> datetime | None:
+        """When the heating starts again before the end of the vacation."""
         if self.vacation_end is None:
             return None
         return self.vacation_end - timedelta(hours=float(self.options[CONF_VACATION_PREHEAT]))
 
     def _update_vacation(self, now: datetime) -> None:
         # Clear a finished period.
+        """Forget a vacation period that has ended."""
         if self.vacation_end and now >= self.vacation_end:
             self.vacation_start = None
             self.vacation_end = None
@@ -623,6 +637,7 @@ class House:
     # Calendar / workday
     # ------------------------------------------------------------------
     def _update_calendar(self) -> None:
+        """Read the current calendar event (profile or level name)."""
         calendar = self.options.get(CONF_CALENDAR)
         self.calendar_message = None
         if not calendar:
@@ -708,6 +723,7 @@ class House:
         return bool(self.options.get(CONF_OUTDOOR_SENSOR) or self.options.get(CONF_WEATHER))
 
     def _weather_unit(self, state: State | None) -> str:
+        """Temperature unit of the weather entity."""
         unit = state.attributes.get("temperature_unit") if state is not None else None
         return str(unit) if unit else system_unit(self.hass)
 
@@ -717,11 +733,13 @@ class House:
         return FAHRENHEIT if is_fahrenheit(self.options.get(CONF_TEMP_UNIT)) else CELSIUS
 
     def _sample_outdoor(self) -> None:
+        """Record the current outdoor temperature."""
         value = self.outdoor_temperature()
         if value is not None:
             self.outdoor.add(dt_util.now(), value)
 
     def _update_weather(self, now: datetime) -> None:
+        """Update the outdoor cutoff and the heating season."""
         opts = self.options
         average = self.outdoor.average(now, float(opts[CONF_CUTOFF_AVG_HOURS]))
         self.outdoor.update_cutoff(
@@ -756,6 +774,7 @@ class House:
         return self.outdoor.season_active
 
     async def _async_refresh_forecast(self, _now: datetime | None = None) -> None:
+        """Read the hourly forecast: cut off when it will soon be warm enough."""
         weather = self.options.get(CONF_WEATHER)
         if not weather or not self.options[CONF_FORECAST_ENABLED]:
             self.forecast_cutoff = False
@@ -849,6 +868,7 @@ class House:
     # Boiler / heat demand
     # ------------------------------------------------------------------
     async def _async_control_boiler(self, now: datetime) -> None:
+        """Switch the boiler from the heat demand of the rooms, with minimum on / off times."""
         opts = self.options
         reference = opts.get(CONF_REFERENCE_ROOM)
         if reference and reference in self.rooms:
@@ -907,6 +927,7 @@ class House:
         self.boiler_changed = now
 
     def _check_room_difference(self) -> None:
+        """Alert when some rooms stay cold while others reached their target."""
         limit = float(self.options[CONF_ROOM_DIFF_ALERT] or 0)
         if limit <= 0 or len(self.rooms) < 2:
             return
@@ -985,6 +1006,7 @@ class House:
         _LOGGER.info("%s: %s", title, message)
 
     async def _async_call_notify(self, domain: str, name: str, title: str, message: str) -> None:
+        """Send an alert with the notify service (persistent notification if it fails)."""
         try:
             await self.hass.services.async_call(
                 domain, name, {"title": title, "message": message}, blocking=True

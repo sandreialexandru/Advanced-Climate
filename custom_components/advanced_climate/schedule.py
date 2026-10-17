@@ -195,6 +195,7 @@ class Schedule:
         return (minute - self.boundary) % MINUTES_PER_DAY
 
     def _ordered(self, profile: str) -> list[Slot]:
+        """Slots of a profile in the order of the schedule day."""
         return sorted(self.profiles[profile], key=lambda s: self._key(s.minute))
 
     def schedule_day(self, moment: datetime) -> date:
@@ -207,6 +208,7 @@ class Schedule:
         return start + timedelta(minutes=self.boundary)
 
     def _slot_moment(self, day: date, slot: Slot, tzinfo) -> datetime:
+        """Moment a slot starts on a schedule day."""
         return self.day_start(day, tzinfo) + timedelta(minutes=self._key(slot.minute))
 
     def lookup(self, moment: datetime, day_info: DayInfo) -> ScheduleState:

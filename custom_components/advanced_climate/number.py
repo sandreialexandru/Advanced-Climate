@@ -27,7 +27,7 @@ async def async_setup_entry(
         wanted = list(room.editable_levels)
         if room.config.get(CONF_NEARBY_MODE) == NEARBY_TEMPERATURE:
             wanted.append("nearby")
-        # Levels now kept by the thermostat (or no longer used) lose their number.
+        # Levels whose temperature the integration does not set have no number.
         for preset in (*PRESETS, "nearby"):
             if preset in wanted:
                 continue

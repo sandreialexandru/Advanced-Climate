@@ -178,7 +178,7 @@ class Room:
         if self.source == SOURCE_CLIMATE and self.command_mode == COMMAND_PRESET:
             raw = self.config.get(CONF_PRESET_MAP)
             if raw is None:
-                # Rooms made before 1.4: the level name (or the role) is the device preset.
+                # No preset map saved: the level name (or the role) is the device preset.
                 self._legacy_map = True
                 raw = dict(self.preset_names)
             self.preset_map = {
@@ -277,6 +277,7 @@ class Room:
             self.profile_select = AUTO_PROFILE
 
     def _build_schedule(self, text: str) -> Schedule:
+        """Parse the schedule text; the default schedule is used when it is invalid."""
         valid_names = list(PRESETS) + [n for n in self.preset_names.values() if n not in PRESETS]
         try:
             profiles = parse_schedule(text, valid_names)
@@ -386,7 +387,7 @@ class Room:
         if self.source == SOURCE_GT:
             return []
         if self._legacy_map:
-            # Rooms made before 1.4 keep every level editable until reconfigured.
+            # Without a saved preset map every level stays editable.
             return list(PRESETS)
         return [p for p in PRESETS if p not in self.device_levels]
 
@@ -514,6 +515,7 @@ class Room:
     # ------------------------------------------------------------------
     @callback
     def _async_entity_changed(self, event: Event[EventStateChangedData]) -> None:
+        """A room entity changed: detect manual changes and evaluate again."""
         entity_id = event.data["entity_id"]
         old: State | None = event.data["old_state"]
         new: State | None = event.data["new_state"]
@@ -548,6 +550,7 @@ class Room:
             self.observed_temps[preset] = temperature
 
     def _is_manual_change(self, event: Event, old: State | None, new: State | None) -> bool:
+        """True when a person changed the thermostat (not the integration, nor a late confirmation)."""
         if old is None or new is None or not valid(old) or not valid(new):
             return False
         if self.house.is_own_context(event.context):
@@ -601,6 +604,7 @@ class Room:
     def _handle_manual_change(self, entity_id: str, new: State | None) -> None:
         # From now on the device shows a person's values, not ours: if the person
         # later sets the value we sent before, that is a manual change too.
+        """Respect a manual change (or revert it with the child lock)."""
         self._sent.pop(entity_id, None)
         if self.house.paused:
             return
@@ -655,6 +659,7 @@ class Room:
         self.house.async_save()
 
     def _check_override(self, now: datetime, signature: tuple) -> None:
+        """End the manual change when its time is over or something relevant changed."""
         if self.override is None:
             return
         until = self.override.get("until")
@@ -673,6 +678,7 @@ class Room:
     # Inputs
     # ------------------------------------------------------------------
     def _update_temperature(self, now: datetime) -> None:
+        """Room temperature from the sensors, else from the thermostats."""
         sensors = as_list(self.config.get(CONF_TEMP_SENSORS))
         values = []
         for entity_id in sensors:
@@ -708,6 +714,7 @@ class Room:
         return aggregate(values, self.config[CONF_TEMP_AGGREGATION])
 
     def _check_temp_drop(self, now: datetime) -> None:
+        """Count a quick temperature drop as an open window."""
         if not self.config[CONF_WINDOW_DROP_DETECT] or self.current_temp is None:
             return
         if self._drop_until is not None and now < self._drop_until:
@@ -801,6 +808,7 @@ class Room:
         )
 
     def _window_raw(self, now: datetime) -> bool:
+        """Window state before the delays (sensors or a quick drop)."""
         if self.house.windows_ignored:
             return False
         sensors = as_list(self.config.get(CONF_WINDOW_SENSORS)) + as_list(
@@ -851,6 +859,7 @@ class Room:
 
             @callback
             def _recheck(_now: datetime) -> None:
+                """Check the window again when a delay ends."""
                 self._window_timer = None
                 self._update_window(dt_util.now())
                 self.house.async_request_evaluate(0)
@@ -858,6 +867,7 @@ class Room:
             self._window_timer = async_call_later(self.hass, delay, _recheck)
 
     def _room_unoccupied(self, now: datetime) -> bool:
+        """True when the occupancy sensors have been off for the configured time."""
         sensors = as_list(self.config.get(CONF_OCCUPANCY_SENSORS))
         if not sensors:
             return False
@@ -871,6 +881,7 @@ class Room:
         return now - since >= timedelta(minutes=float(self.config[CONF_OCCUPANCY_MINUTES]))
 
     def _day_info(self, day: date) -> tuple[bool, str | None]:
+        """Whether a day is a workday, and a profile forced for today (select or calendar)."""
         forced = None
         today = self.schedule.schedule_day(dt_util.now())
         if day == today:
@@ -883,6 +894,7 @@ class Room:
         return self.house.is_workday(day), forced
 
     def _schedule_lookup(self, now: datetime) -> ScheduleState | None:
+        """Current level and next change, from the internal schedule or a Schedule helper."""
         cfg = self.config
         if cfg.get(CONF_SCHEDULE_SOURCE) == SCHEDULE_HELPER and cfg.get(CONF_SCHEDULE_HELPER):
             state = self.hass.states.get(cfg[CONF_SCHEDULE_HELPER])
@@ -923,12 +935,14 @@ class Room:
         return result
 
     def _calendar_preset(self) -> str | None:
+        """Level named by the current calendar event."""
         message = self.house.calendar_message
         if not message:
             return None
         return self.aliases.get(message.lower())
 
     def _offsets(self) -> list[tuple[str, float]]:
+        """Adjustments of the target: house ones and the solar gain of the room."""
         offsets = self.house.house_offsets()
         solar = float(self.config.get(CONF_SOLAR_OFFSET) or 0)
         if solar and self.house.sunny():
@@ -936,6 +950,7 @@ class Room:
         return offsets
 
     def _valve_exercise_due(self, now: datetime) -> bool:
+        """True during the weekly valve exercise."""
         if not self.config[CONF_VALVE_EXERCISE] or not self.supports_valve_exercise:
             return False
         if self._exercise_until is not None:
@@ -1104,6 +1119,7 @@ class Room:
         )
 
     def _supports_off(self) -> bool:
+        """True when the devices can be turned off (else the frost temperature is used)."""
         if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
             return True
         for entity_id in self.climates:
@@ -1120,6 +1136,7 @@ class Room:
         return Target(stored["kind"], preset=stored.get("preset"), temperature=stored.get("temperature"))
 
     def _resolve_temperature(self, target: Target) -> float | None:
+        """Temperature a target stands for (level, manual temperature or the thermostat)."""
         if target.kind == KIND_TEMPERATURE:
             return target.temperature
         if target.kind == KIND_PRESET and target.preset:
@@ -1134,6 +1151,7 @@ class Room:
         return None
 
     def _record(self, decision: Decision, now: datetime) -> None:
+        """Keep the decision history and fire an event when the decision changes."""
         previous = self.decision
         if (
             previous is not None
@@ -1162,11 +1180,13 @@ class Room:
         )
 
     def _account_runtime(self, now: datetime) -> None:
+        """Add the heating time since the last evaluation."""
         if self._demand_since is not None:
             self.runtime_s += (now - self._demand_since).total_seconds()
             self._demand_since = now if self.heat_demand else None
 
     def _update_demand(self) -> None:
+        """Whether the room asks for heat (hvac_action, else the hysteresis; relays: on)."""
         demand = False
         if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
             demand = bool(self._relay_on)
@@ -1208,6 +1228,7 @@ class Room:
     # Commands
     # ------------------------------------------------------------------
     async def _call(self, domain: str, service: str, data: dict[str, Any]) -> bool:
+        """Call a service with the context of the integration; False when it fails."""
         try:
             await self.hass.services.async_call(
                 domain, service, data, blocking=True, context=self.house.new_context()
@@ -1276,6 +1297,7 @@ class Room:
         return current is not None and abs(current - wanted) < 0.05
 
     async def _async_apply_climate(self, entity_id: str, target: Target, force: bool) -> bool:
+        """Bring one thermostat to the target (mode, preset or temperature)."""
         state = self.hass.states.get(entity_id)
         if not valid(state):
             return False
@@ -1389,6 +1411,7 @@ class Room:
         return ok
 
     def _relay_actual(self) -> bool | None:
+        """True when a relay (or on / off thermostat) is on now."""
         entities = self.switches if self.source == SOURCE_SWITCH else self.climates
         states = [self.hass.states.get(eid) for eid in entities]
         usable = [s for s in states if valid(s)]
@@ -1397,11 +1420,13 @@ class Room:
         return any(s.state not in (STATE_OFF,) for s in usable)  # type: ignore[union-attr]
 
     def _schedule_verify(self, target: Target) -> None:
+        """Check later that the devices accepted the command; retry once, then alert."""
         if self._verify_unsub:
             self._verify_unsub()
         expected = target
 
         async def _verify(_now: datetime) -> None:
+            """Compare the devices with the command sent."""
             self._verify_unsub = None
             if self.decision is None or self.decision.target != expected:
                 self._verify_attempts = 0
@@ -1444,6 +1469,7 @@ class Room:
     # Calibration
     # ------------------------------------------------------------------
     async def _async_calibrate(self, now: datetime) -> None:
+        """Write the external temperature (or the offset) to the TRV calibration entities."""
         mode = self.config[CONF_CALIBRATION_MODE]
         if mode not in (CALIBRATION_OFFSET, CALIBRATION_EXTERNAL):
             return
@@ -1489,6 +1515,7 @@ class Room:
                 self._calibration_written[number_id] = now
 
     def _climate_on_same_device(self, registry: er.EntityRegistry, entity_id: str) -> str | None:
+        """Thermostat on the same device as a calibration entity."""
         entry = registry.async_get(entity_id)
         if entry is None or entry.device_id is None:
             return self.climates[0] if len(self.climates) == 1 else None
@@ -1502,6 +1529,7 @@ class Room:
     # Alerts
     # ------------------------------------------------------------------
     def _check_alerts(self, now: datetime) -> None:
+        """Alerts for long open windows, unavailable devices, failed sensors and schedule errors."""
         house = self.house
         # Window open for too long while heating matters.
         if self.window_open and self._window_opened_at is not None:

@@ -205,9 +205,6 @@ While a room is below its target the card shows the **time to the target**
 current outdoor temperature; until the first episode it shows *learning…*.
 The *Decision* sensor has it as the `time_to_target` attribute (minutes).
 
-Version 1.7 discards the learning data of older versions, which also learned
-the small thermostat cycles.
-
 ## Cooling learning and optimal stop
 
 The cooling is learned the opposite way of the heating, per room (in the cold

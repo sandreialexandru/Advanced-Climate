@@ -60,6 +60,7 @@ class OutdoorTracker:
         self._update_daily(now)
 
     def _update_daily(self, now: datetime) -> None:
+        """Update the mean of today (used by the automatic season)."""
         day = now.date()
         values = [v for t, v in self.samples if t.date() == day]
         if values:

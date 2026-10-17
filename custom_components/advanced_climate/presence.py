@@ -165,6 +165,7 @@ class PresenceDebouncer:
         return due
 
     def _set(self, value: str, now: datetime) -> None:
+        """Change the house presence and keep a short history."""
         self.current = value
         self.pending = None
         self.pending_since = None

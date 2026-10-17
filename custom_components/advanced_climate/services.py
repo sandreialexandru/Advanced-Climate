@@ -80,6 +80,7 @@ def _local(value: datetime | None) -> datetime | None:
 
 
 def _houses(hass: HomeAssistant) -> list[House]:
+    """Every loaded house."""
     return [
         entry.runtime_data
         for entry in hass.config_entries.async_entries(DOMAIN)
@@ -88,6 +89,7 @@ def _houses(hass: HomeAssistant) -> list[House]:
 
 
 def _house(hass: HomeAssistant, entry_id: str | None) -> House:
+    """The house of a service call (the only one, or the one given)."""
     houses = _houses(hass)
     if entry_id:
         for house in houses:
@@ -139,6 +141,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
     """Register the services."""
 
     async def set_override(call: ServiceCall) -> None:
+        """Set a level or a temperature as a manual change."""
         preset = call.data.get(ATTR_PRESET)
         temperature = call.data.get(ATTR_TEMPERATURE)
         if (preset is None) == (temperature is None):
@@ -163,6 +166,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
             await room.house.async_evaluate_or_notify()
 
     async def clear_override(call: ServiceCall) -> None:
+        """Clear the manual changes of the given rooms (all when none is given)."""
         houses: set[House] = set()
         for room in _rooms(hass, call, required=False):
             room.clear_override()
@@ -171,6 +175,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
             await house.async_evaluate_or_notify()
 
     async def set_vacation(call: ServiceCall) -> None:
+        """Set or clear the vacation period."""
         house = _house(hass, call.data.get(ATTR_ENTRY))
         start = call.data.get(ATTR_START)
         end = call.data.get(ATTR_END)
@@ -183,12 +188,14 @@ def async_setup_services(hass: HomeAssistant) -> None:
         await house.async_set_vacation(start, end)
 
     async def reevaluate(call: ServiceCall) -> None:
+        """Evaluate again now."""
         entry_id = call.data.get(ATTR_ENTRY)
         houses = [_house(hass, entry_id)] if entry_id else _houses(hass)
         for house in houses:
             await house.async_evaluate_or_notify()
 
     async def set_schedule(call: ServiceCall) -> None:
+        """Replace the schedule of rooms with an internal schedule."""
         text = call.data.get(ATTR_SCHEDULE)
         profiles: Any = call.data.get(ATTR_PROFILES)
         if (text is None) == (profiles is None):
@@ -219,7 +226,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 subentry,
                 data={**subentry.data, CONF_SCHEDULE: format_schedule(parsed)},
             )
-            # The update listener reloads the entry.
+            # The update listener applies the new schedule without a reload.
 
     hass.services.async_register(DOMAIN, SERVICE_SET_OVERRIDE, set_override, SET_OVERRIDE_SCHEMA)
     hass.services.async_register(

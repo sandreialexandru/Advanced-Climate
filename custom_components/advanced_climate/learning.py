@@ -1,10 +1,9 @@
-"""Heating rate learning for optimal start (pure Python).
+"""Heating and cooling learning for optimal start and stop (pure Python).
 
 The learner observes heating episodes (the room asks for heat and the
-temperature rises from clearly below the target) and keeps the last episodes.
-An episode starts when the room is at least the thermostat tolerance below
-the target, so the cycles of a thermostat that keeps the temperature are
-learned too. The heating rate in °C per hour is then estimated as a straight
+temperature rises) and keeps the last episodes. An episode starts when the
+room is at least the thermostat tolerance below the target, so the cycles of a
+thermostat that keeps the temperature are learned too. The heating rate in °C per hour is then estimated as a straight
 line of the outdoor temperature, so every episode helps at every outdoor
 temperature and temperatures not seen yet are estimated from the trend. The
 learning is free: the measured rates and the line are used as they are.
@@ -19,11 +18,12 @@ from dataclasses import dataclass, field
 import math
 from datetime import datetime
 
-# The heat demand must last this long for an episode to be learned.
-MIN_DEMAND_MINUTES = 10  # also for cooling: without heat demand
+# An episode (with heat demand for heating, without it for cooling) is used
+# only when it lasted at least this long.
+MIN_DEMAND_MINUTES = 10
 DEFAULT_RATE = 1.0  # °C per hour, until the first episode
-DATA_VERSION = 3  # learning data of older versions is discarded
-# Version 2 cut the rates to 0.2 … 10 °C/h; episodes at those values are dropped.
+DATA_VERSION = 3  # saved learning data of other versions is discarded
+# Saved data of version 2 limited the rates to these values; such episodes are dropped.
 _V2_CLAMPED = (0.2, 10.0)
 MAX_EPISODES = 30
 # A line needs a few episodes over a real spread of outdoor temperatures.
@@ -51,6 +51,7 @@ class HeatingRateLearner:
 
     # ------------------------------------------------------------------ model
     def _points(self) -> list[tuple[float, float]]:
+        """Episodes that have an outdoor temperature, as (outdoor, rate)."""
         return [(float(o), float(r)) for o, r, *_ in self.episodes if o is not None]
 
     def fit(self) -> tuple[float, float] | None:
@@ -148,6 +149,7 @@ class HeatingRateLearner:
         return measured
 
     def _outdoor_mean(self) -> float | None:
+        """Mean outdoor temperature during the episode in progress."""
         if not self.episode_outdoor_count:
             return None
         return self.episode_outdoor_sum / self.episode_outdoor_count
@@ -167,8 +169,7 @@ class HeatingRateLearner:
 
     @classmethod
     def from_dict(cls, data: dict | None) -> HeatingRateLearner:
-        """Restore. Data of older versions is discarded: it also learned the small
-        maintenance cycles of the thermostats."""
+        """Restore the saved episodes (data of unknown versions is discarded)."""
         obj = cls()
         version = (data or {}).get("version")
         if version not in (2, DATA_VERSION):
@@ -302,6 +303,7 @@ class CoolingLearner:
         return k
 
     def _outdoor_mean(self) -> float | None:
+        """Mean outdoor temperature during the episode in progress."""
         if not self.episode_outdoor_count:
             return None
         return self.episode_outdoor_sum / self.episode_outdoor_count

@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.9.5";
+const CARD_VERSION = "1.9.6";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -287,6 +287,7 @@ const toLocalInput = (iso) => {
 const fromLocalInput = (value) => (value ? `${value.replace("T", " ")}:00` : null);
 
 class AdvancedClimateCard extends HTMLElement {
+  /** Event listeners are set once on the shadow root; the content is redrawn by _render. */
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -308,6 +309,7 @@ class AdvancedClimateCard extends HTMLElement {
     this.shadowRoot.addEventListener("keydown", (ev) => this._keyDown(ev));
   }
 
+  /** Visual editor of the card (Home Assistant form). */
   static getConfigForm() {
     const lang = (document.querySelector("home-assistant")?.hass?.locale?.language || navigator.language || "en").slice(0, 2);
     const labels = EDITOR_LABELS[lang] || EDITOR_LABELS.en;
@@ -317,10 +319,12 @@ class AdvancedClimateCard extends HTMLElement {
     };
   }
 
+  /** Configuration of a new card: every room of every house. */
   static getStubConfig() {
     return {};
   }
 
+  /** Check and keep the card configuration. */
   setConfig(config) {
     if (config === null || typeof config !== "object" || Array.isArray(config)) {
       throw new Error("Invalid configuration");
@@ -338,6 +342,7 @@ class AdvancedClimateCard extends HTMLElement {
     this._render();
   }
 
+  /** Called on every state change; redraws only when a watched entity changed. */
   set hass(hass) {
     this._hass = hass;
     this._housesMemo = null; // computed once per update
@@ -357,11 +362,13 @@ class AdvancedClimateCard extends HTMLElement {
     }
   }
 
+  /** Approximate height for the masonry dashboard. */
   getCardSize() {
     if (this._config?.compact) return 2 + this._rooms().length;
     return 4 + this._rooms().length * 4;
   }
 
+  /** Size in the sections dashboard. */
   getGridOptions() {
     return { columns: 12, min_columns: 6 };
   }
@@ -372,6 +379,7 @@ class AdvancedClimateCard extends HTMLElement {
     return (TEXT[lang] || TEXT.en)[key] ?? TEXT.en[key] ?? key;
   }
 
+  /** Language of the user, for dates and times. */
   _lang() {
     return this._hass?.locale?.language || "en";
   }
@@ -401,6 +409,7 @@ class AdvancedClimateCard extends HTMLElement {
     return this._found;
   }
 
+  /** Decision sensors of the rooms shown, sorted by name. */
   _rooms() {
     if (!this._hass) return [];
     const wanted = this._config?.rooms;
@@ -413,6 +422,7 @@ class AdvancedClimateCard extends HTMLElement {
       .sort((a, b) => String(a.attributes.room_name).localeCompare(String(b.attributes.room_name)));
   }
 
+  /** Houses with their entities and rooms (computed once per update). */
   _houses() {
     if (this._housesMemo) return this._housesMemo;
     const houses = new Map();
@@ -448,6 +458,7 @@ class AdvancedClimateCard extends HTMLElement {
     return this._housesMemo;
   }
 
+  /** Entities whose change redraws the card. */
   _watched() {
     const ids = [];
     for (const house of this._houses()) {
@@ -460,10 +471,12 @@ class AdvancedClimateCard extends HTMLElement {
     return ids;
   }
 
+  /** State object of an entity, if any. */
   _state(id) {
     return id ? this._hass.states[id] : undefined;
   }
 
+  /** State or option as Home Assistant shows it (translated). */
   _label(stateObj, value) {
     if (!stateObj) return value ?? "";
     if (this._hass.formatEntityState) {
@@ -476,10 +489,12 @@ class AdvancedClimateCard extends HTMLElement {
     return value ?? stateObj.state;
   }
 
+  /** Name of a level for the user (custom names included). */
   _presetName(attrs, preset) {
     return (attrs.preset_names && attrs.preset_names[preset]) || preset;
   }
 
+  /** Time of a moment; with the weekday when it is not today. */
   _fmtTime(iso) {
     if (!iso) return "–";
     const d = new Date(iso);
@@ -491,6 +506,7 @@ class AdvancedClimateCard extends HTMLElement {
     return d.toLocaleString(this._lang(), opts);
   }
 
+  /** Temperature with one decimal, or a dash. */
   _temp(value) {
     const n = num(value);
     return n === null ? "–" : `${n.toFixed(1)}°`;
@@ -527,14 +543,17 @@ class AdvancedClimateCard extends HTMLElement {
       </ha-card>`;
   }
 
+  /** Material Design icon. */
   _icon(name) {
     return name ? `<ha-icon icon="mdi:${name}"></ha-icon>` : "";
   }
 
+  /** Button with an optional icon. */
   _btn(label, attrs, { icon = "", kind = "" } = {}) {
     return `<button class="btn ${kind}" ${attrs}>${this._icon(icon)}<span>${esc(label)}</span></button>`;
   }
 
+  /** On / off switch for an entity. */
   _toggle(entityId, label) {
     const s = this._state(entityId);
     if (!s) return "";
@@ -565,6 +584,7 @@ class AdvancedClimateCard extends HTMLElement {
     return r ? `~${h} h ${r} min` : `~${h} h`;
   }
 
+  /** Current and target temperature, with the estimate under the target. */
   _tempPair(current, target, color, eta = "", help = "eta_help") {
     return `<div class="temps">
         <div class="tval"><span class="tag">${this._t("now_tag")}</span><span class="tnum">${this._temp(
@@ -580,6 +600,7 @@ class AdvancedClimateCard extends HTMLElement {
       </div>`;
   }
 
+  /** House block: presence, outdoor, mode, pause, guests, vacation and buttons. */
   _houseHtml(house) {
     const e = house.entities;
     const presence = this._state(e.presence);
@@ -708,6 +729,7 @@ class AdvancedClimateCard extends HTMLElement {
       </section>`;
   }
 
+  /** Room block (or one compact row); the details are shown when it is open. */
   _roomHtml(stateObj) {
     const cfg = this._config;
     const a = stateObj.attributes;
@@ -833,6 +855,7 @@ class AdvancedClimateCard extends HTMLElement {
     return cached && cached.temp ? cached : null;
   }
 
+  /** Fetch the last 24 h of room temperature, target and heat demand. */
   async _fetchHistory(a) {
     const key = a.room_id;
     const e = a.entities || {};
@@ -963,6 +986,7 @@ class AdvancedClimateCard extends HTMLElement {
     return { v0, v1: v0 + span, zoomed: span < d.t1 - d.t0 - 1000 };
   }
 
+  /** Show the time window v0 … v1 (limited to the chart range); the whole range resets the zoom. */
   _setView(room, v0, v1) {
     const d = this._charts?.[room];
     if (!d) return;
@@ -986,6 +1010,7 @@ class AdvancedClimateCard extends HTMLElement {
     this._setView(room, c - (c - v0) * factor, c + (v1 - c) * factor);
   }
 
+  /** Redraw only the chart of a room (zoom and pan), not the whole card. */
   _redrawChart(room) {
     const card = this.shadowRoot.querySelector(`[data-chartcard="${CSS.escape(room)}"]`);
     const stateObj = this._rooms().find((s) => s.attributes.room_id === room);
@@ -993,6 +1018,7 @@ class AdvancedClimateCard extends HTMLElement {
     card.innerHTML = this._timelineHtml(stateObj.attributes, true);
   }
 
+  /** Chart of the room: past temperature, target and heating, the plan ahead, zoom bar. */
   _timelineHtml(a, innerOnly = false) {
     const d = this._chartData(a);
     if (!d.segs.length && !d.temp.length) return "";
@@ -1207,6 +1233,7 @@ class AdvancedClimateCard extends HTMLElement {
     tip.style.transform = f > 0.6 ? "translateX(calc(-100% - 10px))" : "translateX(10px)";
   }
 
+  /** Profile select, child lock and clear manual change. */
   _controlsHtml(a, e) {
     const profile = this._state(e.profile);
     const options = (profile?.attributes?.options || [])
@@ -1231,6 +1258,7 @@ class AdvancedClimateCard extends HTMLElement {
     return `<div class="row wrap controls">${select}${this._toggle(e.child_lock, this._t("child_lock"))}${clear}</div>`;
   }
 
+  /** Quick manual change: a level or a temperature, for an optional number of hours. */
   _quickHtml(a) {
     const presets = (a.presets || Object.keys(PRESET_COLORS))
       .map(
@@ -1263,6 +1291,7 @@ class AdvancedClimateCard extends HTMLElement {
     );
   }
 
+  /** Temperatures of the levels the integration sets (number entities). */
   _levelsHtml(a, e) {
     const numbers = Object.entries(e).filter(([k]) => k.startsWith("level_"));
     if (!numbers.length) return "";
@@ -1284,6 +1313,7 @@ class AdvancedClimateCard extends HTMLElement {
     return this._fold(`levels-${a.room_id}`, this._t("levels"), `<div class="grid">${rows}</div>`);
   }
 
+  /** Details: temperatures, heating rate and time, device preset, adjustments, levels. */
   _detailsHtml(a, e) {
     const rate = this._state(e.heating_rate);
     const runtime = this._state(e.heating_runtime);
@@ -1336,6 +1366,7 @@ class AdvancedClimateCard extends HTMLElement {
     return this._fold(`details-${a.room_id}`, this._t("details"), html);
   }
 
+  /** Which days a profile is used on, in words. */
   _profileDays(name) {
     const days = {
       workday: this._t("days_workday"),
@@ -1347,11 +1378,13 @@ class AdvancedClimateCard extends HTMLElement {
     return this._t("days_custom");
   }
 
+  /** Weekday name in the language of the user (0 = Monday). */
   _weekdayName(index) {
     // 2024-01-01 was a Monday.
     return new Date(2024, 0, 1 + index).toLocaleDateString(this._lang(), { weekday: "long" });
   }
 
+  /** Help text of the schedule and whether it decides the room right now. */
   _scheduleIntro(a, stateObj) {
     const scheduleRules = ["schedule", "optimal_start", "optimal_stop"];
     const now = scheduleRules.includes(stateObj.state)
@@ -1360,6 +1393,7 @@ class AdvancedClimateCard extends HTMLElement {
     return `<p class="hint">${this._t("schedule_help")}</p>${now}`;
   }
 
+  /** Schedule of the room: day bars, and the editor while editing. */
   _scheduleHtml(a, stateObj) {
     if (!a.schedule_editable) {
       return this._fold(`sched-${a.room_id}`, this._t("schedule"), `<p class="hint">${this._t("not_editable")}</p>`);
@@ -1512,6 +1546,7 @@ class AdvancedClimateCard extends HTMLElement {
     return [min, max];
   }
 
+  /** Move a slot start of the draft; False when nothing changed. */
   _moveHandle(profile, index, minutes) {
     const slots = this._draft?.[profile];
     if (!slots || !slots[index]) return false;
@@ -1522,6 +1557,7 @@ class AdvancedClimateCard extends HTMLElement {
     return true;
   }
 
+  /** Start a pan or pinch on the chart; True when the pointer is on a chart. */
   _chartPointerDown(ev) {
     const chart = ev.target.closest?.(".hchart");
     if (!chart) return false;
@@ -1549,6 +1585,7 @@ class AdvancedClimateCard extends HTMLElement {
     return true;
   }
 
+  /** Pan with one finger or mouse, pinch zoom with two; True when handled. */
   _chartPointerMove(ev) {
     const p = this._pan;
     if (!p || !this._ptrs?.has(ev.pointerId)) return false;
@@ -1578,6 +1615,7 @@ class AdvancedClimateCard extends HTMLElement {
     return false;
   }
 
+  /** End a pan or pinch; a tap without moving shows the values under it. */
   _chartPointerUp(ev) {
     if (!this._ptrs) return;
     this._ptrs.delete(ev.pointerId);
@@ -1593,6 +1631,7 @@ class AdvancedClimateCard extends HTMLElement {
     if (p && !p.moved && chart) this._chartHover({ type: "pointermove", clientX: ev.clientX, target: chart });
   }
 
+  /** Ctrl + wheel or touchpad pinch zooms the chart around the pointer. */
   _chartWheel(ev) {
     const chart = ev.target.closest?.(".hchart");
     // Only pinch on a touchpad or Ctrl + wheel zoom, so the page still scrolls normally.
@@ -1605,6 +1644,7 @@ class AdvancedClimateCard extends HTMLElement {
     this._zoom(chart.dataset.chart, ev.deltaY > 0 ? 1.25 : 0.8, center);
   }
 
+  /** Double click zooms in around the pointer. */
   _chartDblClick(ev) {
     // With the pointer captured by the chart card the event target is the card itself.
     const chart = ev.target.closest?.(".hchart") || ev.target.closest?.(".chart-card")?.querySelector(".hchart");
@@ -1617,6 +1657,7 @@ class AdvancedClimateCard extends HTMLElement {
     this._zoom(chart.dataset.chart, 0.4, center);
   }
 
+  /** Pointer pressed: chart pan, or dragging a handle of the schedule editor. */
   _pointerDown(ev) {
     if (this._chartPointerDown(ev)) return;
     const handle = ev.target.closest?.("[data-handle]");
@@ -1632,6 +1673,7 @@ class AdvancedClimateCard extends HTMLElement {
     handle.classList.add("dragging");
   }
 
+  /** Pointer moved: chart pan / hover, or moving a schedule handle (5 minutes). */
   _pointerMove(ev) {
     if (!this._drag) {
       if (this._chartPointerMove(ev)) {
@@ -1653,6 +1695,7 @@ class AdvancedClimateCard extends HTMLElement {
     }
   }
 
+  /** Pointer released: end the pan or the drag. */
   _pointerUp(ev) {
     if (ev) this._chartPointerUp(ev);
     if (!this._drag) return;
@@ -1660,6 +1703,7 @@ class AdvancedClimateCard extends HTMLElement {
     this._render();
   }
 
+  /** Arrow keys move the focused schedule handle (Shift: one hour). */
   _keyDown(ev) {
     const handle = ev.target.closest?.("[data-handle]");
     if (!handle || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(ev.key)) return;
@@ -1694,6 +1738,7 @@ class AdvancedClimateCard extends HTMLElement {
     return cached && !cached.failed ? cached.value : null;
   }
 
+  /** Fetch the heating time of the period from the long-term statistics. */
   async _fetchRuntime(entityId, period, key) {
     this._runtime[key] = { ...(this._runtime[key] || {}), at: Date.now(), loading: true };
     if (!this._hass?.callWS) return;
@@ -1717,6 +1762,7 @@ class AdvancedClimateCard extends HTMLElement {
     this._render();
   }
 
+  /** Heating time as hours and minutes. */
   _runtimeText(entityId) {
     const value = this._runtimeValue(entityId);
     if (value === null) return "–";
@@ -1738,10 +1784,12 @@ class AdvancedClimateCard extends HTMLElement {
     )}</span><span class="v">${value}</span></button>`;
   }
 
+  /** Heating time of the house, as a stat that changes the period when tapped. */
   _runtimeStat(entityId) {
     return this._runtimeButton(entityId, "stat");
   }
 
+  /** Section that opens and closes; its state survives redraws. */
   _fold(key, title, content) {
     return `<details class="fold" data-fold="${esc(key)}" ${this._open[key] ? "open" : ""}>
       <summary><span>${esc(title)}</span></summary><div class="fold-body">${content}</div></details>`;
@@ -1753,6 +1801,7 @@ class AdvancedClimateCard extends HTMLElement {
     if (el?.dataset?.fold) this._open[el.dataset.fold] = el.open;
   }
 
+  /** Call a service; the error is shown under the section when it fails. */
   async _call(domain, service, data, errorKey) {
     try {
       await this._hass.callService(domain, service, data);
@@ -1766,6 +1815,7 @@ class AdvancedClimateCard extends HTMLElement {
     }
   }
 
+  /** Selects, numbers and the fields of the schedule editor. */
   async _onChange(ev) {
     const el = ev.target;
     const d = el.dataset || {};
@@ -1783,6 +1833,7 @@ class AdvancedClimateCard extends HTMLElement {
     }
   }
 
+  /** Temperature and duration entered in the quick manual change. */
   _quickValues(room) {
     const temp = this.shadowRoot.querySelector(`input[data-quick="temp"][data-room="${CSS.escape(room)}"]`);
     const hours = this.shadowRoot.querySelector(`input[data-quick="hours"][data-room="${CSS.escape(room)}"]`);
@@ -1792,6 +1843,7 @@ class AdvancedClimateCard extends HTMLElement {
     return { temp: num(temp?.value), data };
   }
 
+  /** Every button of the card (data-action). */
   async _onClick(ev) {
     const el = ev.target.closest("[data-action]");
     if (!el || el.tagName === "SELECT" || el.tagName === "INPUT") return;

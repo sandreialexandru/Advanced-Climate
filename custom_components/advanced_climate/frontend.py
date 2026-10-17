@@ -1,7 +1,5 @@
 """Serve the Advanced Climate Lovelace card and add it to the dashboards.
 
-Same approach as the Boiler Monitor card:
-
 1. The file is served by the integration at CARD_URL (no cache headers).
 2. It is added as a Lovelace **resource** (storage mode). Resources are loaded
    every time a dashboard loads, so the card is found even after the browser /
@@ -52,6 +50,7 @@ async def async_register_card(hass: HomeAssistant) -> None:
     url = f"{CARD_URL}?v={manifest.get('version', '0')}"
 
     def _extra_module() -> None:
+        """Load the card on every page (when it cannot be a dashboard resource)."""
         try:
             from homeassistant.components.frontend import add_extra_js_url  # noqa: PLC0415
 
@@ -60,6 +59,7 @@ async def async_register_card(hass: HomeAssistant) -> None:
             _LOGGER.debug("Frontend not loaded, extra module not added")
 
     async def _add_resource(_event: Event | None = None) -> None:
+        """Add the card as a dashboard resource, or as an extra module if that fails."""
         try:
             if not await async_ensure_lovelace_resource(hass, url):
                 _extra_module()
