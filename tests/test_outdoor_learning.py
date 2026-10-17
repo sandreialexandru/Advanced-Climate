@@ -117,6 +117,16 @@ class LearningTest(unittest.TestCase):
         slow.observe(self.T0, True, 21.3, 22.0, 7.0, tolerance=0.5)
         rate = slow.observe(self.T0 + timedelta(hours=3), False, 21.7, 22.0, 7.0, tolerance=0.5)
         self.assertAlmostEqual(rate, 0.133, places=3)
+        # A rise of only 0.1 °C is learned too; no rise is no rate.
+        tiny = learning.HeatingRateLearner()
+        tiny.observe(self.T0, True, 21.4, 22.0, 7.0, tolerance=0.5)
+        rate = tiny.observe(self.T0 + timedelta(hours=1), False, 21.5, 22.0, 7.0, tolerance=0.5)
+        self.assertAlmostEqual(rate, 0.1, places=3)
+        flat = learning.HeatingRateLearner()
+        flat.observe(self.T0, True, 21.4, 22.0, 7.0, tolerance=0.5)
+        self.assertIsNone(
+            flat.observe(self.T0 + timedelta(hours=1), False, 21.4, 22.0, 7.0, tolerance=0.5)
+        )
 
     def test_restore_and_migrate(self) -> None:
         learner = learning.HeatingRateLearner()
