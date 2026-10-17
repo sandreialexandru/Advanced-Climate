@@ -63,7 +63,7 @@ Requires Home Assistant **2025.7** or newer.
 
 ## Configuration
 
-1. **Create the house**: name, people, nearby zones and the home rule, then the
+1. **Create the house**: first the **temperature unit** (°C or °F), then the name, people, nearby zones and the home rule, then the
    **heating of the whole house** (e.g. your Generic Thermostat). That is enough
    for a house heated by one thermostat: it becomes the zone *Whole house*
    and uses every option. It can be changed later in *Configure → Heating of the
@@ -75,6 +75,17 @@ Requires Home Assistant **2025.7** or newer.
 3. Everything else is in the integration **options** (presence, workdays and
    calendar, weather and season, energy, boiler, manual changes and vacation,
    alerts).
+
+### Temperature unit
+
+Each house has one temperature unit, °C or °F, for all its rooms. Every
+temperature of the house is entered and shown in it: the settings, the level
+temperatures, the sensors, the card and the `set_override` service. It is
+chosen first when the house is created and changed with **Reconfigure** on the
+integration page; the values are converted, nothing has to be entered again.
+The integration keeps its values in °C and converts the readings and commands
+of the thermostats and sensors from their own unit, so the unit of the house
+does not have to match the one of Home Assistant.
 
 Every form shows only what applies. The choices come first; a second form
 then asks only for the values they need, and is skipped when nothing applies:

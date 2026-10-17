@@ -5,16 +5,28 @@
         "title": "Advanced Climate",
         "description": "Create the house. Rooms are added afterwards with \"Add room\"; all other options are in the integration options.",
         "data": {
+          "temperature_unit": "Temperature unit",
           "name": "Name",
           "persons": "People",
           "nearby_zones": "Nearby zones",
           "home_rule": "The house is home when"
         },
         "data_description": {
+          "temperature_unit": "Every temperature of this house is entered and shown in this unit. It can be changed later with Reconfigure; the values are converted.",
           "name": "Shown on the devices and in the card.",
           "persons": "People whose location decides home / nearby / far. Leave empty only if presence should not matter: the house is then always 'home' and only the schedule decides.",
           "nearby_zones": "Zones where the house counts as 'nearby' (eco), e.g. your city. Outside home and every zone = 'far' (away). Leave empty if you only want home / far.",
           "home_rule": "'At least one' suits most homes. 'Everybody' lowers the heating as soon as one person leaves."
+        }
+      },
+      "reconfigure": {
+        "title": "Temperature unit",
+        "description": "Every temperature of this house (settings, levels, card) is shown in this unit. The values are converted, nothing has to be entered again.",
+        "data": {
+          "temperature_unit": "Temperature unit"
+        },
+        "data_description": {
+          "temperature_unit": "Every temperature of this house is entered and shown in this unit. It can be changed later with Reconfigure; the values are converted."
         }
       },
       "heating": {
@@ -70,6 +82,9 @@
     "error": {
       "no_devices": "Select at least one device.",
       "sensor_required": "Relays need a temperature sensor of the room."
+    },
+    "abort": {
+      "reconfigure_successful": "Saved."
     }
   },
   "options": {
@@ -310,9 +325,9 @@
         },
         "data_description": {
           "price_high": "At or above this price the high-price adjustment is applied.",
-          "price_high_offset": "Usually negative, e.g. -1 °C while energy is expensive.",
+          "price_high_offset": "Usually negative, e.g. -1° while energy is expensive.",
           "price_low": "At or below this price the low-price adjustment is applied.",
-          "price_low_offset": "Usually positive, e.g. +1 °C while energy is cheap (electric heating, heat pump).",
+          "price_low_offset": "Usually positive, e.g. +1° while energy is cheap (electric heating, heat pump).",
           "pv_threshold": "Surplus from which the adjustment is applied.",
           "pv_offset": "Degrees added while there is surplus (e.g. +1)."
         }
@@ -587,6 +602,9 @@
           }
         }
       },
+      "abort": {
+        "reconfigure_successful": "Saved."
+      },
       "error": {
         "no_devices": "Select at least one device.",
         "duplicate_names": "Two levels have the same name.",
@@ -842,6 +860,12 @@
         "sat": "Saturday",
         "sun": "Sunday"
       }
+    },
+    "temperature_unit": {
+      "options": {
+        "celsius": "Celsius (°C)",
+        "fahrenheit": "Fahrenheit (°F)"
+      }
     }
   },
   "services": {
@@ -863,7 +887,7 @@
         },
         "temperature": {
           "name": "Temperature",
-          "description": "Temperature to set."
+          "description": "Temperature to set, in the unit of the house (°C or °F)."
         },
         "duration_hours": {
           "name": "Duration",

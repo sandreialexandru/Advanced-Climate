@@ -20,6 +20,7 @@ from homeassistant.core import (
     Event,
     EventStateChangedData,
     HomeAssistant,
+    State,
     callback,
 )
 from homeassistant.exceptions import HomeAssistantError
@@ -84,6 +85,7 @@ from .const import (
     CONF_SEASON_TEMP,
     CONF_TRAVEL_TIME,
     CONF_VACATION_PREHEAT,
+    CONF_TEMP_UNIT,
     CONF_WEATHER,
     CONF_WINDOW_IGNORE_ABOVE,
     CONF_WORKDAY_SENSOR,
@@ -111,10 +113,17 @@ from .presence import (
 )
 from .room import Room
 from .util import (
+    CELSIUS,
+    FAHRENHEIT,
     as_list,
+    delta_from_celsius,
     distance_km,
     float_attr,
     float_state,
+    is_fahrenheit,
+    system_unit,
+    temp_state,
+    to_celsius,
     from_iso,
     iso,
     minutes_value,
@@ -648,13 +657,23 @@ class House:
         """Return the current outdoor temperature."""
         sensor = self.options.get(CONF_OUTDOOR_SENSOR)
         if sensor:
-            value = float_state(self.hass, sensor)
+            value = temp_state(self.hass, sensor)
             if value is not None:
                 return value
         weather = self.options.get(CONF_WEATHER)
         if weather:
-            return float_attr(self.hass.states.get(weather), "temperature")
+            state = self.hass.states.get(weather)
+            return to_celsius(float_attr(state, "temperature"), self._weather_unit(state))
         return None
+
+    def _weather_unit(self, state: State | None) -> str:
+        unit = state.attributes.get("temperature_unit") if state is not None else None
+        return str(unit) if unit else system_unit(self.hass)
+
+    @property
+    def unit(self) -> str:
+        """Temperature unit of this house for the user (°C or °F)."""
+        return FAHRENHEIT if is_fahrenheit(self.options.get(CONF_TEMP_UNIT)) else CELSIUS
 
     def _sample_outdoor(self) -> None:
         value = self.outdoor_temperature()
@@ -712,6 +731,7 @@ class House:
             self.forecast_cutoff = False
             return
         forecast = ((response or {}).get(weather) or {}).get("forecast") or []
+        unit = self._weather_unit(self.hass.states.get(weather))
         now = dt_util.now()
         horizon = now + timedelta(hours=float(self.options[CONF_FORECAST_HOURS]))
         temps = []
@@ -721,7 +741,7 @@ class House:
             if moment is None or temp is None:
                 continue
             if now <= moment <= horizon:
-                temps.append(float(temp))
+                temps.append(float(to_celsius(float(temp), unit)))
         self.forecast_cutoff = bool(temps) and max(temps) >= float(
             self.options[CONF_CUTOFF_TEMP]
         )
@@ -857,7 +877,10 @@ class House:
         cold = {name: gap for name, gap in gaps.items() if gap > limit}
         reached = [name for name, gap in gaps.items() if gap <= 0]
         if cold and reached:
-            text = ", ".join(f"{name} ({gap:.1f} °C below target)" for name, gap in cold.items())
+            text = ", ".join(
+                f"{name} ({delta_from_celsius(gap, self.unit):.1f} {self.unit} below target)"
+                for name, gap in cold.items()
+            )
             self.notify(
                 "room_difference",
                 f"Some rooms stay cold while others are warm: {text}.",

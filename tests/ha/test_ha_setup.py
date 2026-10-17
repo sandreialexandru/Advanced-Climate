@@ -166,3 +166,69 @@ async def test_card_resource(hass: HomeAssistant) -> None:
     assert mine[0]["type"] == "module"
     await async_remove_lovelace_resource(hass)
     assert not [i for i in resources.async_items() if i["url"].startswith(CARD_URL)]
+
+
+async def test_fahrenheit_house(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
+    """A house in °F: sensors, levels, card attributes and services use °F; values kept in °C."""
+    await hass.config.async_set_time_zone("Europe/Bucharest")
+    freezer.move_to("2026-10-12 09:00:00+00:00")
+    assert await async_setup_component(hass, "input_boolean", {"input_boolean": {"heater": {}}})
+    # 64.4 °F = 18 °C
+    hass.states.async_set("sensor.room_temp", "64.4", {"unit_of_measurement": "°F"})
+    hass.states.async_set("person.andrei", "home")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Home",
+        options={"persons": ["person.andrei"], "nearby_zones": [], "temperature_unit": "fahrenheit"},
+        subentries_data=[
+            {
+                "data": {
+                    "source": "switch",
+                    "switches": ["input_boolean.heater"],
+                    "temperature_sensors": ["sensor.room_temp"],
+                    "min_on_minutes": 0,
+                    "min_off_minutes": 0,
+                },
+                "subentry_type": SUBENTRY_ROOM,
+                "title": "Bedroom",
+                "unique_id": None,
+            }
+        ],
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    await _tick(hass, freezer, 15)
+
+    decision = hass.states.get("sensor.bedroom_decision")
+    assert decision.attributes["temperature_unit"] == "°F"
+    assert decision.attributes["current_temperature"] == 64.4
+    # Level home = 21 °C = 69.8 °F
+    assert decision.attributes["target_temperature"] == 69.8
+    assert decision.attributes["levels"]["home"] == 69.8
+    target = hass.states.get("sensor.bedroom_target_temperature")
+    assert target.attributes["unit_of_measurement"] == "°F"
+    assert float(target.state) == 69.8
+    assert hass.states.get("input_boolean.heater").state == "on"
+    level = hass.states.get("number.bedroom_level_home")
+    assert level.attributes["unit_of_measurement"] == "°F"
+    assert float(level.state) == 69.8
+
+    # A manual temperature is given in °F.
+    await hass.services.async_call(
+        DOMAIN, "set_override", {"room": "Bedroom", "temperature": 72, "duration_hours": 1},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.bedroom_decision").attributes["target_temperature"] == 72.0
+
+    # Setting a level in °F stores it in °C.
+    await hass.services.async_call(
+        "number", "set_value", {"entity_id": "number.bedroom_level_home", "value": 71.6},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    room = entry.runtime_data.rooms[next(iter(entry.subentries))]
+    assert round(room.levels["home"], 2) == 22.0
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
