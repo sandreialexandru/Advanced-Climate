@@ -138,13 +138,16 @@ edited in the Lovelace card.
 
 Rules are evaluated from the top; the first one that applies wins:
 
-1. Safety (frost protection, maximum temperature) – always applied
-2. Mode Off / Pause / Summer / outside the heating season
-3. Window open
-4. Manual change
-5. Vacation
-6. Presence: far → `away`, nearby → `eco` (or a fixed temperature)
-7. Schedule (optimal start / stop, room occupancy)
+1. Safety (frost protection, maximum temperature) – always applied, also to a
+   manual change and in pause; frost protection starts the heat source on its own
+2. Pause
+3. Valve exercise – in every mode, not with a window open
+4. Mode Off / Summer / outside the heating season
+5. Window open
+6. Manual change
+7. Vacation
+8. Presence: far → `away`, nearby → `eco` (or a fixed temperature)
+9. Schedule (optimal start / stop, room occupancy)
 
 Then the adjustments (outdoor cutoff, compensation, tariff, PV, solar gain) and
 the safety limits.

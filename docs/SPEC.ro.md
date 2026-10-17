@@ -176,7 +176,7 @@ definit; apoi integrarea preia din nou controlul.
 | Detectare | activă | Schimbările făcute de integrare se recunosc după context, sau pentru că dispozitivul doar raportează valorile trimise de integrare |
 | Durată | configurabilă, universală | O singură regulă pentru orice schimbare manuală, inclusiv oprirea GT: **durată fixă** (X ore) sau **până la următoarea reevaluare** declanșată de o schimbare (interval, prezență, fereastră, mod). Verificarea periodică nu o încheie |
 | Domeniu | cameră | Toată casa doar când camerele au robinete proprii |
-| Pauză | – | Comutator: nicio comandă (antiînghețul se aplică în continuare) |
+| Pauză | – | Comutator: nicio comandă, fără calibrarea TRV (antiînghețul și temperatura maximă se aplică în continuare) |
 | Blocare pentru copii | oprită | Schimbările manuale sunt anulate imediat |
 | Anulare | – | Buton pentru fiecare cameră și pentru casă |
 
@@ -207,9 +207,9 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | --- | --- | --- |
 | Antiîngheț | activ | Limita de jos, și în modurile Oprit și Pauză (GT: temperatura lui minimă); odată ce încălzește, continuă până când dispozitivul nu mai cere căldură. O cameră în antiîngheț pornește singură sursa de căldură (fără camere necesare, fără camera de referință, și în pauză) |
 | Senzor indisponibil | senzorul dispozitivului | Senzor extern căzut → senzorul dispozitivului → eco, cu alertă |
-| Dispozitiv indisponibil | alertă după 15 min | Celelalte camere funcționează în continuare |
+| Dispozitiv indisponibil | alertă după 15 min | Celelalte camere funcționează în continuare; și pentru sursa de căldură (atunci nici antiînghețul nu poate încălzi) |
 | Verificarea comenzilor | activă | Reîncearcă o dată după 2 min, apoi alertă |
-| Mișcarea robinetelor | oprită | Deschidere completă săptămânală a TRV-urilor |
+| Mișcarea robinetelor | oprită | Deschidere completă săptămânală a TRV-urilor, în orice mod (și vara și în afara sezonului); o pauză sau o fereastră deschisă o amână pentru mai târziu în aceeași zi; nu cere căldură |
 | Baterie descărcată | alertă sub 20 % | TRV-urile și senzorii camerei |
 | Repornire | restaurare | Schimbările manuale, vacanța și datele învățate se păstrează |
 | Reevaluare periodică | 5 min | Pe lângă evenimente |
@@ -239,13 +239,17 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 Regulile sunt evaluate de sus în jos pentru fiecare cameră; prima regulă care se
 aplică stabilește nivelul.
 
-1. **Siguranță** – antiîngheț și temperatură maximă, aplicate mereu
-2. **Mod Oprit / Pauză / Vară / în afara sezonului**
-3. **Fereastră deschisă**
-4. **Schimbare manuală**
-5. **Vacanță**
-6. **Prezență** – departe → `away`, aproape → `eco` (sau temperatura fixă), acasă → program
-7. **Program** – cu pornire / oprire anticipată și ocuparea camerei
+1. **Siguranță** – antiîngheț și temperatură maximă, aplicate mereu: și unei
+   schimbări manuale, în pauză, serviciului `set_override` și cardului, iar
+   antiînghețul pornește singur sursa de căldură
+2. **Pauză**
+3. **Mișcarea robinetelor** – în orice mod, nu cu o fereastră deschisă
+4. **Mod Oprit / Vară / în afara sezonului**
+5. **Fereastră deschisă**
+6. **Schimbare manuală**
+7. **Vacanță**
+8. **Prezență** – departe → `away`, aproape → `eco` (sau temperatura fixă), acasă → program
+9. **Program** – cu pornire / oprire anticipată și ocuparea camerei
 
 Ajustările finale (prag de temperatură exterioară, compensare, tarif,
 fotovoltaic, câștig solar) corectează o țintă de încălzire doar cu câteva zecimi

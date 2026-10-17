@@ -502,3 +502,42 @@ async def test_durations_across_the_dst_change(
     assert dt_util.as_utc(until) == dt_util.parse_datetime("2026-10-25 01:30:00+00:00")
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_service_temperature_within_the_safety_limits(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """set_override keeps a temperature between frost protection and the maximum."""
+    entry = await _setup(hass, freezer)
+    await _tick(hass, freezer, 15)
+    await hass.services.async_call(
+        DOMAIN, "set_override", {"room": "Bedroom", "temperature": 35}, blocking=True
+    )
+    await hass.async_block_till_done()
+    room = next(iter(entry.runtime_data.rooms.values()))
+    assert room.override["target"]["temperature"] == 25.0  # the default maximum
+    decision = hass.states.get("sensor.bedroom_decision")
+    assert decision.attributes["max_temperature"] == 25.0
+    assert decision.attributes["min_temperature"] == 7.0
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_heat_source_unavailable_alert(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """An unavailable heat source is reported after the configured time."""
+    hass.states.async_set(
+        "climate.trv", "heat", {"hvac_modes": ["heat", "off"], "current_temperature": 20.0,
+                                "temperature": 21.0, "hvac_action": "idle"}
+    )
+    entry = await _trv_house(hass, freezer)
+    await _tick(hass, freezer, 15)
+    hass.states.async_set("input_boolean.boiler", "unavailable")
+    await _tick(hass, freezer, 60)
+    house = entry.runtime_data
+    assert "unavailable_input_boolean.boiler" not in house._alerts  # noqa: SLF001
+    await _tick(hass, freezer, 16 * 60)
+    assert "unavailable_input_boolean.boiler" in house._alerts  # noqa: SLF001
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

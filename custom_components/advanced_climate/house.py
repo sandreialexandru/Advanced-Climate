@@ -174,6 +174,7 @@ class House:
         self.boiler_changed: datetime | None = None
         self._source_running_since: datetime | None = None
         self._frost_started = False  # heat source started for frost protection while paused
+        self._source_unavailable_since: datetime | None = None
         self._alerts: dict[str, datetime] = {}
         self._unsubs: list[Callable[[], None]] = []
         self._timer_unsub: Callable[[], None] | None = None
@@ -893,6 +894,7 @@ class House:
         # without one while at least one room heats.
         configured, source_on = self.heat_source_state()
         running = bool(source_on) if configured else any(r.heating for r in self.rooms.values())
+        self._check_source_available(now, configured, source_on)
         if self._source_running_since is not None:
             self.boiler_runtime_s += (now - self._source_running_since).total_seconds()
             self._source_running_since = None
@@ -951,6 +953,28 @@ class House:
         self.boiler_on = want
         self.boiler_changed = now
         self._frost_started = bool(want and self.paused)
+
+    def _check_source_available(
+        self, now: datetime, configured: bool, source_on: bool | None
+    ) -> None:
+        """Alert when the heat source has been unavailable for the configured time."""
+        entity_id = self.options.get(CONF_BOILER_ENTITY)
+        key = f"unavailable_{entity_id}"
+        if not configured or source_on is not None:
+            if self._source_unavailable_since is not None:
+                self._source_unavailable_since = None
+                self.clear_alert(key)
+            return
+        if self._source_unavailable_since is None:
+            self._source_unavailable_since = now
+        limit = timedelta(minutes=self.alert_unavailable_minutes)
+        if now - self._source_unavailable_since >= limit:
+            self.notify(
+                key,
+                f"The heat source {entity_id} has been unavailable for more than "
+                f"{limit.total_seconds() / 60:.0f} minutes: the rooms cannot be heated, "
+                "not even for frost protection.",
+            )
 
     def heat_source_state(self) -> tuple[bool, bool | None]:
         """(configured, running) of the heat source of the house (the boiler entity).

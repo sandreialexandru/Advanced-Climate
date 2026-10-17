@@ -153,6 +153,26 @@ class SafetyTest(unittest.TestCase):
         self.assertEqual(d.rule, const.RULE_VALVE_EXERCISE)
 
 
+class HierarchyTest(unittest.TestCase):
+    def test_valve_exercise_in_every_mode_but_not_with_window_or_pause(self) -> None:
+        for kwargs in ({"mode": const.MODE_SUMMER}, {"season_active": False}, {"mode": const.MODE_OFF}):
+            d = engine.decide(inputs(valve_exercise=True, **kwargs))
+            self.assertEqual(d.rule, const.RULE_VALVE_EXERCISE, kwargs)
+        d = engine.decide(inputs(valve_exercise=True, window_open=True))
+        self.assertEqual(d.rule, const.RULE_WINDOW)
+        d = engine.decide(inputs(valve_exercise=True, paused=True))
+        self.assertEqual(d.rule, const.RULE_PAUSE)
+
+    def test_maximum_applies_to_manual_changes_and_pause(self) -> None:
+        for kwargs in ({"override_active": True}, {"paused": True}):
+            d = engine.decide(inputs(device_setpoint=30.0, max_temp=25.0, **kwargs))
+            self.assertEqual(d.rule, const.RULE_SAFETY, kwargs)
+            self.assertEqual(d.target.temperature, 25.0)
+        # Below the maximum the manual change is respected.
+        d = engine.decide(inputs(override_active=True, device_setpoint=24.0, max_temp=25.0))
+        self.assertEqual(d.rule, const.RULE_OVERRIDE)
+
+
 class OptimalTest(unittest.TestCase):
     def test_start(self) -> None:
         change = NOW + timedelta(minutes=50)

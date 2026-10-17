@@ -257,6 +257,8 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "presets": list(PRESETS),
             "preset_names": room.preset_names,
             "levels": {p: _t(room.level_temp(p), unit, 1) for p in PRESETS},
+            "min_temperature": _t(room.frost_temp(), unit, 1),
+            "max_temperature": _t(room.max_temp(), unit, 1),
             "climate_entities": room.climates,
             "device_preset": room.device_preset(),
             "device_level": room.level_of_device_preset(room.device_preset()),

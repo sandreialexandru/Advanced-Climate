@@ -520,7 +520,7 @@
           },
           "data_description": {
             "solar_offset": "Valoare negativă (de ex. -1) coboară ținta cât e soare, pentru camerele încălzite de soare. Folosește entitatea meteo a casei (apare doar dacă e setată). 0 = oprit.",
-            "valve_exercise": "Deschide TRV-urile complet 5 minute o dată pe săptămână, contra calcarului."
+            "valve_exercise": "Deschide TRV-urile complet 5 minute o dată pe săptămână, contra calcarului, în orice mod (și vara). O pauză sau o fereastră deschisă o amână pentru mai târziu în aceeași zi; nu cere căldură."
           }
         },
         "levels_nearby": {

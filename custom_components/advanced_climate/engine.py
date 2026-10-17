@@ -6,14 +6,16 @@ move a heating target by a few tenths of a degree and the result always goes
 through the safety limits.
 
 Rule order:
- 1. safety (frost protection / maximum temperature) - always applied last
- 2. global mode Off / Pause / Summer / out of season
- 3. valve exercise
- 4. window open
- 5. manual override
- 6. vacation
- 7. presence (far -> away, nearby -> eco or a fixed temperature)
- 8. schedule (with optimal start / stop and room occupancy)
+ 1. safety (frost protection / maximum temperature) - always applied last,
+    also to a manual change and in pause
+ 2. pause
+ 3. valve exercise (in every mode, not with a window open)
+ 4. global mode Off / Summer / out of season
+ 5. window open
+ 6. manual override
+ 7. vacation
+ 8. presence (far -> away, nearby -> eco or a fixed temperature)
+ 9. schedule (with optimal start / stop and room occupancy)
  Adjustments: outdoor cutoff, compensation, tariff, PV, solar gain.
 """
 
@@ -127,6 +129,8 @@ class RoomInputs:
     offsets: list[tuple[str, float]] = field(default_factory=list)
     supports_off: bool = True
     exercise_temp: float | None = None
+    # Highest temperature set on the thermostats now (a manual change keeps it).
+    device_setpoint: float | None = None
     unit: str = "°C"  # only for the texts; every value is in °C
     # The last hours of a vacation: the schedule applies, so the house is warm on return.
     vacation_preheat: bool = False
@@ -166,9 +170,22 @@ def _off(inputs: RoomInputs) -> Target:
 
 
 def base_decision(inputs: RoomInputs) -> Decision:
-    """Evaluate rules 2-8 (without adjustments and safety)."""
+    """Evaluate rules 2-9 (without adjustments and safety)."""
     if inputs.paused:
         return Decision(RULE_PAUSE, Target(KIND_NONE), "Paused: no commands are sent")
+    # The valves are exercised in every mode (above all in summer), but not
+    # with a window open.
+    if inputs.valve_exercise and not inputs.window_open:
+        return Decision(
+            RULE_VALVE_EXERCISE,
+            Target(
+                KIND_TEMPERATURE,
+                temperature=inputs.exercise_temp
+                if inputs.exercise_temp is not None
+                else inputs.max_temp,
+            ),
+            "Valve exercise: valves fully open for a few minutes",
+        )
     if inputs.mode == MODE_OFF:
         return Decision(
             RULE_MODE_OFF,
@@ -180,17 +197,6 @@ def base_decision(inputs: RoomInputs) -> Decision:
     if not inputs.season_active:
         return Decision(
             RULE_OUT_OF_SEASON, _off(inputs), "Outside the heating season: heating off"
-        )
-    if inputs.valve_exercise:
-        return Decision(
-            RULE_VALVE_EXERCISE,
-            Target(
-                KIND_TEMPERATURE,
-                temperature=inputs.exercise_temp
-                if inputs.exercise_temp is not None
-                else inputs.max_temp,
-            ),
-            "Valve exercise: valves fully open for a few minutes",
         )
     if inputs.window_open:
         if inputs.window_action == WINDOW_ACTION_OFF:
@@ -342,6 +348,19 @@ def apply_safety(decision: Decision, inputs: RoomInputs) -> Decision:
                 f"Frost protection ({target.preset} is below {fmt_temp(frost, inputs.unit)})",
             )
         return decision
+    # No command (manual change, pause): the maximum temperature still applies
+    # to what is set on the thermostats.
+    if (
+        target.kind == KIND_NONE
+        and inputs.device_setpoint is not None
+        and inputs.device_setpoint > maximum
+    ):
+        return Decision(
+            RULE_SAFETY,
+            Target(KIND_TEMPERATURE, temperature=maximum),
+            f"Maximum temperature: {fmt_temp(inputs.device_setpoint, inputs.unit)} is above "
+            f"{fmt_temp(maximum, inputs.unit)}",
+        )
     # Off or no command: protect against frost. Once started it continues while the
     # device still heats, so it does not switch on and off around the limit.
     if inputs.current_temp is not None and (inputs.current_temp < frost or inputs.frost_holding):

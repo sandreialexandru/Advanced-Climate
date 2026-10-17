@@ -172,7 +172,7 @@ the integration takes control again.
 | Detection | on | Changes made by the integration are told apart by their context, or because the device only reports the values the integration sent |
 | Duration | configurable, universal | One rule for every manual change, including turning GT off: **fixed duration** (X hours) or **until the next reevaluation** triggered by a change (slot, presence, window, mode). The periodic check does not end it |
 | Scope | room | Whole house only when rooms have their own valves |
-| Pause | – | Switch: no commands at all (frost protection still applies) |
+| Pause | – | Switch: no commands at all, no TRV calibration (frost protection and the maximum temperature still apply) |
 | Child lock | off | Manual changes are reverted immediately |
 | Clear | – | Button per room and for the house |
 
@@ -203,9 +203,9 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | --- | --- | --- |
 | Frost protection | on | Lower limit, also in Off and Pause (GT: its minimum temperature); once heating, it continues until the device stops asking for heat. A room in frost protection starts the heat source on its own (no rooms needed, no reference room, also while paused) |
 | Sensor unavailable | device sensor | External sensor down → device sensor → eco, with alert |
-| Device unavailable | alert after 15 min | The other rooms keep working |
+| Device unavailable | alert after 15 min | The other rooms keep working; also for the heat source (then not even frost protection can heat) |
 | Command verification | on | Retry once after 2 min, then alert |
-| Valve exercise | off | Weekly full opening of the TRVs |
+| Valve exercise | off | Weekly full opening of the TRVs, in every mode (also in summer and outside the season); a pause or an open window postpones it to later the same day; it does not ask for heat |
 | Low battery | alert below 20 % | TRVs and sensors of the room |
 | Restart | restore | Overrides, vacation and learned data are kept |
 | Periodic reevaluation | 5 min | In addition to events |
@@ -235,13 +235,17 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 Rules are evaluated from the top down for every room; the first rule that
 applies sets the level.
 
-1. **Safety** – frost protection and maximum temperature, always applied
-2. **Mode Off / Pause / Summer / out of season**
-3. **Window open**
-4. **Manual change**
-5. **Vacation**
-6. **Presence** – far → `away`, nearby → `eco` (or the fixed temperature), home → schedule
-7. **Schedule** – with optimal start / stop and room occupancy
+1. **Safety** – frost protection and maximum temperature, always applied: also
+   to a manual change, in pause, to the `set_override` service and the card,
+   and frost protection starts the heat source on its own
+2. **Pause**
+3. **Valve exercise** – in every mode, not with a window open
+4. **Mode Off / Summer / out of season**
+5. **Window open**
+6. **Manual change**
+7. **Vacation**
+8. **Presence** – far → `away`, nearby → `eco` (or the fixed temperature), home → schedule
+9. **Schedule** – with optimal start / stop and room occupancy
 
 Final adjustments (outdoor cutoff, compensation, tariff, PV, solar gain) only
 correct a heating target by a few tenths of a degree, and the result always goes

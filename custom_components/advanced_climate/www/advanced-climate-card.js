@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.10.1";
+const CARD_VERSION = "1.10.2";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -1279,8 +1279,8 @@ class AdvancedClimateCard extends HTMLElement {
         <div class="presets">${presets}</div>
         <div class="row wrap">
           <label class="numfield"><span>${this._t("target_tag")}</span><input type="number" step="0.5" min="${
-            fahrenheit ? 41 : 5
-          }" max="${fahrenheit ? 86 : 30}"
+            num(a.min_temperature) ?? (fahrenheit ? 41 : 5)
+          }" max="${num(a.max_temperature) ?? (fahrenheit ? 86 : 30)}"
             data-quick="temp" data-room="${esc(a.room_id)}" value="${target}"><em>${esc(unit)}</em></label>
           <label class="numfield"><span>${this._t("for_hours")}</span><input type="number" step="0.5" min="0.5" max="72"
             data-quick="hours" data-room="${esc(a.room_id)}" placeholder="auto"><em>${this._t("hours")}</em></label>

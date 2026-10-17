@@ -983,10 +983,14 @@ class Room:
         local = dt_util.as_local(now)  # the day and time of the exercise are local
         if WEEKDAYS[local.weekday()] != self.config[CONF_VALVE_DAY]:
             return False
+        if self.house.paused or self.window_open:
+            return False  # postponed: it starts when the pause ends or the window closes
         start = parse_clock(self.config[CONF_VALVE_TIME])
         start_dt = local.replace(hour=start.hour, minute=start.minute, second=0, microsecond=0)
         today = local.date().isoformat()
-        if start_dt <= local < start_dt + timedelta(minutes=30) and self.last_exercise != today:
+        # From the set time until the end of that day (a pause or an open window
+        # postpones it, but only to the same day).
+        if start_dt <= local and self.last_exercise != today:
             self.last_exercise = today
             self._exercise_until = now + timedelta(seconds=VALVE_EXERCISE_SECONDS)
             return True
@@ -1090,6 +1094,7 @@ class Room:
             unit=self.house.unit,
             vacation_preheat=preheat,
             frost_holding=self._frost_holding(),
+            device_setpoint=self._device_setpoint(),
         )
         decision = decide(inputs)
         if self.stop_cancelled and decision.rule == RULE_SCHEDULE:
@@ -1132,6 +1137,18 @@ class Room:
         if self._exercise_until:
             wakeups.append(self._exercise_until)
         self.next_wakeup = min(wakeups) if wakeups else None
+
+    def _device_setpoint(self) -> float | None:
+        """Highest temperature set on the thermostats (not for on / off control)."""
+        if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
+            return None
+        values = [
+            v
+            for entity_id in self.climates
+            if (v := climate_temp(self.hass, self.hass.states.get(entity_id), ATTR_TEMPERATURE))
+            is not None
+        ]
+        return max(values) if values else None
 
     def _frost_holding(self) -> bool:
         """Frost protection started (heating off otherwise) and the device still heats."""
@@ -1214,7 +1231,9 @@ class Room:
     def _update_demand(self) -> None:
         """Whether the room asks for heat (hvac_action, else the hysteresis; relays: on)."""
         demand = False
-        if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
+        if self._exercise_until is not None:
+            pass  # the valves are exercised: no heat is asked for
+        elif self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
             demand = bool(self._relay_on)
         else:
             hysteresis = float(self.config[CONF_HYSTERESIS])
@@ -1500,7 +1519,13 @@ class Room:
         self._verify_unsub = async_call_later(self.hass, VERIFY_DELAY, _verify)
 
     async def async_apply_manual(self, target: Target, hours: float | None) -> None:
-        """Service: set a manual target and keep it as an override."""
+        """Service: set a manual target and keep it as an override.
+
+        A temperature is kept between the frost protection and the maximum.
+        """
+        if target.kind == KIND_TEMPERATURE and target.temperature is not None:
+            limited = min(max(target.temperature, self.frost_temp()), self.max_temp())
+            target = Target(KIND_TEMPERATURE, preset=target.preset, temperature=limited)
         await self._async_apply(target, force=True)
         self.set_override(
             f"set by service: {target.describe(self.house.unit)}", hours=hours, target=target
@@ -1512,7 +1537,7 @@ class Room:
     async def _async_calibrate(self, now: datetime) -> None:
         """Write the external temperature (or the offset) to the TRV calibration entities."""
         mode = self.config[CONF_CALIBRATION_MODE]
-        if mode not in (CALIBRATION_OFFSET, CALIBRATION_EXTERNAL):
+        if mode not in (CALIBRATION_OFFSET, CALIBRATION_EXTERNAL) or self.house.paused:
             return
         external = self.external_temperature()
         if external is None:

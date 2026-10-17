@@ -149,13 +149,16 @@ Programul se poate edita și din cardul Lovelace.
 
 Regulile sunt evaluate de sus în jos; prima care se aplică decide:
 
-1. Siguranță (antiîngheț, temperatură maximă) – aplicată mereu
-2. Mod Oprit / Pauză / Vară / în afara sezonului de încălzire
-3. Fereastră deschisă
-4. Schimbare manuală
-5. Vacanță
-6. Prezență: departe → `away`, aproape → `eco` (sau o temperatură fixă)
-7. Program (pornire / oprire anticipată, ocuparea camerei)
+1. Siguranță (antiîngheț, temperatură maximă) – aplicată mereu, și unei
+   schimbări manuale și în pauză; antiînghețul pornește singur sursa de căldură
+2. Pauză
+3. Mișcarea robinetelor – în orice mod, nu cu o fereastră deschisă
+4. Mod Oprit / Vară / în afara sezonului de încălzire
+5. Fereastră deschisă
+6. Schimbare manuală
+7. Vacanță
+8. Prezență: departe → `away`, aproape → `eco` (sau o temperatură fixă)
+9. Program (pornire / oprire anticipată, ocuparea camerei)
 
 Apoi ajustările (prag de temperatură exterioară, compensare, tarif,
 fotovoltaic, câștig solar) și limitele de siguranță.
