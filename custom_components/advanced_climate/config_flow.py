@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from types import MappingProxyType
 from typing import Any
 
@@ -315,10 +317,11 @@ def _unitize(schema: vol.Schema, unit: str | None) -> vol.Schema:
         absolute = key in TEMP_ABSOLUTE_KEYS
         if (absolute or key in TEMP_DELTA_KEYS) and isinstance(field, selector.NumberSelector):
             config = dict(field.config)
-            for bound in ("min", "max"):
+            for bound, rounding in (("min", math.floor), ("max", math.ceil)):
                 if config.get(bound) is not None:
                     value = float(config[bound])
-                    config[bound] = round(value * 1.8 + 32 if absolute else value * 1.8)
+                    # Rounded outwards, so a converted value at the limit is accepted.
+                    config[bound] = rounding(value * 1.8 + 32 if absolute else value * 1.8)
             config["unit_of_measurement"] = "°F"
             field = selector.NumberSelector(selector.NumberSelectorConfig(**config))
         fields[marker] = field
@@ -424,7 +427,7 @@ def _weather_details(v: dict[str, Any]) -> vol.Schema:
         fields[_req(CONF_CUTOFF_TEMP, v, d)] = _number(5, 30, 0.5, "°C")
     if v.get(CONF_CUTOFF_ENABLED):
         fields[_req(CONF_CUTOFF_HYSTERESIS, v, d)] = _number(0, 5, 0.1, "°C")
-        fields[_req(CONF_CUTOFF_AVG_HOURS, v, d)] = _number(0, 48, 1, "h")
+        fields[_req(CONF_CUTOFF_AVG_HOURS, v, d)] = _number(1, 48, 1, "h")
     if v.get(CONF_FORECAST_ENABLED):
         fields[_req(CONF_FORECAST_HOURS, v, d)] = _number(1, 24, 1, "h")
     if v.get(CONF_SEASON_MODE) == SEASON_DATES:
@@ -1122,6 +1125,12 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
             return await self.async_step_levels()
         return self.async_show_form(step_id="control_thermostat", data_schema=schema)
 
+    def _safety_limits(self) -> tuple[float, float]:
+        """Frost protection and maximum temperature of the house (°C), the limits of a level."""
+        entry = self._get_entry()
+        options = {**HOUSE_DEFAULTS, **entry.data, **entry.options}
+        return float(options[CONF_FROST_TEMP]), float(options[CONF_MAX_TEMP])
+
     def _current_levels(self) -> dict[str, float]:
         """Level temperatures in use now (edited from the card or numbers included)."""
         levels = {p: float(v) for p, v in DEFAULT_LEVEL_TEMPS.items()}
@@ -1157,12 +1166,10 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
             preset_map = {
                 p: names.get(p) or p for p in PRESETS if (names.get(p) or p) in device_presets
             }
+        low, high = self._safety_limits()
         levels = {
-            p: v
-            for p, v in (
-                (p, _shown({f"temp_{p}": v}, self._unit())[f"temp_{p}"])
-                for p, v in self._current_levels().items()
-            )
+            p: _shown({f"temp_{p}": min(max(v, low), high)}, self._unit())[f"temp_{p}"]
+            for p, v in self._current_levels().items()
         }
 
         fields: dict[Any, Any] = {
@@ -1190,7 +1197,7 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
                 else:
                     fields[vol.Optional(f"name_{preset}", default=names.get(preset, preset))] = _text()
                 fields[vol.Required(f"temp_{preset}", default=levels[preset])] = _number(
-                    5, 30, 0.5, "°C"
+                    low, high, 0.5, "°C"
                 )
         schema = vol.Schema(fields)
         placeholders = {"presets": ", ".join(device_presets) or "-"}
@@ -1239,8 +1246,11 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Fixed temperature when someone is nearby."""
+        low, high = self._safety_limits()
+        current = float(self._data.get(CONF_NEARBY_TEMP, ROOM_DEFAULTS[CONF_NEARBY_TEMP]))
+        shown = _shown({CONF_NEARBY_TEMP: min(max(current, low), high)}, self._unit())
         schema = vol.Schema(
-            {_req(CONF_NEARBY_TEMP, self._shown(), ROOM_DEFAULTS): _number(5, 30, 0.5, "°C")}
+            {_req(CONF_NEARBY_TEMP, shown, ROOM_DEFAULTS): _number(low, high, 0.5, "°C")}
         )
         if user_input is not None:
             self._data = _merge(self._data, schema, self._kept(user_input))

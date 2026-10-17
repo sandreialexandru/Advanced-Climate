@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.10.4";
+const CARD_VERSION = "1.10.5";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",
@@ -1918,9 +1918,17 @@ class AdvancedClimateCard extends HTMLElement {
         this._draft = null;
         break;
       case "add-slot": {
+        // An hour after the last slot, else the first free time after it, else
+        // the first free time of the day (5-minute steps); nothing when the day is full.
         const slots = this._draft[profile];
-        const lastTime = slots.length ? toMinutes(slots[slots.length - 1].time) : 0;
-        slots.push({ time: hhmm(Math.min(lastTime + 60, 23 * 60 + 59)), preset: "home" });
+        const taken = new Set(slots.map((x) => toMinutes(x.time)));
+        const lastTime = slots.length ? Math.max(...taken) : 0;
+        const candidates = [];
+        for (let m = Math.min(lastTime + 60, 1435); m <= 1435; m += 5) candidates.push(m);
+        for (let m = 0; m <= 1435; m += 5) candidates.push(m);
+        const free = candidates.find((m) => !taken.has(m));
+        if (free === undefined) return;
+        slots.push({ time: hhmm(free), preset: "home" });
         break;
       }
       case "del-slot":

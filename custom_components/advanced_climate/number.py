@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
@@ -53,15 +55,22 @@ class LevelNumber(RoomEntity, NumberEntity):
         """Initialize."""
         super().__init__(room, f"level_{preset}")
         self.preset = preset
-        fahrenheit = room.house.unit == "°F"
         self._attr_native_unit_of_measurement = room.house.unit
-        self._attr_native_min_value = 41.0 if fahrenheit else 5.0
-        self._attr_native_max_value = 86.0 if fahrenheit else 30.0
         self._attr_native_step = 0.5
         if preset != "nearby" and room.preset_names.get(preset, preset) != preset:
             # Custom level name chosen by the user.
             self._attr_translation_key = "level_custom"
             self._attr_translation_placeholders = {"name": room.preset_names[preset]}
+
+    @property
+    def native_min_value(self) -> float:
+        """Frost protection temperature (no level can be colder)."""
+        return math.floor(float(from_celsius(self.room.frost_temp(), self.room.house.unit)) * 2) / 2
+
+    @property
+    def native_max_value(self) -> float:
+        """Maximum temperature (no level can be warmer)."""
+        return math.ceil(float(from_celsius(self.room.max_temp(), self.room.house.unit)) * 2) / 2
 
     @property
     def native_value(self) -> float:

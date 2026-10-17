@@ -82,7 +82,8 @@ depind de comandă:
 | Pornit / oprit (`hvac_mode`) | **Nume** configurabile și o **temperatură** pentru fiecare nivel; preseturile dispozitivului nu se folosesc, integrarea îl pornește și îl oprește în jurul temperaturii nivelului. |
 
 Temperaturile din setările camerei se pot schimba și mai târziu din card sau din
-entitățile număr (câte una pentru fiecare nivel controlat de integrare).
+entitățile număr (câte una pentru fiecare nivel controlat de integrare). Se
+setează între antiînghețul și temperatura maximă ale casei.
 
 ## 3. Program
 
@@ -159,7 +160,7 @@ ce cere programul.
 | --- | --- | --- |
 | Temperatura de afară | `weather` | Senzor local sau entitatea meteo |
 | Prag de oprire | 18 °C | Încălzire oprită peste medie (histerezis 1 °C) |
-| Medie pe | 6 h | Media, nu valoarea instantanee. Este și cât rămâne valabilă o valoare de afară: fără o valoare nouă în acest timp, temperatura de afară e necunoscută (fără prag de oprire, compensare sau ferestre ignorate, fără episoade de învățare, fără oprire anticipată) până când senzorul sau meteo raportează din nou |
+| Medie pe | 6 h (cel puțin 1 h) | Media, nu valoarea instantanee. Este și cât rămâne valabilă o valoare de afară: fără o valoare nouă în acest timp, temperatura de afară e necunoscută (fără prag de oprire, compensare sau ferestre ignorate, fără episoade de învățare, fără oprire anticipată) până când senzorul sau meteo raportează din nou |
 | Sezon de încălzire | mereu | Mereu, între date (de exemplu 10-15 → 04-15) sau automat |
 | Sezon automat | 3 zile / 15 °C | Începe / se termină după X zile consecutive sub / peste prag |
 | Compensare după temperatura de afară | oprită | Ajustare mică, de exemplu +0,5 °C sub −5 °C |

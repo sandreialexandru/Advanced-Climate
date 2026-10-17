@@ -211,7 +211,7 @@ class House:
         self.outdoor.tz = dt_util.get_default_time_zone()
         # Without a new value for the averaging window of the cutoff, the outdoor
         # temperature is unknown.
-        self.outdoor.max_age = timedelta(hours=float(self.options[CONF_CUTOFF_AVG_HOURS]))
+        self.outdoor.max_age = timedelta(hours=self.average_hours)
         self.boiler_runtime_s = float(house.get("boiler_runtime_s", 0.0))
         self.workday_cache = dict(house.get("workday_cache", {}))
 
@@ -750,7 +750,7 @@ class House:
     def _update_weather(self, now: datetime) -> None:
         """Update the outdoor cutoff and the heating season."""
         opts = self.options
-        average = self.outdoor.average(now, float(opts[CONF_CUTOFF_AVG_HOURS]))
+        average = self.outdoor.average(now, self.average_hours)
         self.outdoor.update_cutoff(
             average, float(opts[CONF_CUTOFF_TEMP]), float(opts[CONF_CUTOFF_HYSTERESIS])
         )
@@ -766,7 +766,12 @@ class House:
     @property
     def outdoor_average(self) -> float | None:
         """Outdoor average used by the cutoff."""
-        return self.outdoor.average(dt_util.utcnow(), float(self.options[CONF_CUTOFF_AVG_HOURS]))
+        return self.outdoor.average(dt_util.utcnow(), self.average_hours)
+
+    @property
+    def average_hours(self) -> float:
+        """Averaging time of the outdoor temperature (at least 1 hour)."""
+        return max(1.0, float(self.options[CONF_CUTOFF_AVG_HOURS]))
 
     @property
     def cutoff_active(self) -> bool:

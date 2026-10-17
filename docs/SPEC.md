@@ -78,7 +78,8 @@ settings depend on the command:
 | On / off (`hvac_mode`) | Configurable **names** and a **temperature** per level; the device presets are not used, the integration switches it on and off around the level temperature. |
 
 The temperatures set in the room settings can also be changed later from the
-card or the number entities (one per level the integration controls).
+card or the number entities (one per level the integration controls). They are
+set between the frost protection and the maximum temperature of the house.
 
 ## 3. Schedule
 
@@ -155,7 +156,7 @@ what the schedule asks.
 | --- | --- | --- |
 | Outdoor temperature | `weather` | Local sensor or the weather entity |
 | Cutoff | 18 °C | Heating off above the average (1 °C hysteresis) |
-| Average over | 6 h | Average, not the instantaneous value. Also how long an outdoor value stays valid: with no new value for this time the outdoor temperature is unknown (no cutoff, compensation or ignored windows, no learning episodes, no optimal stop) until the sensor or weather reports again |
+| Average over | 6 h (at least 1 h) | Average, not the instantaneous value. Also how long an outdoor value stays valid: with no new value for this time the outdoor temperature is unknown (no cutoff, compensation or ignored windows, no learning episodes, no optimal stop) until the sensor or weather reports again |
 | Heating season | always | Always, between dates (e.g. 10-15 → 04-15) or automatic |
 | Automatic season | 3 days / 15 °C | Starts/ends after X consecutive days below/above the threshold |
 | Outdoor compensation | off | Small adjustment, e.g. +0.5 °C below −5 °C |
