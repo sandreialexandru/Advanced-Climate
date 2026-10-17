@@ -200,6 +200,11 @@ class House:
         self.auto_vacation = bool(house.get("auto_vacation", False))
         self.presence = PresenceDebouncer.from_dict(house.get("presence"))
         self.outdoor = OutdoorTracker.from_dict(house.get("outdoor"))
+        if not self.outdoor_configured:
+            # No outdoor sensor or weather any more: the saved values are not used.
+            season = self.outdoor.season_active
+            self.outdoor = OutdoorTracker()
+            self.outdoor.season_active = season
         self.boiler_runtime_s = float(house.get("boiler_runtime_s", 0.0))
         self.workday_cache = dict(house.get("workday_cache", {}))
 
@@ -688,6 +693,11 @@ class House:
             state = self.hass.states.get(weather)
             return to_celsius(float_attr(state, "temperature"), self._weather_unit(state))
         return None
+
+    @property
+    def outdoor_configured(self) -> bool:
+        """An outdoor temperature sensor or a weather entity is set for the house."""
+        return bool(self.options.get(CONF_OUTDOOR_SENSOR) or self.options.get(CONF_WEATHER))
 
     def _weather_unit(self, state: State | None) -> str:
         unit = state.attributes.get("temperature_unit") if state is not None else None

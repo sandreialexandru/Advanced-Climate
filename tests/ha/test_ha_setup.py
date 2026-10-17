@@ -324,3 +324,36 @@ async def test_vacation_end_only_and_preheat(
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_saved_outdoor_values_dropped_without_source(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory, hass_storage: dict
+) -> None:
+    """Without an outdoor sensor or weather the saved outdoor values are not used."""
+    entry_id = "house_without_outdoor"
+    hass_storage[f"{DOMAIN}.{entry_id}"] = {
+        "version": 1,
+        "key": f"{DOMAIN}.{entry_id}",
+        "data": {
+            "house": {
+                "outdoor": {
+                    "samples": [["2026-10-12T08:00:00+00:00", 5.0]],
+                    "daily_means": {"2026-10-11": 5.0},
+                    "cutoff_active": True,
+                    "season_active": True,
+                }
+            },
+            "rooms": {},
+        },
+    }
+    freezer.move_to("2026-10-12 09:00:00+00:00")
+    entry = MockConfigEntry(domain=DOMAIN, title="Home", options={}, entry_id=entry_id)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    house = entry.runtime_data
+    assert house.outdoor.latest() is None
+    assert house.outdoor.daily_means == {}
+    assert house.outdoor.cutoff_active is False
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
