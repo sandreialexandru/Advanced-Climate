@@ -152,7 +152,7 @@ what the schedule asks.
 | --- | --- | --- |
 | Outdoor temperature | `weather` | Local sensor or the weather entity |
 | Cutoff | 18 °C | Heating off above the average (1 °C hysteresis) |
-| Average over | 6 h | Average, not the instantaneous value |
+| Average over | 6 h | Average, not the instantaneous value. Also how long an outdoor value stays valid: with no new value for this time the outdoor temperature is unknown (no cutoff, compensation or ignored windows, no learning episodes, no optimal stop) until the sensor or weather reports again |
 | Heating season | always | Always, between dates (e.g. 10-15 → 04-15) or automatic |
 | Automatic season | 3 days / 15 °C | Starts/ends after X consecutive days below/above the threshold |
 | Outdoor compensation | off | Small adjustment, e.g. +0.5 °C below −5 °C |

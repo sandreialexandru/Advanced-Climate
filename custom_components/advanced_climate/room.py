@@ -984,7 +984,7 @@ class Room:
             )
             self._stop_cancelled_for = state.next_change if self.stop_cancelled else None
             # The optimal stop needs the outdoor temperature (sensor or weather).
-            outdoor_known = house.outdoor_configured and house.outdoor.latest() is not None
+            outdoor_known = house.outdoor_configured and house.outdoor_now is not None
             preset, schedule_rule = optimal_schedule(
                 now,
                 state.preset,
@@ -992,13 +992,13 @@ class Room:
                 state.next_preset,
                 self.current_temp,
                 self.level_temp,
-                self.learner.rate(house.outdoor.latest()),
+                self.learner.rate(house.outdoor_now),
                 bool(self.config[CONF_OPTIMAL_START]),
                 float(self.config[CONF_OPTIMAL_START_MAX]),
                 bool(self.config[CONF_OPTIMAL_STOP]) and stop_allowed and outdoor_known,
                 float(self.config[CONF_OPTIMAL_STOP_MINUTES]),
                 started,
-                self.stop_needed(state.preset, house.outdoor.latest()),
+                self.stop_needed(state.preset, house.outdoor_now),
                 stop_started,
             )
             optimal = schedule_rule in (RULE_OPTIMAL_START, RULE_OPTIMAL_STOP)
@@ -1066,14 +1066,17 @@ class Room:
         # The heating and the cooling are learned in the cold season only (not in
         # mode Off or Summer, nor outside the heating season).
         if house.season_active and house.mode not in (MODE_OFF, MODE_SUMMER):
+            outdoor = house.outdoor_now
+            # An episode is not used with a window open, nor when the outdoor
+            # temperature of a house that has one became unknown.
+            disturbed = self._window_sensor_open() or (
+                house.outdoor_configured and outdoor is None
+            )
             self.learner.observe(
                 now, self.heat_demand, self.current_temp, self.target_temperature,
-                house.outdoor.latest(), self._window_sensor_open(), self.learn_tolerance(),
+                outdoor, disturbed, self.learn_tolerance(),
             )
-            self.cooling.observe(
-                now, self.heat_demand, self.current_temp, house.outdoor.latest(),
-                self._window_sensor_open(),
-            )
+            self.cooling.observe(now, self.heat_demand, self.current_temp, outdoor, disturbed)
         else:
             self.learner.cancel()
             self.cooling.cancel()

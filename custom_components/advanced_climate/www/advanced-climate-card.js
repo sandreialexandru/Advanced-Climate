@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.9.4";
+const CARD_VERSION = "1.9.5";
 
 const PRESET_COLORS = {
   comfort: "#d9480f",

@@ -205,6 +205,9 @@ class House:
             season = self.outdoor.season_active
             self.outdoor = OutdoorTracker()
             self.outdoor.season_active = season
+        # Without a new value for the averaging window of the cutoff, the outdoor
+        # temperature is unknown.
+        self.outdoor.max_age = timedelta(hours=float(self.options[CONF_CUTOFF_AVG_HOURS]))
         self.boiler_runtime_s = float(house.get("boiler_runtime_s", 0.0))
         self.workday_cache = dict(house.get("workday_cache", {}))
 
@@ -695,6 +698,11 @@ class House:
         return None
 
     @property
+    def outdoor_now(self) -> float | None:
+        """Latest outdoor temperature, None when unknown (or older than the window)."""
+        return self.outdoor.latest(dt_util.now())
+
+    @property
     def outdoor_configured(self) -> bool:
         """An outdoor temperature sensor or a weather entity is set for the house."""
         return bool(self.options.get(CONF_OUTDOOR_SENSOR) or self.options.get(CONF_WEATHER))
@@ -738,7 +746,9 @@ class House:
         """Return True when heating is cut off by warm weather."""
         if not self.options[CONF_CUTOFF_ENABLED]:
             return False
-        return self.outdoor.cutoff_active or self.forecast_cutoff
+        # An unknown outdoor temperature does not cut the heating off.
+        known = self.outdoor_average is not None
+        return (known and self.outdoor.cutoff_active) or self.forecast_cutoff
 
     @property
     def season_active(self) -> bool:
@@ -785,14 +795,14 @@ class House:
         limit = self.options.get(CONF_WINDOW_IGNORE_ABOVE)
         if limit in (None, ""):
             return False
-        current = self.outdoor.latest()
+        current = self.outdoor_now
         return current is not None and current >= float(limit)
 
     def house_offsets(self) -> list[tuple[str, float]]:
         """Adjustments shared by all rooms."""
         opts = self.options
         offsets: list[tuple[str, float]] = []
-        outdoor = self.outdoor.latest()
+        outdoor = self.outdoor_now
         if opts[CONF_COMP_ENABLED] and outdoor is not None:
             if outdoor < float(opts[CONF_COMP_BELOW]):
                 offsets.append(("compensation", float(opts[CONF_COMP_OFFSET])))
@@ -1007,7 +1017,7 @@ class House:
             "vacation_preheating": self.vacation_preheating(),
             "vacation_start": iso(self.vacation_start),
             "vacation_end": iso(self.vacation_end),
-            "outdoor_latest": self.outdoor.latest(),
+            "outdoor_latest": self.outdoor_now,
             "outdoor_average": self.outdoor_average,
             "cutoff_active": self.cutoff_active,
             "forecast_cutoff": self.forecast_cutoff,

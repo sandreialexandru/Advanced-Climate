@@ -44,6 +44,9 @@ class OutdoorTracker:
     daily_means: dict[str, float] = field(default_factory=dict)
     cutoff_active: bool = False
     season_active: bool = True
+    # How long a value stays valid without a new one (the averaging window of
+    # the cutoff); None = always.
+    max_age: timedelta | None = None
 
     def add(self, now: datetime, value: float) -> None:
         """Add a sample and drop old ones."""
@@ -65,9 +68,14 @@ class OutdoorTracker:
             for key in sorted(self.daily_means)[: len(self.daily_means) - MAX_DAILY_MEANS]:
                 del self.daily_means[key]
 
-    def latest(self) -> float | None:
-        """Return the latest value."""
-        return self.samples[-1][1] if self.samples else None
+    def latest(self, now: datetime | None = None) -> float | None:
+        """Return the latest value, None when it is older than ``max_age``."""
+        if not self.samples:
+            return None
+        moment, value = self.samples[-1]
+        if now is not None and self.max_age is not None and now - moment > self.max_age:
+            return None
+        return value
 
     def average(self, now: datetime, hours: float) -> float | None:
         """Time-weighted average over the last ``hours`` hours."""
@@ -75,12 +83,12 @@ class OutdoorTracker:
             return None
         start = now - timedelta(hours=hours)
         points = [(t, v) for t, v in self.samples if t >= start]
+        if not points:
+            return None  # no value in the window: the outdoor temperature is unknown
         # Include the value valid at the start of the window.
         before = [(t, v) for t, v in self.samples if t < start]
         if before:
             points.insert(0, (start, before[-1][1]))
-        if not points:
-            return None
         if len(points) == 1:
             return points[0][1]
         total = 0.0

@@ -162,7 +162,7 @@ class OutdoorAverageSensor(HouseEntity, _HouseUnitTemperature):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Details."""
         return {
-            "latest": _t(self.house.outdoor.latest(), self.house.unit),
+            "latest": _t(self.house.outdoor_now, self.house.unit),
             "cutoff_active": self.house.cutoff_active,
             "forecast_cutoff": self.house.forecast_cutoff,
             "heating_season": self.house.season_active,
@@ -260,7 +260,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "climate_entities": room.climates,
             "device_preset": room.device_preset(),
             "device_level": room.level_of_device_preset(room.device_preset()),
-            "time_to_target": room.time_to_target(room.house.outdoor.latest()),
+            "time_to_target": room.time_to_target(room.house.outdoor_now),
             "stop_forecast": _forecast(room, unit),
             "optimal_stop_cancelled": room.stop_cancelled,
             "rate_learned": bool(room.learner.episodes),
@@ -362,7 +362,7 @@ class HeatingRateSensor(RoomEntity, SensorEntity):
     @property
     def native_value(self) -> float | None:
         """Rate for the current outdoor temperature."""
-        return _d(self.room.learner.rate(self.house.outdoor.latest()), self.house.unit, 3)
+        return _d(self.room.learner.rate(self.house.outdoor_now), self.house.unit, 3)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -393,7 +393,7 @@ class HeatingRateSensor(RoomEntity, SensorEntity):
 
 def _forecast(room: Room, unit: str) -> dict[str, Any] | None:
     """Expected temperature at the scheduled change during an optimal stop."""
-    forecast = room.stop_forecast(dt_util.now(), room.house.outdoor.latest())
+    forecast = room.stop_forecast(dt_util.now(), room.house.outdoor_now)
     if forecast is None:
         return None
     return {"at": forecast["at"], "temperature": _t(forecast["temperature"], unit, 1)}
@@ -420,7 +420,7 @@ class CoolingRateSensor(RoomEntity, SensorEntity):
     @property
     def native_value(self) -> float | None:
         """Fall per hour for the current room and outdoor temperatures."""
-        rate = self.room.cooling.rate(self.room.current_temp, self.house.outdoor.latest())
+        rate = self.room.cooling.rate(self.room.current_temp, self.house.outdoor_now)
         return _d(rate, self.house.unit, 3)
 
     @property
