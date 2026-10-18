@@ -378,7 +378,11 @@ fereastră / schimbare manuală, selectorul *Profile*, comutatorul *Child lock*
 - **Detalii**: ce a învățat camera (episoade de încălzire și răcire și viteza
   de acum) și alertele camerei și ale casei, în limba cardului.
 - **Schimbare manuală**: unde a fost făcută (card / serviciu sau pe dispozitiv),
-  până când și *revine după: …* cât timp o regulă de mai sus o întrerupe.
+  până când, *se aplică după: …* cât timp o regulă de mai sus ține o schimbare
+  din card departe de dispozitive și *revine după: …* cât timp o regulă de mai
+  sus o întrerupe.
+- Următoarea pornire / oprire anticipată apare doar cât camera urmează
+  programul; camerele reci sunt semnalate doar în acele camere.
 - **Linkuri**: valorile, stările, insignele și detaliile deschid fereastra cu
   detaliile entității.
 

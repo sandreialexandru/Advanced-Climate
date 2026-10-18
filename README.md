@@ -359,7 +359,10 @@ badges, the *Profile* select, the *Child lock* switch and *Back to automatic*.
 - **Details**: what the room learned (heating and cooling episodes and the rate
   now) and the alerts of the room and of the house, in the language of the card.
 - **Manual change**: where it was made (card / service or on the device), until
-  when, and *comes back after: …* while a higher rule interrupts it.
+  when, *applies after: …* while a higher rule keeps a change from the card off
+  the devices, and *comes back after: …* while a higher rule interrupts it.
+- The next optimal start / stop is shown only while the room follows its
+  schedule; cold rooms are reported only in those rooms.
 - **Links**: values, states, badges and details open the more-info dialog of
   their entity.
 

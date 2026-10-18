@@ -25,6 +25,10 @@ from .const import (
     DOMAIN,
     PRESENCE_STATES,
     PRESETS,
+    RULE_OPTIMAL_START,
+    RULE_OPTIMAL_STOP,
+    RULE_SCHEDULE,
+    RULE_UNOCCUPIED,
     RULES,
 )
 from .entity import HOUSE_ENTITY_KEYS, ROOM_ENTITY_KEYS, HouseEntity, RoomEntity, entity_map
@@ -290,7 +294,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "stop_forecast": _forecast(room, unit),
             "next_estimate": _estimate(room, unit),
             "no_heat_reason": room.no_heat_reason(),
-            "alerts": room.house.alerts_for(room.id),
+            "alerts": room.house.alerts_for(room),
             "optimal_stop_cancelled": room.stop_cancelled,
             "rate_learned": bool(room.learner.episodes),
             "device_levels": room.device_levels,
@@ -432,7 +436,12 @@ def _forecast(room: Room, unit: str) -> dict[str, Any] | None:
 def _estimate(room: Room, unit: str) -> dict[str, Any] | None:
     """The optimal start / stop expected for the next scheduled change."""
     estimate = room.next_estimate
-    if estimate is None:
+    # Shown only while the room follows its schedule: a higher rule (vacation,
+    # presence, window, mode, cutoff, pause...) would not let it happen.
+    rule = room.decision.rule if room.decision else None
+    if estimate is None or rule not in (
+        RULE_SCHEDULE, RULE_OPTIMAL_START, RULE_OPTIMAL_STOP, RULE_UNOCCUPIED
+    ):
         return None
     change = estimate["change"]
     started = estimate.get("started_at")

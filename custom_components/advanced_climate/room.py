@@ -693,6 +693,9 @@ class Room:
             "target": target.as_dict() if target else None,
             "devices": kept if target is None else {},
             "interrupted": False,
+            # A change made on a device is already there; one from the card or
+            # a service is sent when the manual change applies.
+            "applied": target is None,
         }
         self.house.async_save()
 
@@ -1228,6 +1231,8 @@ class Room:
             device_setpoint=self._device_setpoint(),
         )
         decision = decide(inputs)
+        if self.override is not None and decision.rule == RULE_OVERRIDE:
+            self.override["applied"] = True
         if self.override is not None and decision.rule not in (RULE_OVERRIDE, RULE_PAUSE, RULE_MAX):
             # A higher rule changes the devices while the manual change lasts:
             # what the person set is set again afterwards. (Pause sends nothing;
@@ -1952,6 +1957,8 @@ class Room:
             "devices": list((self.override.get("devices") or {}).keys()),
             # A higher rule changed the devices: the manual value comes back after it.
             "interrupted": bool(self.override.get("interrupted")),
+            # False while a higher rule has kept it from the devices so far.
+            "applied": bool(self.override.get("applied", True)),
         }
 
     def no_heat_reason(self) -> dict[str, Any] | None:

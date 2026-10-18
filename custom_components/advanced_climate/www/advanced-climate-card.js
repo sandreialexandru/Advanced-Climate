@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.12.2";
+const CARD_VERSION = "1.12.3";
 
 // A target that is only a temperature (no level): neutral.
 const TEMP_COLOR = "var(--ac-fixed)";
@@ -192,6 +192,7 @@ const TEXT = {
     origin_card: "card / service",
     origin_device: "on the device",
     back_after: "comes back after: {rule}",
+    applied_after: "applies after: {rule}",
     alerts: "Alerts",
     al_source_unavailable: "The heat source {entity} has been unavailable for more than {minutes} min: no heating, not even frost protection.",
     al_room_difference: "Some rooms stay cold while others are warm: {rooms}.",
@@ -347,6 +348,7 @@ const TEXT = {
     origin_card: "card / serviciu",
     origin_device: "pe dispozitiv",
     back_after: "revine după: {rule}",
+    applied_after: "se aplică după: {rule}",
     alerts: "Alerte",
     al_source_unavailable: "Sursa de căldură {entity} e indisponibilă de peste {minutes} min: nu se încălzește, nici pentru antiîngheț.",
     al_room_difference: "Unele camere rămân reci, altele sunt calde: {rooms}.",
@@ -928,10 +930,16 @@ class AdvancedClimateCard extends HTMLElement {
       const until = this._overrideUntil(a);
       const prefix = stateObj.state === "manual_override" ? "" : `${this._t("override")} `;
       const origin = a.override.origin ? ` · ${this._t(`origin_${a.override.origin}`)}` : "";
-      const back =
-        a.override.interrupted && stateObj.state !== "manual_override"
-          ? ` · ${this._t("back_after").replace("{rule}", this._label(stateObj))}`
-          : "";
+      // While a higher rule wins: not sent yet, or set again once it ends.
+      // (The maximum temperature limits the manual value for good.)
+      const blocked = !["manual_override", "maximum_temperature"].includes(stateObj.state);
+      const back = !blocked
+        ? ""
+        : a.override.applied === false
+          ? ` · ${this._t("applied_after").replace("{rule}", this._label(stateObj))}`
+          : a.override.interrupted
+            ? ` · ${this._t("back_after").replace("{rule}", this._label(stateObj))}`
+            : "";
       badges.push(`<span class="pill link wrap" ${this._more(
         e.manual_override,
         a.override.until ? null : this._t("reeval_help")

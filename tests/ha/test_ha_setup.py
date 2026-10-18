@@ -627,6 +627,17 @@ async def test_optimal_stop_and_start_with_the_forecast(
     await _tick(hass, freezer, 60)
     assert hass.states.get("sensor.bedroom_decision").attributes["next_estimate"] == started
 
+    # Summer mode: no optimal start / stop can happen, none is shown.
+    await hass.services.async_call(
+        "select", "select_option", {"entity_id": "select.home_mode", "option": "summer"}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.bedroom_decision").attributes["next_estimate"] is None
+    await hass.services.async_call(
+        "select", "select_option", {"entity_id": "select.home_mode", "option": "auto"}, blocking=True
+    )
+    await hass.async_block_till_done()
+
     # After 22:00 local: home at 06:00 (03:00 UTC) is warmer -> optimal start.
     await _tick(hass, freezer, 3600)
     hass.states.async_set("sensor.room_temp", "19.0", {"unit_of_measurement": "°C"})
@@ -786,6 +797,8 @@ async def test_pause_sends_nothing_for_a_manual_relay(
     )
     await hass.async_block_till_done()
     assert hass.states.get("input_boolean.heater").state == "on"
+    override = hass.states.get("sensor.bedroom_decision").attributes["override"]
+    assert override["applied"] is False  # the card shows: applies after the pause
     hass.states.async_set("sensor.room_temp", "27.0", {"unit_of_measurement": "°C"})
     await _tick(hass, freezer, 5)
     assert hass.states.get("input_boolean.heater").state == "on"
@@ -796,6 +809,7 @@ async def test_pause_sends_nothing_for_a_manual_relay(
     await hass.async_block_till_done()
     assert hass.states.get("sensor.bedroom_decision").state == "manual_override"
     assert hass.states.get("input_boolean.heater").state == "off"
+    assert hass.states.get("sensor.bedroom_decision").attributes["override"]["applied"] is True
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()

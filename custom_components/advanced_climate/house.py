@@ -1155,13 +1155,21 @@ class House:
             _LOGGER.warning("Notification via %s.%s failed: %s", domain, name, err)
             persistent_notification.async_create(self.hass, message, title=title)
 
-    def alerts_for(self, room_id: str) -> list[dict[str, Any]]:
-        """Alerts that apply to a room: its own and those of the whole house."""
-        return [
-            {"key": key, **{k: v for k, v in alert.items() if k != "room"}}
-            for key, alert in self.active_alerts.items()
-            if alert.get("room") in (None, room_id)
-        ]
+    def alerts_for(self, room: Room) -> list[dict[str, Any]]:
+        """Alerts that apply to a room: its own and those of the whole house.
+
+        Cold rooms (while others are warm) are told only in those rooms.
+        """
+        result = []
+        for key, alert in self.active_alerts.items():
+            if alert.get("room") not in (None, room.id):
+                continue
+            if alert.get("code") == "room_difference" and room.name not in [
+                name for name, _gap in alert["params"].get("rooms", [])
+            ]:
+                continue
+            result.append({"key": key, **{k: v for k, v in alert.items() if k != "room"}})
+        return result
 
     def clear_alert(self, key: str) -> None:
         """Allow an alert to be sent again."""
