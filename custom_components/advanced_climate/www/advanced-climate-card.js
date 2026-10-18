@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.12.0";
+const CARD_VERSION = "1.12.1";
 
 // A target that is only a temperature (no level): neutral.
 const TEMP_COLOR = "var(--ac-fixed)";
@@ -2205,15 +2205,20 @@ class AdvancedClimateCard extends HTMLElement {
 
   /** "Heating time · today" that changes the period when tapped. */
   _runtimeButton(entityId, kind) {
-    const label = `${this._t("runtime")} · ${this._t(`period_${this._period()}`)}`;
+    // Every period label takes the same place, so the text does not move when it changes.
+    const current = this._period();
+    const label = RUNTIME_PERIODS.map(
+      (p) =>
+        `<span class="${p === current ? "on" : ""}" ${p === current ? "" : 'aria-hidden="true"'}>${esc(
+          `${this._t("runtime")} · ${this._t(`period_${p}`)}`
+        )}</span>`
+    ).join("");
     const value = esc(this._runtimeText(entityId));
     const title = esc(this._t("period_hint"));
     if (kind === "dt") {
-      return `<button class="period" data-action="period" title="${title}"><dt>${esc(label)}</dt><dd>${value}</dd></button>`;
+      return `<button class="period" data-action="period" title="${title}"><dt class="stack">${label}</dt><dd>${value}</dd></button>`;
     }
-    return `<button class="stat period" data-action="period" title="${title}"><span class="k">${esc(
-      label
-    )}</span><span class="v">${value}</span></button>`;
+    return `<button class="stat period" data-action="period" title="${title}"><span class="k stack">${label}</span><span class="v">${value}</span></button>`;
   }
 
   /** Heating time of the house, as a stat that changes the period when tapped. */
@@ -2451,6 +2456,9 @@ const STYLE = `
   .stat.hot .v { color: var(--ac-hot); }
   button.period { font: inherit; color: inherit; text-align: left; cursor: pointer; border: none; background: none; padding: 0; }
   .details button.period { width: 100%; }
+  .stack { display: grid; }
+  .stack > span { grid-area: 1 / 1; visibility: hidden; }
+  .stack > span.on { visibility: visible; }
   .details button.period dt { font-size: 0.75em; color: var(--ac-muted); }
   .details button.period dd { margin: 2px 0 0; font-variant-numeric: tabular-nums; font-weight: 500; }
   button.period:hover .k, button.period:hover dt { text-decoration: underline dotted; }
