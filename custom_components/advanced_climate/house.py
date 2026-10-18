@@ -180,6 +180,10 @@ class House:
         self._frost_started = False  # heat source started for frost protection while paused
         self._source_unavailable_since: datetime | None = None
         self._alerts: dict[str, datetime] = {}
+        # Alerts that still apply (for the card): code, values, room, text.
+        self.active_alerts: dict[str, dict[str, Any]] = {}
+        # Why the heat source waits: "min_on" / "min_off" (minimum times), else None.
+        self.source_waiting: str | None = None
         self._unsubs: list[Callable[[], None]] = []
         self._timer_unsub: Callable[[], None] | None = None
         self._eval_unsub: Callable[[], None] | None = None
@@ -846,6 +850,12 @@ class House:
             and max(temps) >= float(self.options[CONF_CUTOFF_TEMP])
         )
 
+    def forecast_ahead(self, hours: float = 12) -> list[tuple[datetime, float]]:
+        """Hourly forecast for the next hours (the hour that holds now included)."""
+        now = dt_util.utcnow()
+        end = now + timedelta(hours=hours)
+        return [(t, v) for t, v in self.hourly_forecast if t + timedelta(hours=1) > now and t <= end]
+
     def outdoor_between(self, start: datetime, end: datetime) -> tuple[float | None, str]:
         """Mean outdoor temperature expected between two moments ("forecast" or "now")."""
         return expected_outdoor(
@@ -940,6 +950,7 @@ class House:
         if running:
             self._source_running_since = now
 
+        self.source_waiting = None
         boiler = opts.get(CONF_BOILER_ENTITY)
         if not boiler:
             return
@@ -957,6 +968,7 @@ class House:
         if not valid(state):
             return
         is_on = state.state not in ("off",)  # type: ignore[union-attr]
+        self.source_waiting = None
         if is_on == want:
             return
         if self.boiler_changed is not None:
@@ -964,6 +976,7 @@ class House:
                 minutes=float(opts[CONF_BOILER_MIN_ON] if is_on else opts[CONF_BOILER_MIN_OFF])
             )
             if now - self.boiler_changed < minimum:
+                self.source_waiting = "min_on" if is_on else "min_off"
                 return
         context = self.new_context()
         domain = boiler.split(".", 1)[0]
@@ -1013,6 +1026,8 @@ class House:
                 f"The heat source {entity_id} has been unavailable for more than "
                 f"{limit.total_seconds() / 60:.0f} minutes: the rooms cannot be heated, "
                 "not even for frost protection.",
+                code="source_unavailable",
+                params={"entity": entity_id, "minutes": round(limit.total_seconds() / 60)},
             )
 
     def heat_source_state(self) -> tuple[bool, bool | None]:
@@ -1054,6 +1069,13 @@ class House:
                 "room_difference",
                 f"Some rooms stay cold while others are warm: {text}.",
                 repeat=timedelta(hours=6),
+                code="room_difference",
+                params={
+                    "rooms": [
+                        [name, round(delta_from_celsius(gap, self.unit), 1)]
+                        for name, gap in cold.items()
+                    ]
+                },
             )
         else:
             self.clear_alert("room_difference")
@@ -1089,9 +1111,22 @@ class House:
         *,
         title: str = "Advanced Climate",
         repeat: timedelta | None = None,
+        code: str | None = None,
+        params: dict[str, Any] | None = None,
+        room: str | None = None,
     ) -> None:
-        """Send an alert once (or again after ``repeat``)."""
+        """Send an alert once (or again after ``repeat``).
+
+        ``code`` and ``params`` let the card show it in its language; ``room``
+        is the room it belongs to (None: the whole house).
+        """
         now = dt_util.utcnow()
+        self.active_alerts[key] = {
+            "code": code,
+            "params": params or {},
+            "room": room,
+            "message": message,
+        }
         last = self._alerts.get(key)
         if last is not None and (repeat is None or now - last < repeat):
             return
@@ -1120,8 +1155,17 @@ class House:
             _LOGGER.warning("Notification via %s.%s failed: %s", domain, name, err)
             persistent_notification.async_create(self.hass, message, title=title)
 
+    def alerts_for(self, room_id: str) -> list[dict[str, Any]]:
+        """Alerts that apply to a room: its own and those of the whole house."""
+        return [
+            {"key": key, **{k: v for k, v in alert.items() if k != "room"}}
+            for key, alert in self.active_alerts.items()
+            if alert.get("room") in (None, room_id)
+        ]
+
     def clear_alert(self, key: str) -> None:
         """Allow an alert to be sent again."""
+        self.active_alerts.pop(key, None)
         if self._alerts.pop(key, None) is not None and not self.options.get(
             CONF_NOTIFY_SERVICE
         ):

@@ -17,7 +17,16 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import AdvancedClimateConfigEntry
-from .const import DOMAIN, PRESENCE_STATES, PRESETS, RULES
+from .const import (
+    CONF_CUTOFF_ENABLED,
+    CONF_CUTOFF_HYSTERESIS,
+    CONF_CUTOFF_TEMP,
+    CONF_FORECAST_ENABLED,
+    DOMAIN,
+    PRESENCE_STATES,
+    PRESETS,
+    RULES,
+)
 from .entity import HOUSE_ENTITY_KEYS, ROOM_ENTITY_KEYS, HouseEntity, RoomEntity, entity_map
 from .house import House
 from .learning import start_gap
@@ -148,6 +157,7 @@ class OutdoorAverageSensor(HouseEntity, _HouseUnitTemperature):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_suggested_display_precision = 1
+    _unrecorded_attributes = frozenset({"forecast"})
 
     def __init__(self, house: House) -> None:
         """Initialize."""
@@ -161,12 +171,23 @@ class OutdoorAverageSensor(HouseEntity, _HouseUnitTemperature):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Details."""
+        opts = self.house.options
+        unit = self.house.unit
         return {
             "latest": _t(self.house.outdoor_now, self.house.unit),
             "average_hours": self.house.average_hours,
             "cutoff_active": self.house.cutoff_active,
             "forecast_cutoff": self.house.forecast_cutoff,
             "heating_season": self.house.season_active,
+            # The cutoff for the card: on at the threshold, off again below it
+            # by the hysteresis.
+            "cutoff_enabled": bool(opts[CONF_CUTOFF_ENABLED]),
+            "cutoff_temperature": _t(float(opts[CONF_CUTOFF_TEMP]), unit, 1),
+            "cutoff_resume_temperature": _t(
+                float(opts[CONF_CUTOFF_TEMP]) - float(opts[CONF_CUTOFF_HYSTERESIS]), unit, 1
+            ),
+            "forecast_enabled": bool(opts[CONF_FORECAST_ENABLED]),
+            "forecast": [[iso(t), _t(v, unit, 1)] for t, v in self.house.forecast_ahead()],
         }
 
 
@@ -213,6 +234,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "device_levels",
             "plan",
             "next_estimate",
+            "alerts",
         }
     )
 
@@ -267,6 +289,8 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "time_to_target": room.time_to_target(room.house.outdoor_now),
             "stop_forecast": _forecast(room, unit),
             "next_estimate": _estimate(room, unit),
+            "no_heat_reason": room.no_heat_reason(),
+            "alerts": room.house.alerts_for(room.id),
             "optimal_stop_cancelled": room.stop_cancelled,
             "rate_learned": bool(room.learner.episodes),
             "device_levels": room.device_levels,

@@ -31,8 +31,12 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CALIBRATION_EXTERNAL,
     CALIBRATION_OFFSET,
+    COMMAND_HVAC,
+    COMMAND_PRESET,
+    CONF_ALERT_WINDOW_MINUTES,
     CONF_AREA,
     CONF_BATTERY_THRESHOLD,
+    CONF_BOILER_MIN_ROOMS,
     CONF_CALIBRATION_ENTITIES,
     CONF_CALIBRATION_MODE,
     CONF_CLIMATES,
@@ -42,7 +46,7 @@ from .const import (
     CONF_HELPER_ON_PRESET,
     CONF_HYSTERESIS,
     CONF_LEARN_TOLERANCE,
-    CONF_STOP_TOLERANCE,
+    CONF_LEVELS,
     CONF_LINKED_WINDOW_SENSORS,
     CONF_MAX_TEMP,
     CONF_MIN_OFF,
@@ -57,14 +61,15 @@ from .const import (
     CONF_OPTIMAL_STOP_MINUTES,
     CONF_OVERRIDE_HOURS,
     CONF_OVERRIDE_MODE,
-    CONF_LEVELS,
     CONF_PRESET_MAP,
     CONF_PRESET_NAMES,
+    CONF_REFERENCE_ROOM,
     CONF_SCHEDULE,
     CONF_SCHEDULE_HELPER,
     CONF_SCHEDULE_SOURCE,
     CONF_SOLAR_OFFSET,
     CONF_SOURCE,
+    CONF_STOP_TOLERANCE,
     CONF_SWITCHES,
     CONF_TEMP_AGGREGATION,
     CONF_TEMP_SENSORS,
@@ -79,9 +84,6 @@ from .const import (
     CONF_WINDOW_DROP_MINUTES,
     CONF_WINDOW_OPEN_DELAY,
     CONF_WINDOW_SENSORS,
-    CONF_ALERT_WINDOW_MINUTES,
-    COMMAND_HVAC,
-    COMMAND_PRESET,
     DEFAULT_LEVEL_TEMPS,
     DEFAULT_SCHEDULE,
     DOMAIN,
@@ -281,6 +283,8 @@ class Room:
         self.stop_cancelled = False
         # Optimal start / stop expected for the next scheduled change.
         self.next_estimate: dict[str, Any] | None = None
+        # A relay that should switch but waits for its minimum on / off time.
+        self.relay_waiting: str | None = None
         # Values of the last commands, per device: a device that reports them
         # later (e.g. a sleepy Zigbee TRV) is not a manual change.
         self._sent: dict[str, dict[str, Any]] = {}
@@ -1583,6 +1587,9 @@ class Room:
                 f"{self.name}: the level '{self.display_name(target.preset)}' is not "
                 f"available on {entity_id} and its temperature is unknown. "
                 "Configure this preset in the thermostat.",
+                code="preset_missing",
+                params={"level": self.display_name(target.preset), "entity": entity_id},
+                room=self.id,
             )
             return False
         return await self._send(
@@ -1633,6 +1640,7 @@ class Room:
                     want = False
                 else:
                     want = bool(self._relay_on)
+        self.relay_waiting = None
         actual = self._relay_actual()
         if actual is None:
             return False
@@ -1644,6 +1652,7 @@ class Room:
                 minutes=float(self.config[CONF_MIN_ON] if actual else self.config[CONF_MIN_OFF])
             )
             if now - self._relay_changed < minimum:
+                self.relay_waiting = "min_on" if actual else "min_off"
                 return False
         ok = True
         if self.source == SOURCE_SWITCH:
@@ -1714,6 +1723,9 @@ class Room:
                     f"{self.name}: {', '.join(mismatched)} did not accept "
                     f"{expected.describe(self.house.unit)}.",
                     repeat=timedelta(hours=6),
+                    code="not_accepted",
+                    params={"entities": mismatched, "target": expected.describe(self.house.unit)},
+                    room=self.id,
                 )
 
         self._verify_unsub = async_call_later(self.hass, VERIFY_DELAY, _verify)
@@ -1807,6 +1819,9 @@ class Room:
                 house.notify(
                     f"window_{self.id}",
                     f"{self.name}: a window has been open for more than {minutes:.0f} minutes.",
+                    code="window_long",
+                    params={"minutes": round(minutes)},
+                    room=self.id,
                 )
         # Unavailable devices.
         limit = timedelta(minutes=house.alert_unavailable_minutes)
@@ -1822,6 +1837,9 @@ class Room:
                     f"unavailable_{entity_id}",
                     f"{self.name}: {entity_id} has been unavailable for more than "
                     f"{limit.total_seconds() / 60:.0f} minutes.",
+                    code="device_unavailable",
+                    params={"entity": entity_id, "minutes": round(limit.total_seconds() / 60)},
+                    room=self.id,
                 )
         # External sensors.
         if self.external_failed:
@@ -1829,6 +1847,9 @@ class Room:
             house.notify(
                 f"sensor_{self.id}",
                 f"{self.name}: the temperature sensors are unavailable; using {fallback}.",
+                code="sensor_unavailable",
+                params={"fallback": "eco" if self.sensor_failed else "device"},
+                room=self.id,
             )
         else:
             house.clear_alert(f"sensor_{self.id}")
@@ -1838,7 +1859,12 @@ class Room:
                 f"schedule_{self.id}",
                 f"{self.name}: the schedule is invalid ({self.schedule_error}); "
                 "the default schedule is used.",
+                code="schedule_invalid",
+                params={"error": self.schedule_error},
+                room=self.id,
             )
+        else:
+            house.clear_alert(f"schedule_{self.id}")
 
     @callback
     def check_batteries(self) -> None:
@@ -1879,6 +1905,9 @@ class Room:
                         key,
                         f"{self.name}: low battery on {name} ({level:.0f}%).",
                         repeat=timedelta(days=1),
+                        code="battery_low",
+                        params={"device": name, "level": round(level)},
+                        room=self.id,
                     )
                 else:
                     self.house.clear_alert(key)
@@ -1918,7 +1947,56 @@ class Room:
             "since": iso(self.override.get("since")),
             "until": iso(self.override.get("until")),
             "mode": self.override.get("mode"),
+            # Set by the card / a service, or on the device itself.
+            "origin": "card" if self.override.get("target") else "device",
+            "devices": list((self.override.get("devices") or {}).keys()),
+            # A higher rule changed the devices: the manual value comes back after it.
+            "interrupted": bool(self.override.get("interrupted")),
         }
+
+    def no_heat_reason(self) -> dict[str, Any] | None:
+        """Why the room does not heat although it is below its target."""
+        decision = self.decision
+        if (
+            decision is None
+            or decision.target.kind == KIND_OFF
+            or decision.rule == RULE_PAUSE
+            or self.current_temp is None
+            or self.target_temperature is None
+            or self.current_temp >= self.target_temperature
+            or self.heating
+            or self._exercise_until is not None
+        ):
+            return None
+        house = self.house
+        configured, source_on = house.heat_source_state()
+        if self.heat_demand:
+            if configured and source_on is None:
+                return {"code": "source_unknown"}
+            if house.source_waiting:
+                return {"code": f"source_{house.source_waiting}"}
+            reference = house.options.get(CONF_REFERENCE_ROOM)
+            if reference and reference in house.rooms and reference != self.id:
+                if not house.rooms[reference].heat_demand:
+                    return {"code": "reference_room", "room": house.rooms[reference].name}
+            needed = max(1, int(house.options[CONF_BOILER_MIN_ROOMS]))
+            count = sum(1 for room in house.rooms.values() if room.heat_demand)
+            if not reference and count < needed:
+                return {"code": "rooms_needed", "count": count, "needed": needed}
+            return {"code": "source_off"}
+        if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:
+            if self.relay_waiting:
+                return {"code": f"relay_{self.relay_waiting}"}
+            return {
+                "code": "hysteresis",
+                "value": round(
+                    delta_from_celsius(float(self.config[CONF_HYSTERESIS]), house.unit), 2
+                ),
+            }
+        states = [st for eid in self.climates if valid(st := self.hass.states.get(eid))]
+        if states and all(st.state == STATE_OFF for st in states):  # type: ignore[union-attr]
+            return {"code": "device_off"}
+        return {"code": "tolerance"}
 
     def diagnostics(self) -> dict[str, Any]:
         """Diagnostics for this room."""

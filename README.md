@@ -342,6 +342,25 @@ type: custom:advanced-climate-card
 Every room also shows its decision, the reason, heating / window / manual change
 badges, the *Profile* select, the *Child lock* switch and *Back to automatic*.
 
+- **Not heating**: below its target, a room says why it does not heat (within
+  the thermostat tolerance or the hysteresis, a minimum on / off time, waiting
+  for other rooms or the reference room, the heat source off or unknown, the
+  thermostat off). The *Decision* sensor has it as `no_heat_reason`.
+- **Warm outside**: the house always shows the state of the cutoff and its
+  limits, e.g. *Warm outside: off • heating stops when the average reaches
+  18°*, or *on • heating is off until the average falls to 16°*.
+- **Chart**: the outdoor temperature in its own band (measured, then the hourly
+  forecast dashed; the cutoff limit as a dotted line) and the next optimal
+  start / stop as a shaded period with its start time.
+- **Pause**: a banner at the top of the card while the house is paused (the
+  *Pause* switch stays the only control).
+- **Details**: what the room learned (heating and cooling episodes and the rate
+  now) and the alerts of the room and of the house, in the language of the card.
+- **Manual change**: where it was made (card / service or on the device), until
+  when, and *comes back after: …* while a higher rule interrupts it.
+- **Links**: values, states, badges and details open the more-info dialog of
+  their entity.
+
 
 ## Translations
 

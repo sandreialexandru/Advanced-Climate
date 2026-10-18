@@ -799,3 +799,48 @@ async def test_pause_sends_nothing_for_a_manual_relay(
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_card_attributes_not_heating_alerts_cutoff(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Why a room does not heat, its alerts, the cutoff thresholds and the manual change origin."""
+    hass.states.async_set("sensor.outside", "5.0", {"unit_of_measurement": "°C"})
+    entry = await _setup(hass, freezer, house_options={"outdoor_sensor": "sensor.outside"})
+    await _tick(hass, freezer, 15)
+    assert hass.states.get("input_boolean.heater").state == "on"
+    # Warm: the relay turns off; just below the target it stays off (hysteresis).
+    hass.states.async_set("sensor.room_temp", "21.6", {"unit_of_measurement": "°C"})
+    await _tick(hass, freezer, 5)
+    hass.states.async_set("sensor.room_temp", "20.8", {"unit_of_measurement": "°C"})
+    await _tick(hass, freezer, 5)
+    assert hass.states.get("input_boolean.heater").state == "off"
+    attrs = hass.states.get("sensor.bedroom_decision").attributes
+    assert attrs["no_heat_reason"]["code"] == "hysteresis"
+    assert attrs["alerts"] == []
+
+    outdoor = hass.states.get("sensor.home_outdoor_average").attributes
+    assert outdoor["cutoff_temperature"] == 18.0
+    assert outdoor["cutoff_resume_temperature"] == 17.0  # default hysteresis 1 °C
+    assert outdoor["forecast"] == []
+
+    # The temperature sensor fails: an alert for the room, with a code for the card.
+    hass.states.async_set("sensor.room_temp", "unavailable")
+    await _tick(hass, freezer, 5)
+    alerts = hass.states.get("sensor.bedroom_decision").attributes["alerts"]
+    assert [a["code"] for a in alerts] == ["sensor_unavailable"]
+    hass.states.async_set("sensor.room_temp", "20.8", {"unit_of_measurement": "°C"})
+    await _tick(hass, freezer, 5)
+    assert hass.states.get("sensor.bedroom_decision").attributes["alerts"] == []
+
+    await hass.services.async_call(
+        DOMAIN, "set_override", {"room": "Bedroom", "temperature": 23, "duration_hours": 1},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    override = hass.states.get("sensor.bedroom_decision").attributes["override"]
+    assert override["origin"] == "card"
+    assert override["interrupted"] is False
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

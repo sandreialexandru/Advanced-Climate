@@ -361,6 +361,25 @@ Fiecare cameră arată și decizia, motivul, insignele pentru încălzire /
 fereastră / schimbare manuală, selectorul *Profile*, comutatorul *Child lock*
 și *Înapoi la automat*.
 
+- **Nu încălzește**: sub țintă, camera spune de ce nu încălzește (în toleranța
+  termostatului sau în histerezis, timp minim pornit / oprit, așteaptă alte
+  camere sau camera de referință, sursa de căldură oprită sau necunoscută,
+  termostatul oprit). Senzorul *Decision* îl are ca `no_heat_reason`.
+- **Cald afară**: casa arată mereu starea pragului și limitele lui, de exemplu
+  *Cald afară: oprit • încălzirea se oprește când media ajunge la 18°* sau
+  *pornit • încălzirea e oprită până media scade la 16°*.
+- **Grafic**: temperatura de afară pe o bandă separată (măsurată, apoi
+  prognoza orară punctat; pragul de oprire ca linie punctată) și următoarea
+  pornire / oprire anticipată ca perioadă umbrită, cu ora de început.
+- **Pauză**: o bandă sus pe card cât timp casa e în pauză (comutatorul *Pause*
+  rămâne singurul control).
+- **Detalii**: ce a învățat camera (episoade de încălzire și răcire și viteza
+  de acum) și alertele camerei și ale casei, în limba cardului.
+- **Schimbare manuală**: unde a fost făcută (card / serviciu sau pe dispozitiv),
+  până când și *revine după: …* cât timp o regulă de mai sus o întrerupe.
+- **Linkuri**: valorile, stările, insignele și detaliile deschid fereastra cu
+  detaliile entității.
+
 
 ## Traduceri
 

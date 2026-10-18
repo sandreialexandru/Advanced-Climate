@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.11.5";
+const CARD_VERSION = "1.12.0";
 
 // A target that is only a temperature (no level): neutral.
 const TEMP_COLOR = "var(--ac-fixed)";
@@ -163,6 +163,47 @@ const TEXT = {
     zoom_1h: "Last hour",
     zoom_6h: "Last 6 hours",
     nav_help: "Drag the window (or tap a place) to move the zoomed chart.",
+    cutoff_on: "on • heating is off until the average falls to {temp}",
+    cutoff_off: "off • heating stops when the average reaches {temp}",
+    cutoff_forecast: "on (forecast) • heating is off, the forecast reaches {temp} soon",
+    cutoff_unknown: "unknown • no outdoor temperature",
+    no_heat: "Not heating",
+    nh_tolerance: "the room is within the thermostat tolerance",
+    nh_hysteresis: "within the hysteresis of {value}°",
+    nh_relay_min_on: "the relay waits for its minimum on time",
+    nh_relay_min_off: "the relay waits for its minimum off time",
+    nh_source_min_on: "the heat source waits for its minimum on time",
+    nh_source_min_off: "the heat source waits for its minimum off time",
+    nh_rooms_needed: "waiting for other rooms: {count} of {needed} ask for heat",
+    nh_reference_room: "waiting for the reference room {room}",
+    nh_source_off: "the heat source is off",
+    nh_source_unknown: "the state of the heat source is unknown",
+    nh_device_off: "the thermostat is off",
+    legend_outdoor: "Outdoor",
+    legend_forecast: "forecast",
+    est_mark_start: "start ~{time}",
+    est_mark_stop: "stop ~{time}",
+    paused_banner: "Pause: no commands are sent (only frost protection and the maximum temperature)",
+    learn_heat: "Heating learned",
+    learn_cool: "Cooling learned",
+    learn_none: "learning…",
+    learn_heat_value: "{n} episodes · {rate} now",
+    learn_cool_value: "{n} episodes · falls {rate} now",
+    origin_card: "card / service",
+    origin_device: "on the device",
+    back_after: "comes back after: {rule}",
+    alerts: "Alerts",
+    al_source_unavailable: "The heat source {entity} has been unavailable for more than {minutes} min: no heating, not even frost protection.",
+    al_room_difference: "Some rooms stay cold while others are warm: {rooms}.",
+    al_preset_missing: "The level {level} is not available on {entity} and its temperature is unknown.",
+    al_not_accepted: "{entities} did not accept {target}.",
+    al_window_long: "A window has been open for more than {minutes} min.",
+    al_device_unavailable: "{entity} has been unavailable for more than {minutes} min.",
+    al_sensor_unavailable_device: "The temperature sensors are unavailable; the device sensor is used.",
+    al_sensor_unavailable_eco: "The temperature sensors are unavailable; eco is used.",
+    al_schedule_invalid: "The schedule is invalid ({error}); the default schedule is used.",
+    al_battery_low: "Low battery on {device} ({level}%).",
+    open_entity: "Open the entity",
   },
   ro: {
     title: "Încălzire",
@@ -277,6 +318,47 @@ const TEXT = {
     zoom_1h: "Ultima oră",
     zoom_6h: "Ultimele 6 ore",
     nav_help: "Trage fereastra (sau atinge un loc) ca să muți graficul mărit.",
+    cutoff_on: "pornit • încălzirea e oprită până media scade la {temp}",
+    cutoff_off: "oprit • încălzirea se oprește când media ajunge la {temp}",
+    cutoff_forecast: "pornit (prognoză) • încălzirea e oprită, prognoza ajunge curând la {temp}",
+    cutoff_unknown: "necunoscut • fără temperatură de afară",
+    no_heat: "Nu încălzește",
+    nh_tolerance: "camera e în toleranța termostatului",
+    nh_hysteresis: "în histerezisul de {value}°",
+    nh_relay_min_on: "releul așteaptă timpul minim pornit",
+    nh_relay_min_off: "releul așteaptă timpul minim oprit",
+    nh_source_min_on: "sursa de căldură așteaptă timpul minim pornit",
+    nh_source_min_off: "sursa de căldură așteaptă timpul minim oprit",
+    nh_rooms_needed: "așteaptă alte camere: {count} din {needed} cer căldură",
+    nh_reference_room: "așteaptă camera de referință {room}",
+    nh_source_off: "sursa de căldură e oprită",
+    nh_source_unknown: "starea sursei de căldură e necunoscută",
+    nh_device_off: "termostatul e oprit",
+    legend_outdoor: "Afară",
+    legend_forecast: "prognoză",
+    est_mark_start: "pornire ~{time}",
+    est_mark_stop: "oprire ~{time}",
+    paused_banner: "Pauză: nu se trimit comenzi (doar antiîngheț și temperatura maximă)",
+    learn_heat: "Învățare încălzire",
+    learn_cool: "Învățare răcire",
+    learn_none: "se învață…",
+    learn_heat_value: "{n} episoade · {rate} acum",
+    learn_cool_value: "{n} episoade · scade {rate} acum",
+    origin_card: "card / serviciu",
+    origin_device: "pe dispozitiv",
+    back_after: "revine după: {rule}",
+    alerts: "Alerte",
+    al_source_unavailable: "Sursa de căldură {entity} e indisponibilă de peste {minutes} min: nu se încălzește, nici pentru antiîngheț.",
+    al_room_difference: "Unele camere rămân reci, altele sunt calde: {rooms}.",
+    al_preset_missing: "Nivelul {level} nu există pe {entity} și temperatura lui e necunoscută.",
+    al_not_accepted: "{entities} nu a acceptat {target}.",
+    al_window_long: "O fereastră e deschisă de peste {minutes} min.",
+    al_device_unavailable: "{entity} e indisponibil de peste {minutes} min.",
+    al_sensor_unavailable_device: "Senzorii de temperatură sunt indisponibili; se folosește senzorul dispozitivului.",
+    al_sensor_unavailable_eco: "Senzorii de temperatură sunt indisponibili; se folosește eco.",
+    al_schedule_invalid: "Programul e invalid ({error}); se folosește programul implicit.",
+    al_battery_low: "Baterie descărcată la {device} ({level}%).",
+    open_entity: "Deschide entitatea",
   },
 };
 
@@ -551,6 +633,7 @@ class AdvancedClimateCard extends HTMLElement {
       body = houses
         .map(
           (house) =>
+            this._pauseBanner(house) +
             (cfg.show_house ? this._houseHtml(house) : "") +
             (cfg.show_rooms
               ? house.rooms.length
@@ -648,12 +731,14 @@ class AdvancedClimateCard extends HTMLElement {
   }
 
   /** Current and target temperature, with the estimate under the target. */
-  _tempPair(current, target, color, eta = "", help = "eta_help") {
+  _tempPair(current, target, color, eta = "", help = "eta_help", e = {}) {
     return `<div class="temps">
-        <div class="tval"><span class="tag">${this._t("now_tag")}</span><span class="tnum">${this._temp(
-          current
-        )}</span></div>
-        <div class="tval target" style="--c:${color}"><span class="tag">${this._t(
+        <div class="tval ${e.room_temperature ? "link" : ""}" ${this._more(e.room_temperature)}><span class="tag">${this._t(
+          "now_tag"
+        )}</span><span class="tnum">${this._temp(current)}</span></div>
+        <div class="tval target ${e.target_temperature ? "link" : ""}" style="--c:${color}" ${this._more(
+          e.target_temperature
+        )}><span class="tag">${this._t(
           "target_tag"
         )}</span><span class="tnum">${this._temp(target)}</span>${
           eta
@@ -695,10 +780,10 @@ class AdvancedClimateCard extends HTMLElement {
       )
       .join("");
 
-    const stat = (label, value, extra = "") =>
-      `<div class="stat ${extra}"><span class="k">${esc(label)}</span><span class="v">${esc(
-        value
-      )}</span></div>`;
+    const stat = (label, value, extra = "", entityId = null) =>
+      `<div class="stat ${extra} ${entityId ? "link" : ""}" ${this._more(entityId)}><span class="k">${esc(
+        label
+      )}</span><span class="v">${esc(value)}</span></div>`;
     const onOff = (s) => (s ? (s.state === "on" ? this._t("on") : this._t("off")) : "–");
     const guestUntil = guest?.attributes?.until
       ? `<span class="muted">${this._t("until")} ${esc(this._fmtTime(guest.attributes.until))}</span>`
@@ -732,19 +817,21 @@ class AdvancedClimateCard extends HTMLElement {
           <div>
             <div class="name">${foldBack}${esc(house.name || "")}</div>
             <div class="presence">
-              <span class="pill presence-state ${esc(presence?.state)}">${esc(this._label(presence))}</span>
+              <span class="pill presence-state link ${esc(presence?.state)}" ${this._more(e.presence)}>${esc(
+                this._label(presence)
+              )}</span>
               ${presence?.attributes?.arriving ? `<span class="pill">${this._t("arriving")}</span>` : ""}
               ${personList}
             </div>
           </div>
           <div class="stats">
-            ${stat(this._outdoorLabel(outdoor), this._temp(outdoor?.state))}
-            ${stat(this._t("season"), onOff(season))}
-            ${cutoff?.state === "on" ? stat(this._t("cutoff"), this._t("on"), "warn") : ""}
-            ${stat(this._t("demand"), onOff(demand), demand?.state === "on" ? "hot" : "")}
+            ${stat(this._outdoorLabel(outdoor), this._temp(outdoor?.state), "", e.outdoor_average)}
+            ${stat(this._t("season"), onOff(season), "", e.heating_season)}
+            ${stat(this._t("demand"), onOff(demand), demand?.state === "on" ? "hot" : "", e.heat_demand)}
             ${runtime ? this._runtimeStat(e.heating_runtime) : ""}
           </div>
         </div>
+        ${this._cutoffHtml(outdoor, cutoff, e.outdoor_cutoff)}
         <div class="label">${this._t("mode")}</div>
         <div class="segmented" role="group" aria-label="${esc(this._t("mode"))}">${modes}</div>
         <div class="row wrap">
@@ -792,6 +879,33 @@ class AdvancedClimateCard extends HTMLElement {
       </section>`;
   }
 
+  /** "Warm outside: off • heating stops when the average reaches 18°". */
+  _cutoffHtml(outdoor, cutoff, entityId) {
+    const a = outdoor?.attributes || {};
+    if (!cutoff || a.cutoff_enabled === false) return "";
+    let text;
+    const average = num(outdoor?.state);
+    if (cutoff.state === "on" && a.forecast_cutoff && (average === null || average < num(a.cutoff_temperature))) {
+      text = this._t("cutoff_forecast").replace("{temp}", this._temp(a.cutoff_temperature));
+    } else if (cutoff.state === "on") {
+      text = this._t("cutoff_on").replace("{temp}", this._temp(a.cutoff_resume_temperature));
+    } else if (average === null) {
+      text = this._t("cutoff_unknown");
+    } else {
+      text = this._t("cutoff_off").replace("{temp}", this._temp(a.cutoff_temperature));
+    }
+    return `<div class="cutoffline ${cutoff.state === "on" ? "on" : ""} link" ${this._more(entityId)}>
+        <b>${esc(this._t("cutoff"))}:</b> ${esc(text)}</div>`;
+  }
+
+  /** Banner while the house is paused (the switch stays the only control). */
+  _pauseBanner(house) {
+    const pause = this._state(house.entities?.pause);
+    if (pause?.state !== "on") return "";
+    const name = this._houses().length > 1 && house.name ? `${house.name}: ` : "";
+    return `<div class="banner">${this._icon("pause-circle-outline")}<span>${esc(name + this._t("paused_banner"))}</span></div>`;
+  }
+
   /** Room block (or one compact row); the details are shown when it is open. */
   _roomHtml(stateObj) {
     const cfg = this._config;
@@ -804,14 +918,21 @@ class AdvancedClimateCard extends HTMLElement {
     if (cfg.compact && folded) return this._compactRow(stateObj, color);
 
     const badges = [];
-    if (a.heating ?? a.heat_demand) badges.push(`<span class="pill hot">${this._t("heating")}</span>`);
-    if (a.window_open) badges.push(`<span class="pill warn">${this._t("window")}</span>`);
+    if (a.heating ?? a.heat_demand)
+      badges.push(`<span class="pill hot link" ${this._more(e.heat_demand)}>${this._t("heating")}</span>`);
+    if (a.window_open) badges.push(`<span class="pill warn link" ${this._more(e.window_open)}>${this._t("window")}</span>`);
     if (a.override) {
       const until = this._overrideUntil(a);
       const prefix = stateObj.state === "manual_override" ? "" : `${this._t("override")} `;
-      badges.push(`<span class="pill" title="${esc(a.override.until ? "" : this._t("reeval_help"))}">${esc(
-        prefix + until
-      )}</span>`);
+      const origin = a.override.origin ? ` · ${this._t(`origin_${a.override.origin}`)}` : "";
+      const back =
+        a.override.interrupted && stateObj.state !== "manual_override"
+          ? ` · ${this._t("back_after").replace("{rule}", this._label(stateObj))}`
+          : "";
+      badges.push(`<span class="pill link wrap" ${this._more(
+        e.manual_override,
+        a.override.until ? null : this._t("reeval_help")
+      )}>${esc(prefix + until + origin + back)}</span>`);
     }
 
     const head = `
@@ -824,10 +945,11 @@ class AdvancedClimateCard extends HTMLElement {
           a.target_temperature,
           color,
           this._eta(a),
-          a.stop_forecast ? "stop_help" : "eta_help"
+          a.stop_forecast ? "stop_help" : "eta_help",
+          e
         )}
       </div>
-      <div class="decision"><span class="pill rule" style="--c:${color}">${esc(
+      <div class="decision"><span class="pill rule link" style="--c:${color}" ${this._more(e.decision)}>${esc(
         this._label(stateObj)
       )}</span>${badges.join("")}</div>`;
 
@@ -835,6 +957,7 @@ class AdvancedClimateCard extends HTMLElement {
 
     const parts = [
       `<p class="reason">${esc(a.reason || "")}</p>`,
+      this._noHeatHtml(a),
       cfg.show_timeline ? this._timelineHtml(a) : "",
       this._controlsHtml(a, e),
       cfg.show_quick_override ? this._quickHtml(a) : "",
@@ -843,6 +966,22 @@ class AdvancedClimateCard extends HTMLElement {
       cfg.show_schedule_editor ? this._scheduleHtml(a, stateObj) : "",
     ];
     return `<section class="block room">${head}${parts.join("")}</section>`;
+  }
+
+  /** Why a room below its target does not heat. */
+  _noHeatHtml(a) {
+    const r = a.no_heat_reason;
+    if (!r || !r.code) return "";
+    let text = this._t(`nh_${r.code}`);
+    if (text === `nh_${r.code}`) return "";
+    text = text
+      .replace("{value}", r.value ?? "")
+      .replace("{count}", r.count ?? "")
+      .replace("{needed}", r.needed ?? "")
+      .replace("{room}", r.room ?? "");
+    return `<p class="reason noheat">${this._icon("information-outline")}<span><b>${esc(
+      this._t("no_heat")
+    )}:</b> ${esc(text)}</span></p>`;
   }
 
   /** When a manual change ends, in words. */
@@ -922,10 +1061,11 @@ class AdvancedClimateCard extends HTMLElement {
   async _fetchHistory(a) {
     const key = a.room_id;
     const e = a.entities || {};
-    const ids = [e.room_temperature, e.target_temperature, e.heat_demand].filter(Boolean);
+    const outdoorId = a.house_entities?.outdoor_average;
+    const ids = [e.room_temperature, e.target_temperature, e.heat_demand, outdoorId].filter(Boolean);
     const previous = this._hist[key];
     if (!ids.length || !this._hass?.callWS) {
-      this._hist[key] = { at: Date.now(), loading: false, temp: [], target: [], heat: [] };
+      this._hist[key] = { at: Date.now(), loading: false, temp: [], target: [], heat: [], outdoor: [] };
       return;
     }
     this._hist[key] = { ...(previous || {}), at: Date.now(), loading: true };
@@ -954,9 +1094,13 @@ class AdvancedClimateCard extends HTMLElement {
         target: rows(e.target_temperature).map((p) => ({ t: p.t, v: num(p.s), preset: p.a.preset })),
         // Heated: the heat source ran (older history without the attribute: the demand).
         heat: rows(e.heat_demand).map((p) => [p.t, p.s === "on" && p.a.heating !== false]),
+        // Measured outdoor temperature (the latest value of the house).
+        outdoor: rows(outdoorId)
+          .map((p) => [p.t, num(p.a.latest)])
+          .filter((p) => p[1] !== null),
       };
     } catch (err) {
-      this._hist[key] = { at: Date.now(), loading: false, temp: [], target: [], heat: [], failed: true };
+      this._hist[key] = { at: Date.now(), loading: false, temp: [], target: [], heat: [], outdoor: [], failed: true };
     }
     const active = this.shadowRoot.activeElement;
     if (this._editing || this._drag || (active && ["INPUT", "SELECT"].includes(active.tagName))) return;
@@ -1038,7 +1182,25 @@ class AdvancedClimateCard extends HTMLElement {
       lo = Math.floor(mid - 2);
       hi = lo + 4;
     }
-    return { t0, t1, now, segs, temp, heat, lo, hi, loading: !hist };
+    // Outdoor: measured for the past, the hourly forecast ahead.
+    const outdoorState = this._state(a.house_entities?.outdoor_average);
+    const outdoor = hist ? (hist.outdoor || []).filter((p) => p[0] >= t0 - HOUR) : [];
+    const latest = num(outdoorState?.attributes?.latest);
+    if (latest !== null) outdoor.push([now, latest]);
+    const forecast = (outdoorState?.attributes?.forecast || [])
+      .map(([at, v]) => [Date.parse(at), num(v)])
+      .filter(([t, v]) => Number.isFinite(t) && v !== null && t < t1)
+      .sort((p, q) => p[0] - q[0]);
+    const outValues = [...outdoor.map((p) => p[1]), ...forecast.map((p) => p[1])];
+    let olo = outValues.length ? Math.floor(Math.min(...outValues)) : null;
+    let ohi = outValues.length ? Math.ceil(Math.max(...outValues)) : null;
+    if (olo !== null && ohi - olo < 4) {
+      const mid = (olo + ohi) / 2;
+      olo = Math.floor(mid - 2);
+      ohi = olo + 4;
+    }
+    const cutoffAt = outdoorState?.attributes?.cutoff_enabled ? num(outdoorState.attributes.cutoff_temperature) : null;
+    return { t0, t1, now, segs, temp, heat, lo, hi, outdoor, forecast, olo, ohi, cutoffAt, loading: !hist };
   }
 
   /** Visible time window of a chart (zoom); the whole range when not zoomed. */
@@ -1108,9 +1270,13 @@ class AdvancedClimateCard extends HTMLElement {
     const W = 1000;
     const H = 100;
     const TOP = 6;
-    // The plot ends above a separate lane for the heating periods.
+    // The plot ends above a band for the outdoor temperature (when known)
+    // and a separate lane for the heating periods.
     const LANE = 7;
-    const BOTTOM = H - LANE - 4;
+    const hasOut = d.olo !== null;
+    const OBOT = H - LANE - 5;
+    const OTOP = hasOut ? OBOT - 19 : OBOT;
+    const BOTTOM = hasOut ? OTOP - 11 : H - LANE - 4;
     const x = (t) => ((t - view.v0) / (view.v1 - view.v0)) * W;
     const y = (v) => BOTTOM - ((v - d.lo) / (d.hi - d.lo)) * (BOTTOM - TOP);
     const pct = (t) => (x(t) / W) * 100;
@@ -1157,6 +1323,61 @@ class AdvancedClimateCard extends HTMLElement {
     }
     const last = d.temp.length ? d.temp[d.temp.length - 1] : null;
 
+    // Outdoor band: its own scale, measured line and the forecast (dashed steps).
+    let outdoorSvg = "";
+    let outLabels = "";
+    if (hasOut) {
+      const oy = (v) => OBOT - ((v - d.olo) / (d.ohi - d.olo)) * (OBOT - OTOP);
+      const path = (pts) =>
+        pts.length > 1 ? `M${pts.map(([t, v]) => `${x(Math.max(t, d.t0)).toFixed(1)} ${oy(v).toFixed(1)}`).join(" L")}` : "";
+      const measured = path(d.outdoor);
+      const steps = [];
+      const start = d.outdoor.length ? d.outdoor[d.outdoor.length - 1] : null;
+      if (start) steps.push(start);
+      // The measured value stands until the next forecast hour (as for the optimal start / stop).
+      for (const [t, v] of d.forecast.filter(([ft]) => ft > d.now)) {
+        if (steps.length) steps.push([t, steps[steps.length - 1][1]]);
+        steps.push([t, v]);
+      }
+      if (steps.length) steps.push([Math.min(d.t1, (d.forecast.at(-1)?.[0] ?? d.now) + 3600000), steps[steps.length - 1][1]]);
+      const cutoff =
+        d.cutoffAt !== null && d.cutoffAt >= d.olo && d.cutoffAt <= d.ohi
+          ? `<line x1="0" x2="${W}" y1="${oy(d.cutoffAt)}" y2="${oy(d.cutoffAt)}" class="ocut"></line>`
+          : "";
+      outdoorSvg = `<rect x="0" y="${OTOP}" width="${W}" height="${OBOT - OTOP}" class="oband"></rect>${cutoff}
+        ${measured ? `<path d="${measured}" class="oline"></path>` : ""}
+        ${steps.length > 1 ? `<path d="${path(steps.filter(([t]) => t >= d.now - 1))}" class="oline future"></path>` : ""}`;
+      outLabels = [d.olo, d.ohi]
+        .map((v) => `<span class="olab" style="top:${(oy(v) / H) * 100}%">${v}°</span>`)
+        .join("");
+      d.oy = oy;
+    }
+
+    // The next optimal start / stop: from when it begins to the change.
+    let optimal = "";
+    let optimalLabel = "";
+    const est = a.next_estimate;
+    if (est && (est.started_at || num(est.minutes))) {
+      const s0 = Date.parse(est.started_at || est.starts_at);
+      const s1 = Date.parse(est.at);
+      if (Number.isFinite(s0) && Number.isFinite(s1) && s1 > view.v0 && s0 < view.v1) {
+        const c = PRESET_COLORS[est.preset] || TEMP_COLOR;
+        const xa = Math.max(0, x(s0));
+        const xb = Math.min(W, x(s1));
+        optimal = `<rect x="${xa}" y="${TOP}" width="${Math.max(1, xb - xa)}" height="${BOTTOM - TOP}" fill="${c}" class="optband"></rect>
+          <line x1="${x(s0)}" x2="${x(s0)}" y1="${TOP}" y2="${BOTTOM}" stroke="${c}" class="optline"></line>`;
+        const text = this._t(est.kind === "optimal_start" ? "est_mark_start" : "est_mark_stop").replace(
+          "{time}",
+          this._fmtTime(est.started_at || est.starts_at)
+        );
+        if (x(s0) >= 0 && x(s0) <= W) {
+          optimalLabel = `<span class="optlab ${x(s0) > W * 0.7 ? "end" : ""}" style="left:${(x(s0) / W) * 100}%;--c:${c}">${esc(
+            text
+          )}</span>`;
+        }
+      }
+    }
+
     // Labels of the levels (HTML, so the text is not stretched).
     const visible = (sg) => [Math.max(0, x(sg.s)), Math.min(W, x(sg.e))];
     // A label for each level wide enough, not over another label.
@@ -1166,10 +1387,12 @@ class AdvancedClimateCard extends HTMLElement {
         const [xs, xe] = visible(sg);
         const yy = y(sg.v);
         const wide = sg.preset ? 190 : 90;
-        if (xe - xs < (sg.preset ? 110 : 60) || placed.some(([lx, ly, lw]) => Math.abs(xs - lx) < Math.max(wide, lw) && Math.abs(yy - ly) < 14)) {
+        // Where the label starts: near the right edge it ends with the segment.
+        const lx = xs > W * 0.7 ? xe - wide : xs;
+        if (xe - xs < (sg.preset ? 110 : 60) || placed.some(([px, py, pw]) => Math.abs(lx - px) < Math.max(wide, pw) && Math.abs(yy - py) < 14)) {
           return false;
         }
-        placed.push([xs, yy, wide]);
+        placed.push([lx, yy, wide]);
         return true;
       })
       .map((sg) => {
@@ -1229,21 +1452,22 @@ class AdvancedClimateCard extends HTMLElement {
     const nowIn = d.now >= view.v0 && d.now <= view.v1;
     const inner = `
         ${zoombar}
-        <div class="hchart ${view.zoomed ? "zoomed" : ""}" data-chart="${esc(a.room_id)}">
+        <div class="hchart ${view.zoomed ? "zoomed" : ""} ${hasOut ? "with-out" : ""}" data-chart="${esc(a.room_id)}">
           <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(this._t("chart_label"))}">
             <defs><linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0" stop-color="var(--ac-accent)" stop-opacity="0.14"></stop>
               <stop offset="1" stop-color="var(--ac-accent)" stop-opacity="0"></stop>
             </linearGradient></defs>
             <rect x="${Math.min(W, Math.max(0, nowX))}" y="0" width="${W - Math.min(W, Math.max(0, nowX))}" height="${BOTTOM}" class="futurebg"></rect>
-            ${grid}${heat}${segs}${steps}
+            ${grid}${optimal}${heat}${segs}${steps}${outdoorSvg}
             ${tempArea ? `<path d="${tempArea}" fill="url(#${gid})" class="tempfill"></path>` : ""}
             ${tempPath ? `<path d="${tempPath}" class="templine"></path>` : ""}
             <line x1="${nowX}" x2="${nowX}" y1="0" y2="${BOTTOM}" class="now"></line>
           </svg>
           <div class="overlay">
             ${labels}
-            <div class="ylabels">${yLabels}</div>
+            <div class="ylabels">${yLabels}${outLabels}</div>
+            ${optimalLabel}
             ${nowIn ? `<span class="nowlabel" style="left:${pct(d.now)}%">${this._t("now_tag")}</span>` : ""}
             ${
               last && last[0] >= view.v0 && last[0] <= view.v1
@@ -1260,6 +1484,7 @@ class AdvancedClimateCard extends HTMLElement {
           <span class="lg"><i class="lg-temp"></i>${this._t("legend_temp")}</span>
           <span class="lg"><i class="lg-target"></i>${this._t("legend_target")}</span>
           <span class="lg"><i class="lg-heat"></i>${this._t("legend_heat")}</span>
+          ${hasOut ? `<span class="lg"><i class="lg-out"></i>${this._t("legend_outdoor")}</span>` : ""}
           ${d.loading ? `<span class="muted">${this._t("loading")}</span>` : ""}
         </div>
         <div class="meta"><span>${this._t("today")}: <b>${esc(a.profile || "–")}</b></span>${next}</div>`;
@@ -1308,6 +1533,22 @@ class AdvancedClimateCard extends HTMLElement {
     }
     const seg = d.segs.find((sg) => sg.s <= t && t < sg.e);
     const heating = d.heat.some(([s, e]) => s <= t && t <= e);
+    let out = null;
+    let outForecast = false;
+    if (t <= d.now) {
+      for (const [pt, v] of d.outdoor || []) {
+        if (pt <= t) out = v;
+        else break;
+      }
+    } else {
+      for (const [pt, v] of (d.forecast || []).filter(([ft]) => ft > d.now)) {
+        if (pt <= t) {
+          out = v;
+          outForecast = true;
+        } else break;
+      }
+      if (out === null && d.outdoor?.length) out = d.outdoor[d.outdoor.length - 1][1];
+    }
     const time = new Date(t).toLocaleString(this._lang(), { weekday: "short", hour: "2-digit", minute: "2-digit" });
     const rows = [`<b>${esc(time)}</b>`];
     if (t <= d.now && temp !== null) rows.push(`<span><i class="lg-temp"></i>${temp.toFixed(1)}°</span>`);
@@ -1319,6 +1560,13 @@ class AdvancedClimateCard extends HTMLElement {
       );
     }
     if (heating) rows.push(`<span class="hotword"><i class="lg-heat"></i>${this._t("heating")}</span>`);
+    if (out !== null) {
+      rows.push(
+        `<span><i class="lg-out"></i>${esc(this._t("legend_outdoor"))} ${out.toFixed(1)}°${
+          outForecast ? ` · ${esc(this._t("legend_forecast"))}` : ""
+        }</span>`
+      );
+    }
     cross.hidden = false;
     cross.style.left = `${f * 100}%`;
     tip.hidden = false;
@@ -1438,23 +1686,19 @@ class AdvancedClimateCard extends HTMLElement {
     const html = `<dl class="details">
         ${dl(this._t("room_temp"), esc(this._temp(a.current_temperature)))}
         ${dl(this._t("target"), esc(this._temp(a.target_temperature)))}
-        ${
-          rate
-            ? dl(
-                this._t("rate"),
-                `${esc(num(rate.state)?.toFixed(2) ?? "–")} ${esc(rate.attributes.unit_of_measurement || "°C/h")}`
-              )
-            : ""
-        }
+        ${this._learnHtml(e)}
         ${runtime ? `<div>${this._runtimeButton(e.heating_runtime, "dt")}</div>` : ""}
         ${devicePreset !== null ? dl(this._t("device_preset"), esc(devicePreset)) : ""}
         ${dl(this._t("adjustments"), esc(offsets))}
         ${
           a.next_estimate
-            ? `<div class="wide"><dt>${esc(this._t("est_label"))}</dt><dd>${esc(this._estimate(a))}</dd></div>`
+            ? `<div class="wide link" ${this._more(e.decision)}><dt>${esc(this._t("est_label"))}</dt><dd>${esc(
+                this._estimate(a)
+              )}</dd></div>`
             : ""
         }
       </dl>
+      ${this._alertsHtml(a)}
       ${
         levelTemps
           ? `<div class="label">${a.custom_levels ? this._t("levels") : this._t("level_temps_gt")}</div>
@@ -1463,6 +1707,50 @@ class AdvancedClimateCard extends HTMLElement {
       }
       ${a.schedule_error ? `<p class="error">${esc(a.schedule_error)}</p>` : ""}`;
     return this._fold(`details-${a.room_id}`, this._t("details"), html);
+  }
+
+  /** What the room learned (heating and cooling), each linked to its sensor. */
+  _learnHtml(e) {
+    const row = (entityId, label, valueKey) => {
+      const s = this._state(entityId);
+      if (!s) return "";
+      const n = num(s.attributes.episodes) ?? 0;
+      const unit = s.attributes.unit_of_measurement || "°C/h";
+      const value = num(s.state);
+      const text = n
+        ? this._t(valueKey)
+            .replace("{n}", String(n))
+            .replace("{rate}", value === null ? "–" : `${value.toFixed(2)} ${unit}`)
+        : this._t("learn_none");
+      return `<div class="link" ${this._more(entityId)}><dt>${esc(label)}</dt><dd>${esc(text)}</dd></div>`;
+    };
+    return row(e.heating_rate, this._t("learn_heat"), "learn_heat_value") +
+      row(e.cooling_rate, this._t("learn_cool"), "learn_cool_value");
+  }
+
+  /** Alerts of the room and of the whole house, in the language of the card. */
+  _alertsHtml(a) {
+    const alerts = a.alerts || [];
+    if (!alerts.length) return "";
+    const items = alerts
+      .map((al) => {
+        const p = al.params || {};
+        const code = al.code === "sensor_unavailable" ? `sensor_unavailable_${p.fallback || "device"}` : al.code;
+        let text = code ? this._t(`al_${code}`) : "";
+        if (!text || text === `al_${code}`) text = al.message || "";
+        const values = {
+          ...p,
+          entities: Array.isArray(p.entities) ? p.entities.join(", ") : p.entities,
+          rooms: Array.isArray(p.rooms) ? p.rooms.map(([n, g]) => `${n} (−${g}°)`).join(", ") : p.rooms,
+        };
+        text = text.replace(/\{(\w+)\}/g, (m, k) => (values[k] !== undefined ? String(values[k]) : m));
+        const entity = p.entity || (Array.isArray(p.entities) ? p.entities[0] : null);
+        return `<li class="${entity ? "link" : ""}" ${this._more(entity)}>${this._icon("alert-outline")}<span>${esc(
+          text
+        )}</span></li>`;
+      })
+      .join("");
+    return `<div class="label">${esc(this._t("alerts"))}</div><ul class="alerts">${items}</ul>`;
   }
 
   /** Which days a profile is used on, in words. */
@@ -1844,6 +2132,11 @@ class AdvancedClimateCard extends HTMLElement {
 
   /** Arrow keys move the focused schedule handle (Shift: one hour). */
   _keyDown(ev) {
+    if ((ev.key === "Enter" || ev.key === " ") && ev.target?.dataset?.action === "more") {
+      ev.preventDefault();
+      this._onClick(ev);
+      return;
+    }
     const handle = ev.target.closest?.("[data-handle]");
     if (!handle || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(ev.key)) return;
     ev.preventDefault();
@@ -1982,11 +2275,25 @@ class AdvancedClimateCard extends HTMLElement {
     return { temp: num(temp?.value), data };
   }
 
+  /** Attributes that open the more-info dialog of an entity on click. */
+  _more(entityId, title = null) {
+    if (!entityId) return title ? `title="${esc(title)}"` : "";
+    return `data-action="more" data-entity="${esc(entityId)}" role="link" tabindex="0" title="${esc(
+      title || this._t("open_entity")
+    )}"`;
+  }
+
   /** Every button of the card (data-action). */
   async _onClick(ev) {
     const el = ev.target.closest("[data-action]");
     if (!el || el.tagName === "SELECT" || el.tagName === "INPUT") return;
     const { action, room, profile, index, entity, option, key, house } = el.dataset;
+    if (action === "more") {
+      this.dispatchEvent(
+        new CustomEvent("hass-more-info", { detail: { entityId: entity }, bubbles: true, composed: true })
+      );
+      return;
+    }
     switch (action) {
       case "fold":
         this._open[key] = el.getAttribute("aria-expanded") !== "true";
@@ -2111,6 +2418,7 @@ const STYLE = `
     --ac-muted: var(--secondary-text-color);
     --ac-accent: var(--primary-color);
     --ac-fixed: color-mix(in srgb, var(--primary-text-color) 65%, transparent);
+    --ac-out: #7d8ea8;
     --ac-hot: #d9480f;
     --ac-warn: #c98a12;
     color: var(--primary-text-color);
@@ -2224,8 +2532,26 @@ const STYLE = `
   .tval .eta { font-size: 0.68em; color: var(--ac-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .decision { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .reason { margin: 0; color: var(--ac-muted); font-size: 0.9em; }
+  .pill.wrap { white-space: normal; text-align: left; }
+  .reason.noheat { display: flex; gap: 6px; align-items: flex-start; color: var(--primary-text-color); }
+  .reason.noheat ha-icon { --mdc-icon-size: 18px; color: var(--ac-muted); flex: none; }
+  .link { cursor: pointer; }
+  .link:hover { filter: brightness(0.96); }
+  .link:focus-visible { outline: 2px solid var(--ac-accent); outline-offset: 2px; }
+  .banner { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-radius: 12px;
+    background: color-mix(in srgb, var(--warning-color, #f0ad4e) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--warning-color, #f0ad4e) 55%, transparent); font-size: 0.9em; }
+  .banner ha-icon { --mdc-icon-size: 20px; color: var(--warning-color, #f0ad4e); flex: none; }
+  .cutoffline { font-size: 0.85em; color: var(--ac-muted); padding: 6px 10px; border-radius: 10px; background: var(--ac-surface); }
+  .cutoffline b { color: var(--primary-text-color); font-weight: 500; }
+  .cutoffline.on { background: color-mix(in srgb, var(--warning-color, #f0ad4e) 14%, transparent); }
+  ul.alerts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  ul.alerts li { display: flex; gap: 8px; align-items: flex-start; font-size: 0.85em; padding: 8px 10px; border-radius: 10px;
+    background: color-mix(in srgb, var(--error-color, #db4437) 10%, transparent); }
+  ul.alerts ha-icon { --mdc-icon-size: 18px; color: var(--error-color, #db4437); flex: none; }
   .chart-card { border-radius: 14px; background: var(--ac-surface); padding: 12px 12px 10px;
     box-shadow: inset 0 0 0 1px var(--ac-line); display: flex; flex-direction: column; gap: 4px; }
+  .hchart.with-out { height: 210px; }
   .hchart { position: relative; height: 170px; margin-left: 32px; touch-action: pan-y; cursor: crosshair; user-select: none; }
   .hchart svg { width: 100%; height: 100%; display: block; overflow: hidden; }
   .hchart.zoomed { cursor: grab; }
@@ -2240,6 +2566,17 @@ const STYLE = `
     box-shadow: 0 1px 2px rgba(0,0,0,.15); }
   .hchart .grid { stroke: var(--ac-line); stroke-width: 1; vector-effect: non-scaling-stroke; }
   .hchart .futurebg { fill: var(--primary-text-color); opacity: 0.03; }
+  .hchart .oband { fill: var(--primary-text-color); opacity: 0.03; }
+  .hchart .oline { fill: none; stroke: var(--ac-out); stroke-width: 1.6; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+  .hchart .oline.future { stroke-dasharray: 4 4; opacity: 0.8; }
+  .hchart .ocut { stroke: var(--ac-hot); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.6; vector-effect: non-scaling-stroke; }
+  .hchart .optband { opacity: 0.08; }
+  .hchart .optline { stroke-width: 1.5; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+  .optlab { position: absolute; top: 2px; transform: translateX(4px); font-size: 0.68em; white-space: nowrap; padding: 1px 6px;
+    border-radius: 6px; color: var(--primary-text-color); background: color-mix(in srgb, var(--c) 18%, var(--card-background-color)); }
+  .optlab.end { transform: translateX(calc(-100% - 4px)); }
+  .ylabels .olab { color: var(--ac-out); }
+  .lg-out { background: var(--ac-out); }
   .hchart .heatlane { fill: var(--primary-text-color); opacity: 0.05; }
   .hchart .heatbar { fill: var(--ac-hot); opacity: 0.9; }
   .hchart .tline { stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-linecap: round; }
