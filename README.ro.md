@@ -47,8 +47,10 @@ interfața în engleză; cu Home Assistant în română ele apar traduse.
 - **Schimbări manuale**: detectate automat și păstrate o durată fixă sau până
   la următoarea reevaluare (schimbare de program, prezență, fereastră sau mod).
   Un dispozitiv care doar raportează mai târziu valorile trimise de integrare
-  (de exemplu un TRV Zigbee pe baterie) nu e o schimbare manuală. Blocare
-  pentru copii, pauză și butoane de anulare pe cameră și pentru toată casa.
+  (de exemplu un TRV Zigbee pe baterie) nu e o schimbare manuală. Dacă între
+  timp o regulă de mai sus (fereastră, antiîngheț) schimbă dispozitivele,
+  valoarea manuală se pune din nou după aceea. Blocare pentru copii, pauză și
+  butoane de anulare pe cameră și pentru toată casa.
 - **Moduri globale**: Auto, Vacanță (cu date, preîncălzire înainte de
   întoarcere și vacanță automată), Oprit (antiîngheț) și Vară. În orele de
   preîncălzire dinaintea sfârșitului vacanței se aplică programul chiar dacă

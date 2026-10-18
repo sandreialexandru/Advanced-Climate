@@ -40,8 +40,9 @@ other thermostats or plain relays are supported as well.
 - **Manual changes**: detected automatically and kept for a fixed time or until
   the next reevaluation (schedule, presence, window or mode change). A device
   that only reports, later, the values the integration sent it (e.g. a sleepy
-  Zigbee TRV) is not a manual change. Child lock, pause and per-room / global
-  clear buttons.
+  Zigbee TRV) is not a manual change. If a higher rule (window, frost
+  protection) changes the devices meanwhile, the manual value is set again
+  afterwards. Child lock, pause and per-room / global clear buttons.
 - **Global modes**: Auto, Vacation (with dates, preheating before the return and
   automatic vacation), Off (frost protection) and Summer. During the preheating
   hours before the end of a vacation the schedule applies even while everyone

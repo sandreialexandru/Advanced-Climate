@@ -177,6 +177,8 @@ the integration takes control again.
 | Pause | – | Switch: no commands at all, no TRV calibration (frost protection and the maximum temperature still apply) |
 | Child lock | off | Manual changes are reverted immediately |
 | Clear | – | Button per room and for the house |
+| Card / service | – | A level or temperature set from the card or with `set_override` is sent only while the manual change applies (not in a pause, with a window open, in mode Off / Summer…), and stays on the devices for its whole time |
+| After an interruption | – | When a higher rule changed the devices during a manual change (window, frost protection, mode), the manual value is set again once it ends: the card / service value, or what the person set on the device (mode, preset, temperature, relay on / off). The maximum temperature limits it for good |
 
 ## 8. Global modes
 

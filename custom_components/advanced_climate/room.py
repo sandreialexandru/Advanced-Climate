@@ -96,8 +96,11 @@ from .const import (
     PRESETS,
     PRESET_NONE,
     ROOM_DEFAULTS,
+    RULE_MAX,
     RULE_OPTIMAL_START,
     RULE_OPTIMAL_STOP,
+    RULE_OVERRIDE,
+    RULE_PAUSE,
     RULE_SAFETY,
     RULE_SCHEDULE,
     RULE_STARTING,
@@ -148,6 +151,15 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 AUTO_PROFILE = "auto"
+
+
+def device_values(state: State) -> dict[str, Any]:
+    """What a person set on a device: mode (or on / off), preset and temperature."""
+    values: dict[str, Any] = {"state": state.state}
+    if state.domain == "climate":
+        values["preset_mode"] = state.attributes.get("preset_mode")
+        values["temperature"] = state.attributes.get(ATTR_TEMPERATURE)
+    return values
 
 
 class Room:
@@ -610,9 +622,9 @@ class Room:
         return matched
 
     def _handle_manual_change(self, entity_id: str, new: State | None) -> None:
+        """Respect a manual change (or revert it with the child lock)."""
         # From now on the device shows a person's values, not ours: if the person
         # later sets the value we sent before, that is a manual change too.
-        """Respect a manual change (or revert it with the child lock)."""
         self._sent.pop(entity_id, None)
         if self.house.paused:
             return
@@ -631,11 +643,16 @@ class Room:
                 description = f"{from_celsius(value, unit):.1f} {unit}"
             elif entity_id in self.switches:
                 description = f"switch {new.state}"
+        # What the person set is kept, to set it again after an interruption
+        # (a window opened, frost protection).
+        devices = {entity_id: device_values(new)} if new is not None else None
         if self.house.override_scope_house:
             for room in self.house.rooms.values():
-                room.set_override(description, source=self.name)
+                room.set_override(
+                    description, source=self.name, devices=devices if room is self else None
+                )
         else:
-            self.set_override(description)
+            self.set_override(description, devices=devices)
 
     def set_override(
         self,
@@ -644,9 +661,21 @@ class Room:
         source: str | None = None,
         hours: float | None = None,
         target: Target | None = None,
+        devices: dict[str, dict[str, Any]] | None = None,
     ) -> None:
-        """Start a manual override."""
+        """Start a manual override.
+
+        ``target`` is a level or temperature set by the card or a service: it is
+        sent while the manual change applies. ``devices`` are the values a
+        person set on the devices: they are only set again after an
+        interruption (a higher rule changed the devices meanwhile).
+        """
         now = dt_util.utcnow()
+        kept: dict[str, dict[str, Any]] = {}
+        if target is None and self.override and not self.override.get("target"):
+            # Another device of the room changed by hand: keep the earlier ones too.
+            kept = dict(self.override.get("devices") or {})
+        kept.update(devices or {})
         mode = self.house.options[CONF_OVERRIDE_MODE]
         if hours is None and mode == OVERRIDE_FIXED:
             hours = float(self.house.options[CONF_OVERRIDE_HOURS])
@@ -658,6 +687,8 @@ class Room:
             "mode": OVERRIDE_FIXED if until else OVERRIDE_NEXT,
             "signature": list(self.signature) if self.signature else None,
             "target": target.as_dict() if target else None,
+            "devices": kept if target is None else {},
+            "interrupted": False,
         }
         self.house.async_save()
 
@@ -1193,6 +1224,11 @@ class Room:
             device_setpoint=self._device_setpoint(),
         )
         decision = decide(inputs)
+        if self.override is not None and decision.rule not in (RULE_OVERRIDE, RULE_PAUSE, RULE_MAX):
+            # A higher rule changes the devices while the manual change lasts:
+            # what the person set is set again afterwards. (Pause sends nothing;
+            # the maximum limits the manual value for good.)
+            self.override["interrupted"] = True
         if self.stop_cancelled and decision.rule == RULE_SCHEDULE:
             decision.description += " (optimal stop cancelled: the room got colder than expected)"
         self._record(decision, now)
@@ -1399,10 +1435,19 @@ class Room:
         """Send the commands needed to reach ``target``."""
         on_off = self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC
         if target.kind == KIND_NONE:
-            # Relays keep regulating around a manual temperature set by the card or a service.
-            stored = self._override_target() if on_off else None
-            if stored is None:
+            # Nothing is sent (pause, no schedule) unless a manual change applies.
+            if self.decision is None or self.decision.rule != RULE_OVERRIDE or not self.override:
                 return
+            stored = self._override_target()
+            if stored is None:
+                # Changed on the device: set again only after an interruption.
+                if self.override.get("interrupted"):
+                    self.override["interrupted"] = False
+                    for entity_id, values in (self.override.get("devices") or {}).items():
+                        await self._async_restore_device(entity_id, values)
+                return
+            # Set by the card or a service: kept on the devices (relays regulate around it).
+            self.override["interrupted"] = False
             target = stored
         sent = False
         if on_off:
@@ -1413,15 +1458,48 @@ class Room:
         if sent and self.house.options[CONF_VERIFY_COMMANDS]:
             self._schedule_verify(target)
 
+    async def _async_restore_device(self, entity_id: str, values: dict[str, Any]) -> None:
+        """Set again what a person set on a device (after an interruption)."""
+        state = self.hass.states.get(entity_id)
+        if not valid(state) or not values:
+            return
+        assert state is not None
+        domain = entity_id.split(".", 1)[0]
+        wanted = values.get("state")
+        if domain != "climate":
+            if wanted in (STATE_ON, STATE_OFF) and state.state != wanted:
+                if await self._call(
+                    domain, SERVICE_TURN_ON if wanted == STATE_ON else SERVICE_TURN_OFF,
+                    {ATTR_ENTITY_ID: entity_id},
+                ):
+                    self._sent[entity_id] = {"state": wanted}
+                    if entity_id in self.switches:
+                        self._relay_on = wanted == STATE_ON
+                        self._relay_changed = dt_util.utcnow()
+            return
+        if wanted and state.state != wanted:
+            await self._send(entity_id, "set_hvac_mode", "hvac_mode", wanted, "state")
+        if wanted == STATE_OFF:
+            return
+        preset = values.get("preset_mode")
+        if preset not in (None, PRESET_NONE):
+            if state.attributes.get("preset_mode") != preset:
+                await self._send(entity_id, "set_preset_mode", "preset_mode", preset)
+            return
+        temperature = values.get("temperature")
+        if temperature is not None and float_attr(state, ATTR_TEMPERATURE) != temperature:
+            await self._send(entity_id, "set_temperature", ATTR_TEMPERATURE, temperature)
+
     def sends_preset(self, preset: str) -> bool:
         """The level is sent to the device as a preset (else as a temperature)."""
-        if self.source == SOURCE_GT:
-            return True
-        if self.source != SOURCE_CLIMATE or self.command_mode != COMMAND_PRESET:
+        if self.source not in (SOURCE_GT, SOURCE_CLIMATE) or self.command_mode != COMMAND_PRESET:
             return False
-        if self.preset_map is None:
-            return False
-        return bool(self.preset_map.get(preset)) or self._legacy_map
+        for entity_id in self.climates:
+            state = self.hass.states.get(entity_id)
+            if valid(state):
+                available = list(state.attributes.get("preset_modes") or [])  # type: ignore[union-attr]
+                return self._device_preset(preset, available) is not None
+        return self.source == SOURCE_GT
 
     def _device_preset(self, preset: str, available: list[str]) -> str | None:
         """Map a level to the device preset name."""
@@ -1644,11 +1722,13 @@ class Room:
         """Service: set a manual target and keep it as an override.
 
         A temperature is kept between the frost protection and the maximum.
+        The new manual change ends the earlier one (and what it kept).
         """
         if target.kind == KIND_TEMPERATURE and target.temperature is not None:
             limited = min(max(target.temperature, self.frost_temp()), self.max_temp())
             target = Target(KIND_TEMPERATURE, preset=target.preset, temperature=limited)
-        await self._async_apply(target, force=True)
+        # Sent by the decision that follows, only when the manual change applies
+        # (not in a pause, with a window open, in mode Off...).
         self.set_override(
             f"set by service: {target.describe(self.house.unit)}", hours=hours, target=target
         )

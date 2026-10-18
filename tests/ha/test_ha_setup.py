@@ -661,3 +661,141 @@ async def test_estimate_without_forecast_uses_the_value_of_now(
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def _window_trv_house(hass, freezer):
+    """One TRV room with a window sensor."""
+    await hass.config.async_set_time_zone("Europe/Bucharest")
+    freezer.move_to("2026-10-12 09:00:00+00:00")
+    calls = async_mock_service(hass, "climate", "set_temperature")
+    trv = {"hvac_modes": ["heat", "off"], "current_temperature": 18.0, "temperature": 17.0}
+    hass.states.async_set("climate.trv", "heat", trv)
+    hass.states.async_set("binary_sensor.window", "off")
+    hass.states.async_set("person.andrei", "home")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Home",
+        options={"persons": ["person.andrei"], "nearby_zones": []},
+        subentries_data=[
+            {
+                "data": {
+                    "source": "climate",
+                    "climates": ["climate.trv"],
+                    "command_mode": "temperature",
+                    "window_sensors": ["binary_sensor.window"],
+                },
+                "subentry_type": SUBENTRY_ROOM,
+                "title": "Office",
+                "unique_id": None,
+            }
+        ],
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    await _tick(hass, freezer, 15)
+    return entry, calls, trv
+
+
+async def _window(hass, freezer, state: str) -> None:
+    hass.states.async_set("binary_sensor.window", state)
+    await _tick(hass, freezer, 65)
+
+
+async def test_card_manual_change_set_again_after_a_window(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A temperature set by the card comes back on the thermostat after a window."""
+    entry, calls, trv = await _window_trv_house(hass, freezer)
+    assert calls[-1].data["temperature"] == 21.0
+    await hass.services.async_call(
+        DOMAIN, "set_override", {"room": "Office", "temperature": 23, "duration_hours": 2},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.office_decision").state == "manual_override"
+    assert calls[-1].data["temperature"] == 23.0
+
+    await _window(hass, freezer, "on")
+    assert hass.states.get("sensor.office_decision").state == "window_open"
+    assert calls[-1].data["temperature"] == 7.0
+    await _window(hass, freezer, "off")
+    assert hass.states.get("sensor.office_decision").state == "manual_override"
+    assert calls[-1].data["temperature"] == 23.0
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_device_manual_change_set_again_after_a_window(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A temperature set on the thermostat is respected, and set again after a window."""
+    entry, calls, trv = await _window_trv_house(hass, freezer)
+    hass.states.async_set("climate.trv", "heat", {**trv, "temperature": 23.0}, context=Context())
+    await _tick(hass, freezer, 5)
+    assert hass.states.get("sensor.office_decision").state == "manual_override"
+    sent = len(calls)
+    await _tick(hass, freezer, 300)
+    assert len(calls) == sent  # respected: nothing is sent
+
+    await _window(hass, freezer, "on")
+    assert calls[-1].data["temperature"] == 7.0
+    # The thermostat confirms the command (the integration's value: not a manual change).
+    hass.states.async_set("climate.trv", "heat", {**trv, "temperature": 7.0}, context=Context())
+    await _tick(hass, freezer, 5)
+    await _window(hass, freezer, "off")
+    assert hass.states.get("sensor.office_decision").state == "manual_override"
+    assert calls[-1].data["temperature"] == 23.0
+    hass.states.async_set("climate.trv", "heat", {**trv, "temperature": 23.0}, context=Context())
+    sent = len(calls)
+    await _tick(hass, freezer, 300)
+    assert len(calls) == sent
+    assert hass.states.get("binary_sensor.office_manual_change").attributes["description"] == "23.0 °C"
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_pause_sends_nothing_for_a_manual_relay(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """In a pause a relay with a manual temperature is not switched."""
+    entry = await _setup(hass, freezer)
+    await _tick(hass, freezer, 15)
+    await hass.services.async_call(
+        DOMAIN, "set_override", {"room": "Bedroom", "temperature": 23, "duration_hours": 2},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get("input_boolean.heater").state == "on"
+
+    await hass.services.async_call(
+        "switch", "turn_on", {"entity_id": "switch.home_pause"}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.bedroom_decision").state == "pause"
+    hass.states.async_set("sensor.room_temp", "25.0", {"unit_of_measurement": "°C"})
+    await _tick(hass, freezer, 5)
+    assert hass.states.get("input_boolean.heater").state == "on"
+
+    # A manual change in a pause is kept, but sent only after the pause.
+    await hass.services.async_call(
+        DOMAIN, "set_override", {"room": "Bedroom", "temperature": 26, "duration_hours": 2},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get("input_boolean.heater").state == "on"
+    hass.states.async_set("sensor.room_temp", "27.0", {"unit_of_measurement": "°C"})
+    await _tick(hass, freezer, 5)
+    assert hass.states.get("input_boolean.heater").state == "on"
+
+    await hass.services.async_call(
+        "switch", "turn_off", {"entity_id": "switch.home_pause"}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.bedroom_decision").state == "manual_override"
+    assert hass.states.get("input_boolean.heater").state == "off"
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

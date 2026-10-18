@@ -181,6 +181,8 @@ definit; apoi integrarea preia din nou controlul.
 | Pauză | – | Comutator: nicio comandă, fără calibrarea TRV (antiînghețul și temperatura maximă se aplică în continuare) |
 | Blocare pentru copii | oprită | Schimbările manuale sunt anulate imediat |
 | Anulare | – | Buton pentru fiecare cameră și pentru casă |
+| Card / serviciu | – | Un nivel sau o temperatură puse din card sau cu `set_override` se trimit doar cât se aplică schimbarea manuală (nu în pauză, cu fereastra deschisă, în modul Off / Summer…) și rămân pe dispozitive tot timpul ei |
+| După o întrerupere | – | Când o regulă de mai sus a schimbat dispozitivele în timpul unei schimbări manuale (fereastră, antiîngheț, mod), valoarea manuală se pune din nou după ce se termină: valoarea din card / serviciu sau ce a pus persoana pe dispozitiv (mod, preset, temperatură, releu pornit / oprit). Temperatura maximă o limitează definitiv |
 
 ## 8. Moduri globale
 
