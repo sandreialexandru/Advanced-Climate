@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.12.1";
+const CARD_VERSION = "1.12.2";
 
 // A target that is only a temperature (no level): neutral.
 const TEMP_COLOR = "var(--ac-fixed)";
@@ -831,7 +831,7 @@ class AdvancedClimateCard extends HTMLElement {
             ${runtime ? this._runtimeStat(e.heating_runtime) : ""}
           </div>
         </div>
-        ${this._cutoffHtml(outdoor, cutoff, e.outdoor_cutoff)}
+        ${this._cutoffHtml(outdoor, cutoff, e.outdoor_cutoff, mode, season, this._state(e.pause))}
         <div class="label">${this._t("mode")}</div>
         <div class="segmented" role="group" aria-label="${esc(this._t("mode"))}">${modes}</div>
         <div class="row wrap">
@@ -880,9 +880,12 @@ class AdvancedClimateCard extends HTMLElement {
   }
 
   /** "Warm outside: off • heating stops when the average reaches 18°". */
-  _cutoffHtml(outdoor, cutoff, entityId) {
+  _cutoffHtml(outdoor, cutoff, entityId, mode, season, pause) {
     const a = outdoor?.attributes || {};
     if (!cutoff || a.cutoff_enabled === false) return "";
+    // Only where the cutoff can act: not in mode Off / Summer, outside the
+    // heating season or in a pause (vacation keeps it: away still heats).
+    if (["off", "summer"].includes(mode?.state) || season?.state === "off" || pause?.state === "on") return "";
     let text;
     const average = num(outdoor?.state);
     if (cutoff.state === "on" && a.forecast_cutoff && (average === null || average < num(a.cutoff_temperature))) {
