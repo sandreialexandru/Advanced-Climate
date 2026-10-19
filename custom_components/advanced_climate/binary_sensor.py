@@ -16,6 +16,7 @@ from . import AdvancedClimateConfigEntry
 from .entity import HouseEntity, RoomEntity
 from .house import House
 from .room import Room
+from .util import from_celsius
 
 
 async def async_setup_entry(
@@ -123,5 +124,9 @@ class OverrideBinarySensor(RoomEntity, BinarySensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        """Details of the override."""
-        return self.room.override_info()
+        """Details of the override (its temperature in the unit of the house)."""
+        info = self.room.override_info()
+        if info is None:
+            return None
+        value = from_celsius(info.get("temperature"), self.room.house.unit)
+        return {**info, "temperature": None if value is None else round(value, 1)}

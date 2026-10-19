@@ -273,7 +273,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             else [],
             "presence": room.house.presence_state,
             "window_open": room.window_open,
-            "override": room.override_info(),
+            "override": _override(room, unit),
             "profile": state.profile if state else None,
             "profile_select": room.profile_select,
             "next_change": iso(state.next_change) if state else None,
@@ -431,6 +431,14 @@ def _forecast(room: Room, unit: str) -> dict[str, Any] | None:
     if forecast is None:
         return None
     return {"at": forecast["at"], "temperature": _t(forecast["temperature"], unit, 1)}
+
+
+def _override(room: Room, unit: str) -> dict[str, Any] | None:
+    """The manual change, with its temperature in the unit of the house."""
+    info = room.override_info()
+    if info is None:
+        return None
+    return {**info, "temperature": _t(info.get("temperature"), unit, 1)}
 
 
 def _estimate(room: Room, unit: str) -> dict[str, Any] | None:

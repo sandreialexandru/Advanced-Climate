@@ -730,6 +730,7 @@ async def test_card_manual_change_set_again_after_a_window(
     await _window(hass, freezer, "on")
     assert hass.states.get("sensor.office_decision").state == "window_open"
     assert calls[-1].data["temperature"] == 7.0
+    assert hass.states.get("sensor.office_decision").attributes["override"]["temperature"] == 23.0
     await _window(hass, freezer, "off")
     assert hass.states.get("sensor.office_decision").state == "manual_override"
     assert calls[-1].data["temperature"] == 23.0
@@ -752,6 +753,10 @@ async def test_device_manual_change_set_again_after_a_window(
 
     await _window(hass, freezer, "on")
     assert calls[-1].data["temperature"] == 7.0
+    # The card plans what the manual change holds, not the frost protection of now.
+    held = hass.states.get("sensor.office_decision").attributes["override"]
+    assert held["temperature"] == 23.0
+    assert hass.states.get("binary_sensor.office_manual_change").attributes["temperature"] == 23.0
     # The thermostat confirms the command (the integration's value: not a manual change).
     hass.states.async_set("climate.trv", "heat", {**trv, "temperature": 7.0}, context=Context())
     await _tick(hass, freezer, 5)

@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.12.5";
+const CARD_VERSION = "1.12.6";
 
 // A target that is only a temperature (no level): neutral.
 const TEMP_COLOR = "var(--ac-fixed)";
@@ -1145,6 +1145,14 @@ class AdvancedClimateCard extends HTMLElement {
     const ovUntil = a.override?.until ? Date.parse(a.override.until) : NaN;
     if (a.override && Number.isFinite(ovUntil) && ovUntil > now) {
       const end = Math.min(ovUntil, t1);
+      // What the manual change holds, also while a higher rule (a window) interrupts it.
+      const held = num(a.override.temperature);
+      if (held !== null) {
+        // The maximum temperature of the house limits it.
+        const max = num(a.max_temperature);
+        value = max !== null ? Math.min(held, max) : held;
+        preset = a.override.preset ?? null;
+      }
       if (value !== null) segs.push({ s: now, e: end, v: value, preset, future: true });
       cursor = end;
       const atEnd = plan.filter((p) => p.t <= ovUntil).at(-1);

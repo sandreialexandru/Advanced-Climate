@@ -1959,7 +1959,28 @@ class Room:
             "interrupted": bool(self.override.get("interrupted")),
             # False while a higher rule has kept it from the devices so far.
             "applied": bool(self.override.get("applied", True)),
+            # What the manual change holds (°C), also while a higher rule interrupts it.
+            **self._override_level(),
         }
+
+    def _override_level(self) -> dict[str, Any]:
+        """Level and temperature (°C) a manual change holds, when known."""
+        stored = self._override_target()
+        if stored is not None:
+            return {"preset": stored.preset, "temperature": self._resolve_temperature(stored)}
+        for values in (self.override or {}).get("devices", {}).values():
+            if values.get("state") == STATE_OFF:
+                return {"preset": None, "temperature": None}
+            level = self.level_of_device_preset(values.get("preset_mode"))
+            if level is not None:
+                return {"preset": level, "temperature": self.level_temp(level)}
+            if values.get("temperature") is not None:
+                try:
+                    value = to_celsius(float(values["temperature"]), system_unit(self.hass))
+                except (TypeError, ValueError):
+                    continue
+                return {"preset": None, "temperature": value}
+        return {"preset": None, "temperature": None}
 
     def no_heat_reason(self) -> dict[str, Any] | None:
         """Why the room does not heat although it is below its target."""
