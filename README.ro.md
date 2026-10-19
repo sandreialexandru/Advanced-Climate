@@ -365,11 +365,11 @@ fereastră / schimbare manuală, selectorul *Profile*, comutatorul *Child lock*
   termostatului sau în histerezis, timp minim pornit / oprit, așteaptă alte
   camere sau camera de referință, sursa de căldură oprită sau necunoscută,
   termostatul oprit). Senzorul *Decision* îl are ca `no_heat_reason`.
-- **Cald afară**: casa arată mereu starea pragului și limitele lui, de exemplu
-  *Cald afară: oprit • încălzirea se oprește când media ajunge la 18°* sau
-  *pornit • încălzirea e oprită până media scade la 16°*. Nu apare unde pragul
-  nu are efect: modul Off sau Summer, în afara sezonului de încălzire și în
-  pauză (în Vacanță rămâne: *away* încă încălzește).
+- **Cald afară**: cât pragul e activ, casa îl arată cu limita lui, de exemplu
+  *Cald afară: pornit • încălzirea e oprită până media scade la 16°* (sau
+  *pornit (prognoză)*). Nu apare unde pragul nu are efect: modul Off sau
+  Summer, în afara sezonului de încălzire și în pauză (în Vacanță rămâne:
+  *away* încă încălzește).
 - **Grafic**: temperatura de afară pe o bandă separată (măsurată, apoi
   prognoza orară punctat; pragul de oprire ca linie punctată) și următoarea
   pornire / oprire anticipată ca perioadă umbrită, cu ora de început.

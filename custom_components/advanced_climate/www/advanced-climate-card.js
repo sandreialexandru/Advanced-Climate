@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.12.3";
+const CARD_VERSION = "1.12.4";
 
 // A target that is only a temperature (no level): neutral.
 const TEMP_COLOR = "var(--ac-fixed)";
@@ -164,9 +164,7 @@ const TEXT = {
     zoom_6h: "Last 6 hours",
     nav_help: "Drag the window (or tap a place) to move the zoomed chart.",
     cutoff_on: "on • heating is off until the average falls to {temp}",
-    cutoff_off: "off • heating stops when the average reaches {temp}",
     cutoff_forecast: "on (forecast) • heating is off, the forecast reaches {temp} soon",
-    cutoff_unknown: "unknown • no outdoor temperature",
     no_heat: "Not heating",
     nh_tolerance: "the room is within the thermostat tolerance",
     nh_hysteresis: "within the hysteresis of {value}°",
@@ -320,9 +318,7 @@ const TEXT = {
     zoom_6h: "Ultimele 6 ore",
     nav_help: "Trage fereastra (sau atinge un loc) ca să muți graficul mărit.",
     cutoff_on: "pornit • încălzirea e oprită până media scade la {temp}",
-    cutoff_off: "oprit • încălzirea se oprește când media ajunge la {temp}",
     cutoff_forecast: "pornit (prognoză) • încălzirea e oprită, prognoza ajunge curând la {temp}",
-    cutoff_unknown: "necunoscut • fără temperatură de afară",
     no_heat: "Nu încălzește",
     nh_tolerance: "camera e în toleranța termostatului",
     nh_hysteresis: "în histerezisul de {value}°",
@@ -888,16 +884,14 @@ class AdvancedClimateCard extends HTMLElement {
     // Only where the cutoff can act: not in mode Off / Summer, outside the
     // heating season or in a pause (vacation keeps it: away still heats).
     if (["off", "summer"].includes(mode?.state) || season?.state === "off" || pause?.state === "on") return "";
+    // Shown only while the cutoff is active.
+    if (cutoff.state !== "on") return "";
     let text;
     const average = num(outdoor?.state);
     if (cutoff.state === "on" && a.forecast_cutoff && (average === null || average < num(a.cutoff_temperature))) {
       text = this._t("cutoff_forecast").replace("{temp}", this._temp(a.cutoff_temperature));
-    } else if (cutoff.state === "on") {
-      text = this._t("cutoff_on").replace("{temp}", this._temp(a.cutoff_resume_temperature));
-    } else if (average === null) {
-      text = this._t("cutoff_unknown");
     } else {
-      text = this._t("cutoff_off").replace("{temp}", this._temp(a.cutoff_temperature));
+      text = this._t("cutoff_on").replace("{temp}", this._temp(a.cutoff_resume_temperature));
     }
     return `<div class="cutoffline ${cutoff.state === "on" ? "on" : ""} link" ${this._more(entityId)}>
         <b>${esc(this._t("cutoff"))}:</b> ${esc(text)}</div>`;

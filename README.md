@@ -346,11 +346,11 @@ badges, the *Profile* select, the *Child lock* switch and *Back to automatic*.
   the thermostat tolerance or the hysteresis, a minimum on / off time, waiting
   for other rooms or the reference room, the heat source off or unknown, the
   thermostat off). The *Decision* sensor has it as `no_heat_reason`.
-- **Warm outside**: the house always shows the state of the cutoff and its
-  limits, e.g. *Warm outside: off • heating stops when the average reaches
-  18°*, or *on • heating is off until the average falls to 16°*. It is hidden
-  where the cutoff cannot act: mode Off or Summer, outside the heating season
-  and in a pause (in Vacation it stays: *away* still heats).
+- **Warm outside**: while the cutoff is active the house shows it with its
+  limit, e.g. *Warm outside: on • heating is off until the average falls to
+  16°* (or *on (forecast)*). It is not shown where the cutoff cannot act: mode
+  Off or Summer, outside the heating season and in a pause (in Vacation it
+  stays: *away* still heats).
 - **Chart**: the outdoor temperature in its own band (measured, then the hourly
   forecast dashed; the cutoff limit as a dotted line) and the next optimal
   start / stop as a shaded period with its start time.
