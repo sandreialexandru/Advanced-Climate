@@ -102,11 +102,15 @@ class HeatingModel:
         value = self.per_degree + (self.per_outdoor * outdoor if outdoor is not None else 0.0)
         return max(0.0, value)
 
-    def minutes(self, gap: float, outdoor: float | None) -> float:
-        """Minutes to rise ``gap`` °C at the outdoor temperature."""
+    def minutes(self, gap: float, outdoor: float | None, elapsed: float = 0.0) -> float:
+        """Minutes to rise ``gap`` °C at the outdoor temperature.
+
+        ``elapsed`` is how long the room has been heating already: that much of
+        the fixed part is behind it (the radiators are warm).
+        """
         if gap <= 0:
             return 0.0
-        return self.fixed + gap * self.minutes_per_degree(outdoor)
+        return max(0.0, self.fixed - max(0.0, elapsed)) + gap * self.minutes_per_degree(outdoor)
 
 
 def fit_model(episodes: list[list]) -> HeatingModel:
@@ -134,8 +138,10 @@ def fit_model(episodes: list[list]) -> HeatingModel:
             # The episodes cannot tell all the terms apart: fewer terms.
             if use_outdoor:
                 use_outdoor = False
-            else:
+            elif use_fixed:
                 allow_fixed = False
+            else:
+                return HeatingModel(outdoor_mean=outdoor_mean)
             continue
         fixed = found.pop(0) if use_fixed else 0.0
         per_degree = found.pop(0)
@@ -149,13 +155,13 @@ def fit_model(episodes: list[list]) -> HeatingModel:
         ) < 0:
             use_outdoor = False
             continue
-        if per_degree < 0:
+        if per_degree < 0 and not use_outdoor:
             # Larger episodes were not slower: the minutes do not grow with the
             # degrees, so only the fixed part (the mean of the episodes) is left.
             fixed, per_degree = (sum(values) / len(values) if use_fixed else 0.0), 0.0
         return HeatingModel(
             fixed=round(fixed, 2),
-            per_degree=round(max(0.0, per_degree), 3),
+            per_degree=round(per_degree, 3),
             per_outdoor=round(per_outdoor, 4),
             outdoor_mean=outdoor_mean,
             uses_fixed=use_fixed,
@@ -185,9 +191,19 @@ class HeatingRateLearner:
             self._model = fit_model(self.episodes)
         return self._model
 
-    def minutes(self, gap: float, outdoor: float | None) -> float:
-        """Minutes to rise ``gap`` °C at the outdoor temperature."""
-        return self.model.minutes(gap, outdoor)
+    def minutes(self, gap: float, outdoor: float | None, now: datetime | None = None) -> float:
+        """Minutes to rise ``gap`` °C at the outdoor temperature.
+
+        With ``now`` during an episode, the time already heated counts against
+        the fixed part.
+        """
+        return self.model.minutes(gap, outdoor, self.heated_minutes(now))
+
+    def heated_minutes(self, now: datetime | None) -> float:
+        """Minutes the episode in progress has been heating (0 without one)."""
+        if now is None or self.episode_start is None:
+            return 0.0
+        return max(0.0, (now - self.episode_start).total_seconds() / 60)
 
     def minutes_per_degree(self, outdoor: float | None) -> float:
         """Learned minutes per °C at the outdoor temperature."""

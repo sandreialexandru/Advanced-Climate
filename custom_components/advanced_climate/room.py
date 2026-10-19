@@ -867,7 +867,7 @@ class Room:
 
         def minutes_for(outdoor: float | None) -> float | None:
             if kind == RULE_OPTIMAL_START:
-                return self.learner.minutes(gap, outdoor) if gap > 0 else 0.0
+                return self.learner.minutes(gap, outdoor, now) if gap > 0 else 0.0
             if floor is None:
                 return None
             return self.cooling.minutes_to_fall(self.current_temp, floor, outdoor)
@@ -910,14 +910,16 @@ class Room:
             return None
         return {"at": state.next_change.isoformat(), "temperature": value}
 
-    def _start_needed(self, preset: str | None, outdoor: float | None) -> float | None:
+    def _start_needed(
+        self, preset: str | None, outdoor: float | None, now: datetime
+    ) -> float | None:
         """Minutes the room needs to heat up to the level of ``preset`` (learned)."""
         if preset is None or self.current_temp is None:
             return None
         level = self.level_temp(preset)
         if level is None or level <= self.current_temp:
             return None
-        return self.learner.minutes(level - self.current_temp, outdoor)
+        return self.learner.minutes(level - self.current_temp, outdoor, now)
 
     def time_to_target(self, outdoor: float | None) -> int | None:
         """Minutes until the target is reached, as learned (None when not heating up)."""
@@ -928,7 +930,7 @@ class Room:
         gap = self.target_temperature - self.current_temp
         if gap <= 0:
             return None
-        return max(1, round(self.learner.minutes(gap, outdoor)))
+        return max(1, round(self.learner.minutes(gap, outdoor, dt_util.utcnow())))
 
     def _window_sensor_open(self) -> bool:
         """A window or door sensor of the room (or a linked one) is open right now."""
@@ -1147,7 +1149,7 @@ class Room:
             start_needed = (
                 estimate["needed"]
                 if estimate and estimate["kind"] == RULE_OPTIMAL_START
-                else self._start_needed(state.next_preset, house.outdoor_now)
+                else self._start_needed(state.next_preset, house.outdoor_now, now)
             )
             stop_needed = (
                 estimate["needed"]

@@ -179,6 +179,30 @@ class LearningTest(unittest.TestCase):
             self._feed(trend, day, outdoor, 0.5, minutes)
         self.assertEqual(trend.minutes_per_degree(60.0), 0.0)
 
+    def test_time_heated_counts_against_the_fixed_part(self) -> None:
+        learner = learning.HeatingRateLearner()
+        for day, (outdoor, rise) in enumerate([(5.0, 0.5), (5.0, 2.5)]):
+            self._feed(learner, day, outdoor, rise, 30 + rise * 40)
+        self.assertAlmostEqual(learner.model.fixed, 30.0, places=1)
+        start = self.T0 + timedelta(days=5)
+        self.assertAlmostEqual(learner.minutes(1.0, 5.0, start), 70.0, places=1)
+        # Heating for 20 minutes already: 10 minutes of the fixed part are left.
+        learner.observe(start, True, 20.0, 22.0, 5.0)
+        later = start + timedelta(minutes=20)
+        self.assertAlmostEqual(learner.minutes(1.0, 5.0, later), 50.0, places=1)
+        # After the whole fixed part: only the minutes per degree.
+        self.assertAlmostEqual(learner.minutes(1.0, 5.0, start + timedelta(hours=1)), 40.0, places=1)
+
+    def test_outdoor_term_with_a_negative_value_at_zero(self) -> None:
+        # Learned only at 10 … 15 °C: the line may cross zero below the range; the
+        # model is kept (never below zero far away) and not cut at 0 °C.
+        learner = learning.HeatingRateLearner()
+        for day, (outdoor, minutes) in enumerate([(10.0, 15.0), (12.5, 20.0), (15.0, 25.0)]):
+            self._feed(learner, day, outdoor, 0.5, minutes)
+        self.assertTrue(learner.model.uses_outdoor)
+        self.assertAlmostEqual(learner.minutes(0.5, 12.5), 20.0, places=1)
+        self.assertEqual(learner.minutes_per_degree(-20.0), 0.0)
+
     def test_episodes_without_outdoor(self) -> None:
         learner = learning.HeatingRateLearner()
         self._feed(learner, 0, None, 0.5, 30)
