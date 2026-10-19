@@ -170,6 +170,8 @@ Thermostat, the level temperatures (numbers).
 
 ## Heating learning
 
+*The full explanation, with worked examples and simulations: [docs/learning.md](docs/learning.md).*
+
 Each room learns how long it takes to heat up, from its own heating episodes:
 
 **minutes = fixed part + degrees × minutes per degree**, and the minutes per
@@ -250,7 +252,8 @@ for heat, so it may reach its target later.
 
 While a room is below its target the card shows the **time to the target**
 (e.g. *~35 min*) under the target temperature, from the learned heating for
-the current outdoor temperature; until the first episode it shows *learning…*.
+the current outdoor temperature; until the first episode it shows *learning…* with
+the default used under it (*default 60 min/1°C*).
 The *Decision* sensor has it as the `time_to_target` attribute (minutes).
 
 ## Cooling learning and optimal stop

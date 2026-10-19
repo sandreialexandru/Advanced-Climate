@@ -183,6 +183,8 @@ fără Generic Thermostat, temperaturile nivelurilor (numere).
 
 ## Învățarea încălzirii
 
+*Explicația completă, cu exemple calculate și simulări: [docs/learning.ro.md](docs/learning.ro.md).*
+
 Fiecare cameră învață cât durează să se încălzească, din propriile episoade de
 încălzire:
 
@@ -263,7 +265,8 @@ destule camere, deci poate ajunge la țintă mai târziu.
 
 Cât timp o cameră e sub țintă, cardul arată sub temperatura țintă **timpul
 până la țintă** (de exemplu *~35 min*), după încălzirea învățată pentru
-temperatura de afară de acum; până la primul episod arată *se învață…*.
+temperatura de afară de acum; până la primul episod arată *se învață…*, cu
+valoarea implicită folosită dedesubt (*implicit 60 min/1°C*).
 Senzorul *Decision* îl are ca atribut `time_to_target` (minute).
 
 ## Învățarea răcirii și oprirea anticipată

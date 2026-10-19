@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.0.1";
+const CARD_VERSION = "2.0.2";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -151,6 +151,7 @@ const TEXT = {
     period_month: "this month",
     period_hint: "Tap to change the period (today, this week, this month).",
     eta_learning: "learning…",
+    heat_default: "default {value}",
     eta_help: "Time until the target, as learned from the heating episodes for the current outdoor temperature.",
     stop_at: "~{temp} at {time}",
     stop_help: "Optimal stop: expected room temperature at the scheduled change, from the learned cooling and the outdoor temperature expected until then.",
@@ -338,6 +339,7 @@ const TEXT = {
     period_month: "luna aceasta",
     period_hint: "Apasă ca să schimbi perioada (azi, săptămâna aceasta, luna aceasta).",
     eta_learning: "se învață…",
+    heat_default: "implicit {value}",
     eta_help: "Timpul până la țintă, după cât a durat încălzirea în episoadele învățate, la temperatura de afară de acum.",
     stop_at: "~{temp} la {time}",
     stop_help: "Oprire anticipată: temperatura estimată a camerei la schimbarea din program, după răcirea învățată și temperatura de afară prognozată până atunci.",
@@ -770,6 +772,15 @@ class AdvancedClimateCard extends HTMLElement {
     return r ? `~${h} h ${r} min` : `~${h} h`;
   }
 
+  /** "default 60 min/1°C": the heating used until the first episode (empty once learned). */
+  _heatDefault(e) {
+    const s = e && e.heating_rate ? this._state(e.heating_rate) : null;
+    if (s && (num(s.attributes.episodes) ?? 0) > 0) return "";
+    const unit = ((s && s.attributes.unit_of_measurement) || "min/°C").replace(/^min\//, "");
+    const value = s ? num(s.state) : null;
+    return this._t("heat_default").replace("{value}", `${Math.round(value ?? 60)} min/1${unit}`);
+  }
+
   /** The optimal start / stop expected for the next change, in words. */
   _estimate(a) {
     const est = a.next_estimate;
@@ -813,7 +824,11 @@ class AdvancedClimateCard extends HTMLElement {
           "target_tag"
         )}</span><span class="tnum">${this._temp(target)}</span>${
           eta
-            ? `<span class="eta" title="${esc(this._t(help))}">${esc(eta)}</span>`
+            ? `<span class="eta" title="${esc(this._t(help))}">${esc(eta)}</span>${
+                eta === this._t("eta_learning") && this._heatDefault(e)
+                  ? `<span class="eta sub">${esc(this._heatDefault(e))}</span>`
+                  : ""
+              }`
             : ""
         }</div>
       </div>`;
@@ -1845,7 +1860,11 @@ class AdvancedClimateCard extends HTMLElement {
           a.next_estimate
             ? `<div class="wide link" ${this._more(e.decision)}><dt>${esc(this._t("est_label"))}</dt><dd>${esc(
                 this._estimate(a)
-              )}</dd></div>`
+              )}${
+                a.next_estimate.kind === "optimal_start" && !a.next_estimate.learned && this._heatDefault(e)
+                  ? `<small class="sub">${esc(this._heatDefault(e))}</small>`
+                  : ""
+              }</dd></div>`
             : ""
         }
       </dl>
@@ -1880,7 +1899,10 @@ class AdvancedClimateCard extends HTMLElement {
               value === null ? "–" : `${heating ? Math.round(value) : value.toFixed(2)} ${unit}`
             )
         : this._t("learn_none");
-      return `<div class="link" ${this._more(entityId)}><dt>${esc(label)}</dt><dd>${esc(text)}</dd></div>`;
+      const sub = heating && !n ? this._heatDefault({ heating_rate: entityId }) : "";
+      return `<div class="link" ${this._more(entityId)}><dt>${esc(label)}</dt><dd>${esc(text)}${
+        sub ? `<small class="sub">${esc(sub)}</small>` : ""
+      }</dd></div>`;
     };
     return row(e.heating_rate, this._t("learn_heat"), "learn_heat_value") +
       row(e.cooling_rate, this._t("learn_cool"), "learn_cool_value");
@@ -2704,6 +2726,8 @@ const STYLE = `
   .tval.target { background: color-mix(in srgb, var(--c) 16%, transparent); }
   .tval.target .tnum { font-weight: 600; }
   .tval .eta { font-size: 0.68em; color: var(--ac-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tval .eta.sub { font-size: 0.6em; opacity: 0.85; }
+  dd small.sub { display: block; font-size: 0.8em; color: var(--ac-muted); }
   .decision { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .reason { margin: 0; color: var(--ac-muted); font-size: 0.9em; }
   .pill.wrap { white-space: normal; text-align: left; }
