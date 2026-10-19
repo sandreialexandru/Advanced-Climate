@@ -33,7 +33,7 @@ from .const import (
 )
 from .entity import HOUSE_ENTITY_KEYS, ROOM_ENTITY_KEYS, HouseEntity, RoomEntity, entity_map
 from .house import House
-from .learning import start_gap
+from .learning import LARGE_EPISODE, start_gap
 from .util import delta_from_celsius, from_celsius
 from .room import Room
 from .schedule import profiles_to_dict
@@ -380,13 +380,13 @@ class NextChangeSensor(RoomEntity, SensorEntity):
 
 
 class HeatingRateSensor(RoomEntity, SensorEntity):
-    """Learned heating rate."""
+    """Learned heating: minutes per degree now, the fixed part as an attribute."""
 
-    _unrecorded_attributes = frozenset({"rates", "last_episodes"})
+    _unrecorded_attributes = frozenset({"minutes_per_degree", "last_episodes"})
 
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_suggested_display_precision = 2
+    _attr_suggested_display_precision = 0
 
     def __init__(self, room: Room) -> None:
         """Initialize."""
@@ -394,39 +394,53 @@ class HeatingRateSensor(RoomEntity, SensorEntity):
 
     @property
     def native_unit_of_measurement(self) -> str:
-        """Degrees of the house per hour."""
-        return f"{self.house.unit}/h"
+        """Minutes per degree of the house."""
+        return f"min/{self.house.unit}"
 
     @property
     def native_value(self) -> float | None:
-        """Rate for the current outdoor temperature."""
-        return _d(self.room.learner.rate(self.house.outdoor_now), self.house.unit, 3)
+        """Minutes per degree at the current outdoor temperature."""
+        return _per_degree(self.room.learner.minutes_per_degree(self.house.outdoor_now), self.house.unit)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """All buckets."""
+        """The learned model and the last episodes."""
         learner = self.room.learner
-        line = learner.fit()
+        model = learner.model
         unit = self.house.unit
         # Estimates at round outdoor temperatures of the unit of the house.
         points = (14, 32, 50, 68) if unit == "°F" else (-10, 0, 10, 20)
+        per_outdoor = model.per_outdoor / 3.24 if unit == "°F" else model.per_outdoor
         return {
-            "rates": (
+            "fixed_minutes": round(model.fixed, 1),
+            "minutes_per_degree": (
                 {
-                    f"{t}{unit}": _d(learner.rate((t - 32) / 1.8 if unit == "°F" else t), unit, 3)
+                    f"{t}{unit}": _per_degree(
+                        learner.minutes_per_degree((t - 32) / 1.8 if unit == "°F" else t), unit
+                    )
                     for t in points
                 }
                 if learner.episodes
                 else {}
             ),
+            "per_outdoor_degree": round(per_outdoor, 3),
+            "uses_fixed": model.uses_fixed,
+            "uses_outdoor": model.uses_outdoor,
             "episodes": len(learner.episodes),
-            "per_degree_outdoor": round(line[1], 3) if line else None,
+            "large_episodes": sum(1 for e in learner.episodes if e[1] >= LARGE_EPISODE),
             "learning_starts_below_target": _d(start_gap(self.room.learn_tolerance()), unit),
             "last_episodes": [
-                {"outdoor": _t(o, unit, 1), "rate": _d(r, unit, 3), "at": at or None}
-                for o, r, at in learner.episodes[-5:]
+                {"outdoor": _t(o, unit, 1), "rise": _d(g, unit, 2), "minutes": round(m), "at": at or None}
+                for o, g, m, at in learner.episodes[-5:]
             ],
         }
+
+
+def _per_degree(value: float | None, unit: str) -> float | None:
+    """Minutes per °C as minutes per degree of the house (a °F is smaller)."""
+    if value is None:
+        return None
+    return round(value / 1.8 if unit == "°F" else value, 1)
 
 
 def _forecast(room: Room, unit: str) -> dict[str, Any] | None:

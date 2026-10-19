@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.13.2";
+const CARD_VERSION = "2.0.0";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -151,7 +151,7 @@ const TEXT = {
     period_month: "this month",
     period_hint: "Tap to change the period (today, this week, this month).",
     eta_learning: "learning…",
-    eta_help: "Time until the target at the heating rate learned for the current outdoor temperature.",
+    eta_help: "Time until the target, as learned from the heating episodes for the current outdoor temperature.",
     stop_at: "~{temp} at {time}",
     stop_help: "Optimal stop: expected room temperature at the scheduled change, from the learned cooling and the outdoor temperature expected until then.",
     est_label: "Optimal start / stop",
@@ -192,7 +192,7 @@ const TEXT = {
     learn_heat: "Heating learned",
     learn_cool: "Cooling learned",
     learn_none: "learning…",
-    learn_heat_value: "{n} episodes · {rate} now",
+    learn_heat_value: "{n} episodes · {fixed} min + {rate} now",
     learn_cool_value: "{n} episodes · falls {rate} now",
     origin_card: "card / service",
     origin_device: "on the device",
@@ -338,7 +338,7 @@ const TEXT = {
     period_month: "luna aceasta",
     period_hint: "Apasă ca să schimbi perioada (azi, săptămâna aceasta, luna aceasta).",
     eta_learning: "se învață…",
-    eta_help: "Timpul până la țintă, după viteza de încălzire învățată pentru temperatura de afară de acum.",
+    eta_help: "Timpul până la țintă, după cât a durat încălzirea în episoadele învățate, la temperatura de afară de acum.",
     stop_at: "~{temp} la {time}",
     stop_help: "Oprire anticipată: temperatura estimată a camerei la schimbarea din program, după răcirea învățată și temperatura de afară prognozată până atunci.",
     est_label: "Pornire / oprire anticipată",
@@ -379,7 +379,7 @@ const TEXT = {
     learn_heat: "Învățare încălzire",
     learn_cool: "Învățare răcire",
     learn_none: "se învață…",
-    learn_heat_value: "{n} episoade · {rate} acum",
+    learn_heat_value: "{n} episoade · {fixed} min + {rate} acum",
     learn_cool_value: "{n} episoade · scade {rate} acum",
     origin_card: "card / serviciu",
     origin_device: "pe dispozitiv",
@@ -750,7 +750,7 @@ class AdvancedClimateCard extends HTMLElement {
     return h === null ? this._t("outdoor") : this._t("outdoor_hours").replace("{h}", String(h));
   }
 
-  /** "~35 min" until the target, from the learned heating rate. */
+  /** "~35 min" until the target, from the learned heating. */
   _eta(a) {
     const stop = a.stop_forecast;
     if (stop && num(stop.temperature) !== null) {
@@ -1868,10 +1868,17 @@ class AdvancedClimateCard extends HTMLElement {
       const n = num(s.attributes.episodes) ?? 0;
       const unit = s.attributes.unit_of_measurement || "°C/h";
       const value = num(s.state);
+      // Heating: minutes per degree (whole minutes) plus the fixed part.
+      const heating = valueKey === "learn_heat_value";
+      const fixed = num(s.attributes.fixed_minutes);
       const text = n
         ? this._t(valueKey)
             .replace("{n}", String(n))
-            .replace("{rate}", value === null ? "–" : `${value.toFixed(2)} ${unit}`)
+            .replace("{fixed}", fixed === null ? "–" : String(Math.round(fixed)))
+            .replace(
+              "{rate}",
+              value === null ? "–" : `${heating ? Math.round(value) : value.toFixed(2)} ${unit}`
+            )
         : this._t("learn_none");
       return `<div class="link" ${this._more(entityId)}><dt>${esc(label)}</dt><dd>${esc(text)}</dd></div>`;
     };

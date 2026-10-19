@@ -26,8 +26,8 @@ other thermostats or plain relays are supported as well.
 - **Schedules** with `workday` / `weekend` / weekday / custom profiles, holidays
   from the Workday integration, profiles chosen from a calendar, a day boundary
   for night shifts, or an existing Schedule helper.
-- **Optimal start / stop** with a learned heating rate and a learned cooling per
-  room (see *Heating rate learning* and *Cooling learning and optimal stop*).
+- **Optimal start / stop** with a learned heating time and a learned cooling per
+  room (see *Heating learning* and *Cooling learning and optimal stop*).
   Once an optimal start begins it continues until the scheduled time, even if
   the room is warm early; the rules above the schedule can still override it.
 - **Windows**: open/close delays, frost protection or off, detection from a
@@ -168,10 +168,22 @@ demand*, *Window open*, *Manual change*, *Profile* (select), *Child lock*
 (switch), *Clear manual change* (button) and, for rooms without Generic
 Thermostat, the level temperatures (numbers).
 
-## Heating rate learning
+## Heating learning
 
-Each room learns how fast it heats up, in °C per hour, from its own heating
-episodes.
+Each room learns how long it takes to heat up, from its own heating episodes:
+
+**minutes = fixed part + degrees × minutes per degree**, and the minutes per
+degree follow the outdoor temperature (a straight line).
+
+- The **fixed part** is the time before the room starts to rise: the heat
+  source starts, the water and the radiators warm up. It does not grow with
+  the degrees, so a small top-up and a large rise after a setback are both
+  estimated right.
+- The **minutes per degree** and how they change with the outdoor
+  temperature (heat losses, a weather-compensated boiler) come from the same
+  episodes. A temperature not seen yet is estimated from the trend (the line is
+  extended); the *Maximum early start* of the room still limits how early a
+  start can be.
 
 - An **episode** starts when the room asks for heat at least the *tolerance*
   of its thermostat below the target, so the cycles that only keep the
@@ -185,15 +197,22 @@ episodes.
 - Episodes during which a **window or door sensor** of the room (or a linked
   one from another room) was open are not used. Rooms without window sensors
   use every episode.
-- The last 30 episodes are kept with the average **outdoor temperature** of
-  each. The rate is a straight line of the outdoor temperature, so every
-  episode helps at every outdoor temperature and a temperature not seen yet is
-  estimated from the trend. The learning is free: no minimum or maximum rate
-  and no limit on how the rate changes with the outdoor temperature. Only
-  where the line would reach zero the average of the episodes is used. With
-  fewer than 3 episodes, or outdoor temperatures less than 3 °C apart, the
-  average of the episodes is used.
-- Until the first episode the rate is 1 °C/h.
+- Each episode keeps the **degrees** it rose, the **minutes** it took and the
+  average **outdoor temperature**. The last 25 small episodes (less than
+  1 °C) and the last 25 large ones (1 °C or more) are kept apart, so the many
+  small cycles of a thermostat never push the few large rises out.
+- The three numbers are the **least squares** fit of the kept episodes
+  (worked out again after every episode). A term is used only when the
+  episodes can tell it: the fixed part needs episodes at least 1 °C apart in
+  size, the outdoor term episodes at least 1 °C apart outdoors (with an
+  outdoor temperature). An impossible result (a negative fixed part or
+  negative minutes) is set to zero and the rest is fitted again; minutes per
+  degree never go below zero far from the learned range. When the outdoor
+  temperature is unknown, the mean of the episodes is used.
+- Until the first episode: 60 minutes per degree, no fixed part.
+- The learning of versions before 2.0 kept only a rate per episode; it cannot
+  be converted, so the heating is learned again after the update (the cooling
+  is kept).
 - **Heating only while the heat source runs.** The learning (heating and
   cooling) and the heating time count a room as heating only while its heat
   source runs: Generic Thermostat heating (`hvac_action`), the relay or the
@@ -220,16 +239,18 @@ The *Heating runtime* sensors count the same way: a room while its heat
 source runs for it, the house while the heat source runs (without one, while
 at least one room heats). The chart of the card shows these periods.
 
-The *Heating rate* sensor shows the rate for the current outdoor temperature;
-its attributes show the estimate at −10 / 0 / 10 / 20 °C, the number of
-episodes, the change per degree outdoors, how far below the target an episode
-starts and the last episodes. Optimal start uses the same rate. With *Rooms
+The *Heating rate* sensor shows the **minutes per degree** for the current
+outdoor temperature; its attributes show the fixed part (`fixed_minutes`),
+the minutes per degree at −10 / 0 / 10 / 20 °C, the change per degree outdoors,
+which terms are used, the number of episodes (and of large ones), how far
+below the target an episode starts and the last episodes. Optimal start uses
+the same learning. With *Rooms
 needed* higher than 1, a room in optimal start waits until enough rooms ask
 for heat, so it may reach its target later.
 
 While a room is below its target the card shows the **time to the target**
-(e.g. *~35 min*) under the target temperature, from the learned rate for the
-current outdoor temperature; until the first episode it shows *learning…*.
+(e.g. *~35 min*) under the target temperature, from the learned heating for
+the current outdoor temperature; until the first episode it shows *learning…*.
 The *Decision* sensor has it as the `time_to_target` attribute (minutes).
 
 ## Cooling learning and optimal stop
@@ -275,7 +296,7 @@ falls from 22 to 21.5 °C in 40 minutes, sleep starts at 21:20.
 
 With a weather entity that has an hourly forecast, the optimal start and the
 optimal stop use the **outdoor temperature expected while they run**, not the
-one of now. For a start at 05:00 for 07:00, the heating rate is the one
+one of now. For a start at 05:00 for 07:00, the heating time is the one
 learned for the mean forecast between 05:00 and 07:00; for a stop, the cooling
 uses the mean forecast of the stop period. The period depends on that
 temperature, so it is worked out again a few times (3 passes) from the period
@@ -333,7 +354,7 @@ type: custom:advanced-climate-card
 | `show_timeline` | `true` | Chart of the last 24 hours and the next 12: room temperature, target (colored by level), planned levels and the periods when the room heated. Hover, touch or drag on the chart to read the values. Zoom with the buttons (1h, 6h, −, +), double-click, pinch or Ctrl + wheel down to 20 minutes; when zoomed, drag the window in the bar under the chart (or tap a place on it) to move in time |
 | `show_quick_override` | `true` | Set a level or a temperature for a number of hours (empty = the configured rule) |
 | `show_levels` | `true` | Level temperatures (rooms without Generic Thermostat, fixed *nearby* temperature) |
-| `show_details` | `true` | Room and target temperature, heating rate, heating time, active adjustments, level temperatures |
+| `show_details` | `true` | Room and target temperature, learned heating, heating time, active adjustments, level temperatures |
 | `show_schedule_editor` | `true` | Schedule profiles with an editor: drag the start times on the day bar (5-minute steps), copy a profile over another day |
 | `collapsed` | `false` | Rooms start folded; tap the room name to open it |
 | `compact` | `false` | One row per room (name, rule, now → target) and one for the house; tap a row to open it |

@@ -30,8 +30,8 @@ interfața în engleză; cu Home Assistant în română ele apar traduse.
   personalizate, sărbători din integrarea Workday, profiluri alese dintr-un
   calendar, o oră de început a zilei pentru ture de noapte sau un Schedule
   helper existent.
-- **Pornire / oprire anticipată** cu viteza de încălzire și răcirea învățate
-  pentru fiecare cameră (vezi *Învățarea vitezei de încălzire* și *Învățarea
+- **Pornire / oprire anticipată** cu timpul de încălzire și răcirea învățate
+  pentru fiecare cameră (vezi *Învățarea încălzirii* și *Învățarea
   răcirii și oprirea anticipată*). Odată începută, pornirea anticipată
   continuă până la ora din program, chiar dacă camera s-a încălzit mai
   devreme; regulile de deasupra programului o pot suprascrie.
@@ -181,10 +181,22 @@ runtime*, *Heat demand*, *Window open*, *Manual change*, *Profile* (select),
 *Child lock* (comutator), *Clear manual change* (buton) și, pentru camerele
 fără Generic Thermostat, temperaturile nivelurilor (numere).
 
-## Învățarea vitezei de încălzire
+## Învățarea încălzirii
 
-Fiecare cameră învață cât de repede se încălzește, în °C pe oră, din propriile
-episoade de încălzire.
+Fiecare cameră învață cât durează să se încălzească, din propriile episoade de
+încălzire:
+
+**minute = parte fixă + grade × minute pe grad**, iar minutele pe grad urmează
+temperatura de afară (o linie dreaptă).
+
+- **Partea fixă** este timpul până începe camera să urce: pornește sursa de
+  căldură, se încălzesc apa și caloriferele. Nu crește cu gradele, așa că și o
+  recuperare mică, și o urcare mare după setback sunt estimate corect.
+- **Minutele pe grad** și cum se schimbă ele cu temperatura de afară
+  (pierderile de căldură, o centrală cu curbă de termoreglare) vin din aceleași
+  episoade. O temperatură neîntâlnită încă e estimată din tendință (linia se
+  prelungește); *Anticiparea maximă* a camerei limitează în continuare cât de
+  devreme poate porni.
 
 - Un **episod** începe când camera cere căldură și e cu cel puțin *toleranța*
   termostatului sub țintă, așa că se învață și ciclurile care doar mențin
@@ -198,15 +210,23 @@ episoade de încălzire.
 - Episoadele în care un **senzor de fereastră sau ușă** al camerei (sau unul
   legat din altă cameră) a fost deschis nu se folosesc. Camerele fără senzori
   de fereastră folosesc toate episoadele.
-- Se păstrează ultimele 30 de episoade, fiecare cu **temperatura medie de
-  afară**. Viteza este o linie dreaptă în funcție de temperatura de afară,
-  așa că fiecare episod ajută la orice temperatură, iar o temperatură
-  neîntâlnită încă e estimată din tendință. Învățarea e liberă: fără viteză
-  minimă sau maximă și fără limită pentru cât se schimbă viteza cu temperatura
-  de afară. Doar acolo unde linia ar ajunge la zero se folosește media
-  episoadelor. Cu mai puțin de 3 episoade sau cu temperaturi de afară la mai
-  puțin de 3 °C distanță se folosește media episoadelor.
-- Până la primul episod viteza este 1 °C/h.
+- Fiecare episod păstrează **gradele** urcate, **minutele** cât a durat și
+  **temperatura medie de afară**. Ultimele 25 de episoade mici (sub 1 °C) și
+  ultimele 25 mari (1 °C sau mai mult) se păstrează separat, așa că ciclurile
+  mici și dese ale termostatului nu scot niciodată din memorie puținele urcări
+  mari.
+- Cele trei numere se calculează prin **metoda celor mai mici pătrate** din
+  episoadele păstrate (din nou după fiecare episod). Un termen se folosește
+  doar când episoadele îl pot deosebi: partea fixă cere episoade care diferă ca
+  mărime cu cel puțin 1 °C, termenul de afară episoade la temperaturi de afară
+  care diferă cu cel puțin 1 °C. Un rezultat imposibil (parte fixă negativă
+  sau minute negative) se pune pe zero și restul se recalculează; departe de
+  temperaturile învățate minutele pe grad nu scad niciodată sub zero. Când
+  temperatura de afară nu se cunoaște, se folosește media episoadelor.
+- Până la primul episod: 60 de minute pe grad, fără parte fixă.
+- Versiunile dinainte de 2.0 păstrau doar o viteză pe episod; nu se poate
+  converti, așa că după actualizare încălzirea se învață din nou (răcirea se
+  păstrează).
 - **Încălzire doar cât merge sursa de căldură.** Învățarea (încălzire și
   răcire) și timpul de încălzire consideră că o cameră încălzește doar cât
   merge sursa ei de căldură: Generic Thermostat încălzește (`hvac_action`),
@@ -233,15 +253,16 @@ Senzorii *Heating runtime* numără la fel: o cameră cât merge sursa ei de
 căldură, casa cât merge sursa de căldură (fără ea, cât încălzește cel puțin o
 cameră). Graficul din card arată aceste perioade.
 
-Senzorul *Heating rate* arată viteza pentru temperatura de afară de acum;
-atributele arată estimarea la −10 / 0 / 10 / 20 °C, numărul de episoade,
-schimbarea pe grad de afară, cât de jos sub țintă începe un episod și ultimele
-episoade. Pornirea anticipată folosește aceeași viteză. Cu *Rooms needed* mai
+Senzorul *Heating rate* arată **minutele pe grad** pentru temperatura de
+afară de acum; atributele arată partea fixă (`fixed_minutes`), minutele pe grad
+la −10 / 0 / 10 / 20 °C, schimbarea pe grad de afară, ce termeni se folosesc,
+numărul de episoade (și al celor mari), cât de jos sub țintă începe un episod
+și ultimele episoade. Pornirea anticipată folosește aceeași învățare. Cu *Rooms needed* mai
 mare decât 1, o cameră aflată în pornire anticipată așteaptă până cer căldură
 destule camere, deci poate ajunge la țintă mai târziu.
 
 Cât timp o cameră e sub țintă, cardul arată sub temperatura țintă **timpul
-până la țintă** (de exemplu *~35 min*), după viteza învățată pentru
+până la țintă** (de exemplu *~35 min*), după încălzirea învățată pentru
 temperatura de afară de acum; până la primul episod arată *se învață…*.
 Senzorul *Decision* îl are ca atribut `time_to_target` (minute).
 
@@ -289,8 +310,8 @@ scade de la 22 la 21,5 °C în 40 de minute, sleep începe la 21:20.
 
 Cu o entitate meteo care are prognoză orară, pornirea și oprirea anticipată
 folosesc **temperatura de afară așteptată cât timp rulează**, nu pe cea de
-acum. Pentru o pornire la 05:00 pentru ora 07:00, viteza de încălzire este cea
-învățată pentru media prognozei între 05:00 și 07:00; pentru o oprire, răcirea
+acum. Pentru o pornire la 05:00 pentru ora 07:00, timpul de încălzire este cel
+învățat pentru media prognozei între 05:00 și 07:00; pentru o oprire, răcirea
 folosește media prognozei din perioada opririi. Perioada depinde de acea
 temperatură, așa că se recalculează de câteva ori (3 treceri) pornind de la
 perioada găsită înainte. Fiecare valoare din prognoză e valabilă pentru ora ei;
@@ -351,7 +372,7 @@ type: custom:advanced-climate-card
 | `show_timeline` | `true` | Graficul ultimelor 24 de ore și al următoarelor 12: temperatura camerei, ținta (colorată după nivel), nivelurile planificate și perioadele în care camera s-a încălzit. Valorile se citesc cu mouse-ul, la atingere sau trăgând pe grafic. Zoom cu butoanele (1h, 6h, −, +), dublu clic, ciupire sau Ctrl + rotiță, până la 20 de minute; când e mărit, deplasarea în timp se face trăgând fereastra din bara de sub grafic (sau atingând un loc pe ea) |
 | `show_quick_override` | `true` | Setează un nivel sau o temperatură pentru un număr de ore (gol = regula configurată) |
 | `show_levels` | `true` | Temperaturile nivelurilor (camere fără Generic Thermostat, temperatura fixă pentru *aproape*) |
-| `show_details` | `true` | Temperatura camerei și ținta, viteza de încălzire, timpul de încălzire, ajustările active, temperaturile nivelurilor |
+| `show_details` | `true` | Temperatura camerei și ținta, încălzirea învățată, timpul de încălzire, ajustările active, temperaturile nivelurilor |
 | `show_schedule_editor` | `true` | Profilurile programului cu editor: orele de început se trag pe bara zilei (pași de 5 minute), un profil se copiază peste altă zi |
 | `collapsed` | `false` | Camerele încep pliate; atinge numele camerei ca s-o deschizi |
 | `compact` | `false` | Un rând pe cameră (nume, regulă, acum → țintă) și unul pentru casă; atinge un rând ca să-l deschizi |

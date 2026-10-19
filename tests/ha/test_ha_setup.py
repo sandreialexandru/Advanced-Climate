@@ -79,6 +79,12 @@ async def test_relay_room(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -
     assert hass.states.get("sensor.home_presence").state == "home"
     # Nothing learned yet: no cooling rate.
     assert hass.states.get("sensor.bedroom_cooling_rate").state == "unknown"
+    # Heating: 60 minutes per degree until the first episode.
+    heating = hass.states.get("sensor.bedroom_heating_rate")
+    assert float(heating.state) == 60.0
+    assert heating.attributes["unit_of_measurement"] == "min/°C"
+    assert heating.attributes["fixed_minutes"] == 0.0
+    assert heating.attributes["episodes"] == 0
 
     # Warm room: the relay turns off.
     hass.states.async_set("sensor.room_temp", "21.5", {"unit_of_measurement": "°C"})
@@ -653,7 +659,7 @@ async def test_optimal_stop_and_start_with_the_forecast(
     assert estimate["preset"] == "home"
     assert estimate["outdoor"] == -3.0
     assert estimate["outdoor_source"] == "forecast"
-    assert estimate["minutes"] == 120  # 2 °C at the default 1 °C/h
+    assert estimate["minutes"] == 120  # 2 °C at the default 60 minutes per degree
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()

@@ -1,12 +1,30 @@
 """Heating and cooling learning for optimal start and stop (pure Python).
 
-The learner observes heating episodes (the room asks for heat and the
-temperature rises) and keeps the last episodes. An episode starts when the
-room is at least the thermostat tolerance below the target, so the cycles of a
-thermostat that keeps the temperature are learned too. The heating rate in °C per hour is then estimated as a straight
-line of the outdoor temperature, so every episode helps at every outdoor
-temperature and temperatures not seen yet are estimated from the trend. The
-learning is free: the measured rates and the line are used as they are.
+Heating: the learner observes heating episodes (the room asks for heat and the
+temperature rises) and keeps, for each one, the degrees risen, the minutes it
+took and the mean outdoor temperature. An episode starts when the room is at
+least the thermostat tolerance below the target, so the cycles of a thermostat
+that keeps the temperature are learned too.
+
+The time to heat is learned as
+
+    minutes = fixed + degrees × (per_degree + per_outdoor × outdoor)
+
+* ``fixed``: the minutes before the room starts to rise (the boiler starts, the
+  water and the radiators warm up); it does not grow with the degrees;
+* ``per_degree``: minutes per degree at 0 °C outdoors;
+* ``per_outdoor``: how the minutes per degree change per degree outdoors.
+
+The three numbers are the least squares fit of all the kept episodes, so the
+learning follows the room as measured (all the delays of the heat source are
+in the minutes) and outdoor temperatures not seen yet are estimated from the
+trend. A term is used only when the episodes can tell it: the fixed part needs
+episodes of different sizes, the outdoor term episodes at different outdoor
+temperatures. A term that comes out impossible (a negative fixed part, a
+negative number of minutes) is set to zero.
+
+Small and large episodes are kept apart (25 of each), so the many small cycles
+of a thermostat never push the few large ones out.
 
 Episodes during which a window or door sensor of the room was open are not
 used.
@@ -21,14 +39,18 @@ from datetime import datetime
 # An episode (with heat demand for heating, without it for cooling) is used
 # only when it lasted at least this long.
 MIN_DEMAND_MINUTES = 10
-DEFAULT_RATE = 1.0  # °C per hour, until the first episode
-DATA_VERSION = 3  # saved learning data of other versions is discarded
-# Saved data of version 2 limited the rates to these values; such episodes are dropped.
-_V2_CLAMPED = (0.2, 10.0)
-MAX_EPISODES = 30
-# A line needs a few episodes over a real spread of outdoor temperatures.
-MIN_FIT_EPISODES = 3
-MIN_FIT_SPREAD = 3.0  # °C
+# Until the first heating episode: 60 minutes per degree (1 °C per hour).
+DEFAULT_MINUTES_PER_DEGREE = 60.0
+DATA_VERSION = 4  # saved heating data of other versions is discarded
+# Heating episodes kept: the small ones and the large ones apart.
+LARGE_EPISODE = 1.0  # °C risen: from this on an episode is large
+MAX_SMALL_EPISODES = 25
+MAX_LARGE_EPISODES = 25
+# The fixed part needs episodes that differ in size by at least this much.
+MIN_SIZE_SPREAD = 1.0  # °C
+# The outdoor term needs episodes whose outdoor temperatures differ this much.
+MIN_FIT_SPREAD = 1.0  # °C
+COOLING_MAX_EPISODES = 30
 
 
 def start_gap(tolerance: float) -> float:
@@ -36,11 +58,116 @@ def start_gap(tolerance: float) -> float:
     return round(max(0.0, tolerance), 2)
 
 
+def _solve(matrix: list[list[float]], vector: list[float]) -> list[float] | None:
+    """Solve a small linear system (Gaussian elimination); None when singular."""
+    n = len(vector)
+    a = [row[:] + [vector[i]] for i, row in enumerate(matrix)]
+    for col in range(n):
+        pivot = max(range(col, n), key=lambda r: abs(a[r][col]))
+        if abs(a[pivot][col]) < 1e-9:
+            return None
+        a[col], a[pivot] = a[pivot], a[col]
+        for r in range(n):
+            if r != col:
+                factor = a[r][col] / a[col][col]
+                for c in range(col, n + 1):
+                    a[r][c] -= factor * a[col][c]
+    return [a[i][n] / a[i][i] for i in range(n)]
+
+
+def _least_squares(rows: list[list[float]], values: list[float]) -> list[float] | None:
+    """Coefficients that bring rows · coefficients closest to the values."""
+    n = len(rows[0])
+    ata = [[sum(r[i] * r[j] for r in rows) for j in range(n)] for i in range(n)]
+    atb = [sum(r[i] * v for r, v in zip(rows, values)) for i in range(n)]
+    return _solve(ata, atb)
+
+
+@dataclass(slots=True)
+class HeatingModel:
+    """The learned time to heat (see the module docstring)."""
+
+    fixed: float = 0.0  # minutes
+    per_degree: float = DEFAULT_MINUTES_PER_DEGREE  # minutes per °C at 0 °C outdoors
+    per_outdoor: float = 0.0  # change of the minutes per °C, per °C outdoors
+    # Mean outdoor temperature of the episodes (used when outdoor is unknown).
+    outdoor_mean: float | None = None
+    uses_fixed: bool = False
+    uses_outdoor: bool = False
+
+    def minutes_per_degree(self, outdoor: float | None) -> float:
+        """Minutes per °C at the outdoor temperature (never negative)."""
+        if outdoor is None:
+            outdoor = self.outdoor_mean
+        value = self.per_degree + (self.per_outdoor * outdoor if outdoor is not None else 0.0)
+        return max(0.0, value)
+
+    def minutes(self, gap: float, outdoor: float | None) -> float:
+        """Minutes to rise ``gap`` °C at the outdoor temperature."""
+        if gap <= 0:
+            return 0.0
+        return self.fixed + gap * self.minutes_per_degree(outdoor)
+
+
+def fit_model(episodes: list[list]) -> HeatingModel:
+    """Fit the time to heat to the episodes [outdoor or None, °C, minutes, at]."""
+    if not episodes:
+        return HeatingModel()
+    points = [(o, float(g), float(m)) for o, g, m, *_ in episodes]
+    with_outdoor = [(float(o), g, m) for o, g, m in points if o is not None]
+    outdoors = [o for o, _, _ in with_outdoor]
+    outdoor_mean = round(sum(outdoors) / len(outdoors), 2) if outdoors else None
+    use_outdoor = bool(outdoors) and max(outdoors) - min(outdoors) >= MIN_FIT_SPREAD
+    allow_fixed = True
+    while True:
+        # The outdoor term is fitted on the episodes that have an outdoor temperature.
+        data = with_outdoor if use_outdoor else points
+        sizes = [g for _, g, _ in data]
+        use_fixed = allow_fixed and max(sizes) - min(sizes) >= MIN_SIZE_SPREAD
+        rows = [
+            ([1.0] if use_fixed else []) + [g] + ([g * o] if use_outdoor else [])
+            for o, g, _ in data
+        ]
+        values = [m for _, _, m in data]
+        found = _least_squares(rows, values) if len(rows) >= len(rows[0]) else None
+        if found is None:
+            # The episodes cannot tell all the terms apart: fewer terms.
+            if use_outdoor:
+                use_outdoor = False
+            else:
+                allow_fixed = False
+            continue
+        fixed = found.pop(0) if use_fixed else 0.0
+        per_degree = found.pop(0)
+        per_outdoor = found.pop(0) if use_outdoor else 0.0
+        # An impossible term is set to zero and the rest is fitted again.
+        if use_fixed and fixed < 0:
+            allow_fixed = False
+            continue
+        if use_outdoor and min(
+            per_degree + per_outdoor * min(outdoors), per_degree + per_outdoor * max(outdoors)
+        ) < 0:
+            use_outdoor = False
+            continue
+        if per_degree < 0:
+            # Larger episodes were not slower: the minutes do not grow with the
+            # degrees, so only the fixed part (the mean of the episodes) is left.
+            fixed, per_degree = (sum(values) / len(values) if use_fixed else 0.0), 0.0
+        return HeatingModel(
+            fixed=round(fixed, 2),
+            per_degree=round(max(0.0, per_degree), 3),
+            per_outdoor=round(per_outdoor, 4),
+            outdoor_mean=outdoor_mean,
+            uses_fixed=use_fixed,
+            uses_outdoor=use_outdoor,
+        )
+
+
 @dataclass(slots=True)
 class HeatingRateLearner:
-    """Learn how fast a room heats up, as a function of the outdoor temperature."""
+    """Learn how long a room takes to heat up (see the module docstring)."""
 
-    # [outdoor °C or None, rate °C/h, end time ISO]
+    # [outdoor °C or None, °C risen, minutes, end time ISO]
     episodes: list[list] = field(default_factory=list)
     episode_start: datetime | None = None
     episode_temp: float | None = None
@@ -48,47 +175,31 @@ class HeatingRateLearner:
     episode_outdoor_sum: float = 0.0
     episode_outdoor_count: int = 0
     episode_disturbed: bool = False
+    _model: HeatingModel | None = None
 
     # ------------------------------------------------------------------ model
-    def _points(self) -> list[tuple[float, float]]:
-        """Episodes that have an outdoor temperature, as (outdoor, rate)."""
-        return [(float(o), float(r)) for o, r, *_ in self.episodes if o is not None]
-
-    def fit(self) -> tuple[float, float] | None:
-        """Return (intercept, slope) of rate = intercept + slope * outdoor, if possible."""
-        points = self._points()
-        if len(points) < MIN_FIT_EPISODES:
-            return None
-        xs = [p[0] for p in points]
-        if max(xs) - min(xs) < MIN_FIT_SPREAD:
-            return None
-        mean_x = sum(xs) / len(xs)
-        mean_y = sum(p[1] for p in points) / len(points)
-        var = sum((x - mean_x) ** 2 for x in xs)
-        cov = sum((x - mean_x) * (y - mean_y) for x, y in points)
-        slope = cov / var if var else 0.0
-        return mean_y - slope * mean_x, slope
-
-    def rate(self, outdoor: float | None) -> float:
-        """Return the learned rate for the outdoor temperature."""
-        if not self.episodes:
-            return DEFAULT_RATE
-        mean = sum(float(r) for _, r, *_ in self.episodes) / len(self.episodes)
-        line = self.fit()
-        if line is None or outdoor is None:
-            return round(mean, 3)
-        intercept, slope = line
-        estimate = intercept + slope * outdoor
-        # A line can reach zero far from what was seen; a room that heats has a
-        # positive rate, so the average of the episodes is used there.
-        return round(estimate if estimate > 0 else mean, 3)
-
     @property
-    def rates(self) -> dict[str, float]:
-        """Estimated rates at a few outdoor temperatures (attributes, diagnostics)."""
-        if not self.episodes:
-            return {}
-        return {f"{t}°C": self.rate(float(t)) for t in (-10, 0, 10, 20)}
+    def model(self) -> HeatingModel:
+        """The fitted model (refitted when the episodes change)."""
+        if self._model is None:
+            self._model = fit_model(self.episodes)
+        return self._model
+
+    def minutes(self, gap: float, outdoor: float | None) -> float:
+        """Minutes to rise ``gap`` °C at the outdoor temperature."""
+        return self.model.minutes(gap, outdoor)
+
+    def minutes_per_degree(self, outdoor: float | None) -> float:
+        """Learned minutes per °C at the outdoor temperature."""
+        return self.model.minutes_per_degree(outdoor)
+
+    def _keep(self) -> None:
+        """Keep the last small and the last large episodes, in time order."""
+        small = [e for e in self.episodes if float(e[1]) < LARGE_EPISODE][-MAX_SMALL_EPISODES:]
+        large = [e for e in self.episodes if float(e[1]) >= LARGE_EPISODE][-MAX_LARGE_EPISODES:]
+        kept = {id(e) for e in small + large}
+        self.episodes = [e for e in self.episodes if id(e) in kept]
+        self._model = None
 
     # -------------------------------------------------------------- learning
     def observe(
@@ -101,7 +212,7 @@ class HeatingRateLearner:
         window_open: bool = False,
         tolerance: float = 0.0,
     ) -> float | None:
-        """Feed an observation. Returns the measured rate when an episode is used.
+        """Feed an observation. Returns the minutes of the episode when it is used.
 
         ``window_open`` is True while a window or door sensor of the room is open;
         such an episode is not used. ``tolerance`` is how far below the target the
@@ -139,14 +250,13 @@ class HeatingRateLearner:
         self.cancel()
         # The heat demand lasted at least 10 minutes; any rise counts, a slow one
         # too (it may show a problem, but it is real). Without a rise there is
-        # no rate to measure.
+        # nothing to learn.
         if disturbed or minutes < MIN_DEMAND_MINUTES or rise <= 0:
             return None
-        measured = round(rise / (minutes / 60), 3)
         mean_outdoor = round(outdoor_mean, 1) if outdoor_mean is not None else None
-        self.episodes.append([mean_outdoor, measured, now.isoformat()])
-        del self.episodes[:-MAX_EPISODES]
-        return measured
+        self.episodes.append([mean_outdoor, round(rise, 2), round(minutes, 1), now.isoformat()])
+        self._keep()
+        return round(minutes, 1)
 
     def _outdoor_mean(self) -> float | None:
         """Mean outdoor temperature during the episode in progress."""
@@ -169,22 +279,26 @@ class HeatingRateLearner:
 
     @classmethod
     def from_dict(cls, data: dict | None) -> HeatingRateLearner:
-        """Restore the saved episodes (data of unknown versions is discarded)."""
+        """Restore the saved episodes (data of other versions is discarded).
+
+        Older versions kept only a rate per episode, without the degrees and the
+        minutes, so they cannot be converted: the heating is learned again.
+        """
         obj = cls()
-        version = (data or {}).get("version")
-        if version not in (2, DATA_VERSION):
+        if (data or {}).get("version") != DATA_VERSION:
             return obj
         episodes = data.get("episodes")
         if isinstance(episodes, list):
             for item in episodes:
                 try:
                     outdoor = None if item[0] is None else float(item[0])
-                    if version == 2 and float(item[1]) in _V2_CLAMPED:
+                    gap, minutes = float(item[1]), float(item[2])
+                    if gap <= 0 or minutes <= 0:
                         continue
-                    obj.episodes.append([outdoor, float(item[1]), str(item[2]) if len(item) > 2 else ""])
+                    obj.episodes.append([outdoor, gap, minutes, str(item[3]) if len(item) > 3 else ""])
                 except (TypeError, ValueError, IndexError):
                     continue
-        del obj.episodes[:-MAX_EPISODES]
+        obj._keep()
         return obj
 
 
@@ -299,7 +413,7 @@ class CoolingLearner:
             return None
         k = round(k, 5)
         self.episodes.append([round(mean_outdoor, 1), k, now.isoformat()])
-        del self.episodes[:-MAX_EPISODES]
+        del self.episodes[:-COOLING_MAX_EPISODES]
         return k
 
     def _outdoor_mean(self) -> float | None:
@@ -331,5 +445,5 @@ class CoolingLearner:
                 obj.episodes.append([float(item[0]), float(item[1]), str(item[2])])
             except (TypeError, ValueError, IndexError):
                 continue
-        del obj.episodes[:-MAX_EPISODES]
+        del obj.episodes[:-COOLING_MAX_EPISODES]
         return obj

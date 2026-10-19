@@ -867,8 +867,7 @@ class Room:
 
         def minutes_for(outdoor: float | None) -> float | None:
             if kind == RULE_OPTIMAL_START:
-                rate = self.learner.rate(outdoor)
-                return gap / rate * 60 if gap > 0 and rate > 0 else 0.0
+                return self.learner.minutes(gap, outdoor) if gap > 0 else 0.0
             if floor is None:
                 return None
             return self.cooling.minutes_to_fall(self.current_temp, floor, outdoor)
@@ -879,14 +878,12 @@ class Room:
             lambda length: house.outdoor_between(change - timedelta(minutes=length), change),
             house.outdoor_now,
         )
-        rate = self.learner.rate(outdoor) if kind == RULE_OPTIMAL_START else None
-        needed = minutes_for(outdoor) if kind == RULE_OPTIMAL_STOP else None
+        needed = minutes_for(outdoor)
         return {
             "kind": kind,
             "change": change,
             "preset": next_preset,
             "minutes": minutes,
-            "rate": rate,
             "needed": needed,
             "outdoor": outdoor,
             "outdoor_source": source,
@@ -913,8 +910,17 @@ class Room:
             return None
         return {"at": state.next_change.isoformat(), "temperature": value}
 
+    def _start_needed(self, preset: str | None, outdoor: float | None) -> float | None:
+        """Minutes the room needs to heat up to the level of ``preset`` (learned)."""
+        if preset is None or self.current_temp is None:
+            return None
+        level = self.level_temp(preset)
+        if level is None or level <= self.current_temp:
+            return None
+        return self.learner.minutes(level - self.current_temp, outdoor)
+
     def time_to_target(self, outdoor: float | None) -> int | None:
-        """Minutes until the target is reached at the learned rate (None when not heating up)."""
+        """Minutes until the target is reached, as learned (None when not heating up)."""
         if self.current_temp is None or self.target_temperature is None:
             return None
         if self.decision is None or self.decision.target.kind == KIND_OFF or self.window_open:
@@ -922,7 +928,7 @@ class Room:
         gap = self.target_temperature - self.current_temp
         if gap <= 0:
             return None
-        return max(1, round(gap / self.learner.rate(outdoor) * 60))
+        return max(1, round(self.learner.minutes(gap, outdoor)))
 
     def _window_sensor_open(self) -> bool:
         """A window or door sensor of the room (or a linked one) is open right now."""
@@ -1138,10 +1144,10 @@ class Room:
             # The optimal stop needs the outdoor temperature (sensor or weather).
             outdoor_known = house.outdoor_configured and house.outdoor_now is not None
             estimate = self.optimal_estimate(now, state, outdoor_known, stop_allowed)
-            start_rate = (
-                estimate["rate"]
+            start_needed = (
+                estimate["needed"]
                 if estimate and estimate["kind"] == RULE_OPTIMAL_START
-                else self.learner.rate(house.outdoor_now)
+                else self._start_needed(state.next_preset, house.outdoor_now)
             )
             stop_needed = (
                 estimate["needed"]
@@ -1155,7 +1161,7 @@ class Room:
                 state.next_preset,
                 self.current_temp,
                 self.level_temp,
-                start_rate,
+                start_needed,
                 bool(self.config[CONF_OPTIMAL_START]),
                 float(self.config[CONF_OPTIMAL_START_MAX]),
                 bool(self.config[CONF_OPTIMAL_STOP]) and stop_allowed and outdoor_known,
@@ -2067,7 +2073,14 @@ class Room:
                 else None
             ),
             "levels": {p: self.level_temp(p) for p in PRESETS},
-            "learned_rates": self.learner.rates,
+            "learned_heating": {
+                "fixed_minutes": self.learner.model.fixed,
+                "minutes_per_degree_at_0": self.learner.model.per_degree,
+                "per_outdoor_degree": self.learner.model.per_outdoor,
+                "uses_fixed": self.learner.model.uses_fixed,
+                "uses_outdoor": self.learner.model.uses_outdoor,
+                "episodes": len(self.learner.episodes),
+            },
             "cooling_coefficient": self.cooling.coefficient,
             "runtime_hours": round(self.runtime_s / 3600, 2),
             "decisions": list(self.decisions),

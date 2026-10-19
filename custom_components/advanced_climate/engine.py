@@ -485,7 +485,7 @@ def optimal_schedule(
     next_preset: str | None,
     current_temp: float | None,
     level_temp: Callable[[str], float | None],
-    rate: float,
+    start_needed: float | None,
     start_enabled: bool,
     start_max_minutes: float,
     stop_enabled: bool,
@@ -499,6 +499,9 @@ def optimal_schedule(
     ``started`` / ``stop_started`` are True when the optimal start / stop for
     this change already began: it then continues until the change (no switching
     back and forth). The other rules can still override it.
+
+    ``start_needed`` is how many minutes the room needs to heat up to the next
+    level (from the learned heating); ``start_max_minutes`` caps it.
 
     ``stop_minutes`` is the longest optimal stop. ``stop_needed`` is how long the
     room can cool and still stay in the comfort of the current level (from the
@@ -514,9 +517,8 @@ def optimal_schedule(
     if start_enabled and next_temp > now_temp and started:
         return next_preset, RULE_OPTIMAL_START
     if start_enabled and next_temp > now_temp and current_temp is not None:
-        if current_temp < next_temp and rate > 0:
-            hours = (next_temp - current_temp) / rate
-            needed = min(timedelta(hours=hours), timedelta(minutes=start_max_minutes))
+        if current_temp < next_temp and start_needed is not None and start_needed > 0:
+            needed = timedelta(minutes=min(start_needed, start_max_minutes))
             if remaining <= needed:
                 return next_preset, RULE_OPTIMAL_START
     if stop_enabled and next_temp < now_temp:

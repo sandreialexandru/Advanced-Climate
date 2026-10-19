@@ -238,33 +238,42 @@ class OptimalTest(unittest.TestCase):
     def test_start(self) -> None:
         change = NOW + timedelta(minutes=50)
         preset, rule = engine.optimal_schedule(
-            NOW, "sleep", change, "home", 20.5, LEVELS.get, 2.0, True, 120, False, 30
+            NOW, "sleep", change, "home", 20.5, LEVELS.get, 45.0, True, 120, False, 30
         )
-        # 1.5 °C at 2 °C/h needs 45 minutes; 50 minutes remain -> not yet.
+        # The room needs 45 minutes; 50 minutes remain -> not yet.
         self.assertEqual((preset, rule), ("sleep", const.RULE_SCHEDULE))
         preset, rule = engine.optimal_schedule(
-            NOW, "sleep", change, "home", 20.0, LEVELS.get, 2.0, True, 120, False, 30
+            NOW, "sleep", change, "home", 20.0, LEVELS.get, 60.0, True, 120, False, 30
         )
         self.assertEqual((preset, rule), ("home", const.RULE_OPTIMAL_START))
+
+    def test_start_not_learned(self) -> None:
+        # Nothing to heat (or no estimate): no optimal start.
+        change = NOW + timedelta(minutes=10)
+        for needed in (None, 0.0):
+            preset, rule = engine.optimal_schedule(
+                NOW, "sleep", change, "home", 20.0, LEVELS.get, needed, True, 120, False, 30
+            )
+            self.assertEqual((preset, rule), ("sleep", const.RULE_SCHEDULE))
 
     def test_start_capped(self) -> None:
         change = NOW + timedelta(minutes=90)
         preset, _ = engine.optimal_schedule(
-            NOW, "away", change, "home", 10.0, LEVELS.get, 1.0, True, 60, False, 30
+            NOW, "away", change, "home", 10.0, LEVELS.get, 660.0, True, 60, False, 30
         )
         self.assertEqual(preset, "away")
 
     def test_stop(self) -> None:
         change = NOW + timedelta(minutes=20)
         preset, rule = engine.optimal_schedule(
-            NOW, "home", change, "sleep", 22.0, LEVELS.get, 1.0, False, 120, True, 30
+            NOW, "home", change, "sleep", 22.0, LEVELS.get, None, False, 120, True, 30
         )
         self.assertEqual((preset, rule), ("sleep", const.RULE_OPTIMAL_STOP))
 
     def test_start_continues_once_started(self) -> None:
         # Warm early: without the start already running it would fall back to sleep.
         change = NOW + timedelta(minutes=20)
-        args = (NOW, "sleep", change, "home", 21.9, LEVELS.get, 1.0, True, 120, False, 30)
+        args = (NOW, "sleep", change, "home", 21.9, LEVELS.get, 6.0, True, 120, False, 30)
         self.assertEqual(engine.optimal_schedule(*args)[0], "sleep")
         preset, rule = engine.optimal_schedule(*args, True)
         self.assertEqual((preset, rule), ("home", const.RULE_OPTIMAL_START))
@@ -277,13 +286,13 @@ class OptimalTest(unittest.TestCase):
 
     def test_stop_from_learned_cooling(self) -> None:
         change = NOW + timedelta(minutes=50)
-        args = (NOW, "home", change, "sleep", 22.0, LEVELS.get, 1.0, False, 120, True, 90)
+        args = (NOW, "home", change, "sleep", 22.0, LEVELS.get, None, False, 120, True, 90)
         # Learned: the room stays in comfort 40 minutes -> not yet with 50 left.
         self.assertEqual(engine.optimal_schedule(*args, False, 40.0)[0], "home")
         self.assertEqual(engine.optimal_schedule(*args, False, 55.0)[0], "sleep")
         # Never earlier than the maximum (90 minutes here).
         far = NOW + timedelta(minutes=100)
-        args_far = (NOW, "home", far, "sleep", 22.0, LEVELS.get, 1.0, False, 120, True, 90)
+        args_far = (NOW, "home", far, "sleep", 22.0, LEVELS.get, None, False, 120, True, 90)
         self.assertEqual(engine.optimal_schedule(*args_far, False, 300.0)[0], "home")
         # Not learned yet: the maximum is used.
         self.assertEqual(engine.optimal_schedule(*args, False, None)[0], "sleep")
