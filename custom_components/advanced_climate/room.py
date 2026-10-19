@@ -106,6 +106,7 @@ from .const import (
     RULE_SAFETY,
     RULE_SCHEDULE,
     RULE_STARTING,
+    RULE_VACATION,
     SCHEDULE_HELPER,
     SOURCE_CLIMATE,
     SOURCE_GT,
@@ -1981,6 +1982,20 @@ class Room:
                     continue
                 return {"preset": None, "temperature": value}
         return {"preset": None, "temperature": None}
+
+    def hold_until(self, now: datetime) -> datetime | None:
+        """Until when the current level holds before the schedule applies, when known.
+
+        A planned vacation ends when its preheating starts; a calendar event
+        at its end. (The card plans the rest from the decision and the schedule.)
+        """
+        rule = self.decision.rule if self.decision else None
+        if rule == RULE_VACATION:
+            return self.house.vacation_until(now)
+        end = self.house.calendar_end
+        if self._calendar_preset() is not None and end is not None and end > now:
+            return end
+        return None
 
     def no_heat_reason(self) -> dict[str, Any] | None:
         """Why the room does not heat although it is below its target."""

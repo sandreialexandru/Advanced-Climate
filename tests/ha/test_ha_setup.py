@@ -313,6 +313,9 @@ async def test_vacation_end_only_and_preheat(
     await hass.services.async_call(DOMAIN, "set_vacation", {"end": end}, blocking=True)
     await hass.async_block_till_done()
     assert hass.states.get("sensor.bedroom_decision").state == "vacation"
+    # The card plans away until the preheating starts (4 h before the end).
+    hold = hass.states.get("sensor.bedroom_decision").attributes["hold_until"]
+    assert dt_util.parse_datetime(hold) == dt_util.as_utc(end) - timedelta(hours=4)
 
     # 4 h before the end (default): the schedule, although nobody is near.
     await _tick(hass, freezer, 6 * 3600 + 60)

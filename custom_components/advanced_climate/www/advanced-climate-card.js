@@ -17,10 +17,15 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.12.7";
+const CARD_VERSION = "1.13.0";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
+// Decisions that hold until something changes: the plan keeps them.
+const FLAT_RULES = [
+  "mode_off", "summer", "out_of_season", "pause", "presence_far", "presence_nearby",
+  "sensor_fallback", "outdoor_cutoff", "vacation",
+];
 // A target that is only a temperature (no level): neutral.
 const TEMP_COLOR = "var(--ac-fixed)";
 const PRESET_COLORS = {
@@ -1142,32 +1147,42 @@ class AdvancedClimateCard extends HTMLElement {
     let cursor = now;
     let preset = a.preset;
     let value = num(a.target_temperature);
-    // A window open, frost protection or the valve exercise last only a while:
-    // ahead the plan shows the schedule (they are seen in the past and now).
     const rule = this._rooms().find((r) => r.attributes.room_id === a.room_id)?.state;
-    if (TEMPORARY_RULES.includes(rule) && plan.length && plan[0].t <= now + 60000) {
-      preset = plan[0].preset;
-      value = num(levels[preset]);
-    }
-    // A manual change for a set time keeps its value until it ends (the
-    // schedule changes meanwhile do not apply); then the schedule of that moment.
+    // Hold a value until a known moment, then the schedule of that moment.
+    const holdThen = (until) => {
+      const end = Math.min(until, t1);
+      if (value !== null) segs.push({ s: now, e: end, v: value, preset, future: true });
+      cursor = end;
+      const atEnd = plan.filter((p) => p.t <= until).at(-1);
+      preset = atEnd ? atEnd.preset : a.preset;
+      value = atEnd ? num(levels[preset]) : null;
+      upcoming = plan.filter((p) => p.t > until && p.t < t1);
+    };
     const ovUntil = a.override?.until ? Date.parse(a.override.until) : NaN;
-    if (a.override && Number.isFinite(ovUntil) && ovUntil > now) {
-      const end = Math.min(ovUntil, t1);
-      // What the manual change holds, also while a higher rule (a window) interrupts it.
+    const hold = a.hold_until ? Date.parse(a.hold_until) : NaN;
+    const holdKnown = Number.isFinite(hold) && hold > now;
+    if (FLAT_RULES.includes(rule) && !(rule === "vacation" && holdKnown)) {
+      // Lasts until something changes (mode, presence, pause, sensors, warm
+      // outside): the schedule does not apply meanwhile.
+      upcoming = [];
+    } else if (a.override && Number.isFinite(ovUntil) && ovUntil > now) {
+      // A manual change for a set time keeps its value until it ends (also while
+      // a window or frost protection interrupts it), limited by the maximum.
       const held = num(a.override.temperature);
       if (held !== null) {
-        // The maximum temperature of the house limits it.
         const max = num(a.max_temperature);
         value = max !== null ? Math.min(held, max) : held;
         preset = a.override.preset ?? null;
       }
-      if (value !== null) segs.push({ s: now, e: end, v: value, preset, future: true });
-      cursor = end;
-      const atEnd = plan.filter((p) => p.t <= ovUntil).at(-1);
-      preset = atEnd ? atEnd.preset : a.preset;
-      value = atEnd ? num(levels[preset]) : null;
-      upcoming = plan.filter((p) => p.t > ovUntil && p.t < t1);
+      holdThen(ovUntil);
+    } else if (holdKnown) {
+      // A planned vacation (until its preheating) or a calendar event (until its end).
+      holdThen(hold);
+    } else if (TEMPORARY_RULES.includes(rule) && plan.length && plan[0].t <= now + 60000) {
+      // A window open, frost protection or the valve exercise last only a while:
+      // ahead the plan shows the schedule (they are seen in the past and now).
+      preset = plan[0].preset;
+      value = num(levels[preset]);
     }
     for (const change of upcoming) {
       if (value !== null) segs.push({ s: cursor, e: change.t, v: value, preset, future: true });

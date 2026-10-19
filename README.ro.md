@@ -370,6 +370,13 @@ fereastră / schimbare manuală, selectorul *Profile*, comutatorul *Child lock*
   *pornit (prognoză)*). Nu apare unde pragul nu are efect: modul Off sau
   Summer, în afara sezonului de încălzire și în pauză (în Vacanță rămâne:
   *away* încă încălzește).
+- **Grafic**: partea planificată urmează ce se va întâmpla: programul; o
+  schimbare manuală cu durată până la sfârșitul ei; o vacanță planificată până
+  la preîncălzire și un eveniment din calendar până la sfârșitul lui, apoi
+  programul; fereastra, antiînghețul sau exercitarea ventilelor doar pentru
+  acum (programul în continuare); modul Off / Summer, în afara sezonului,
+  pauza, toți plecați sau în apropiere, senzorii picați și cald afară așa cum
+  sunt acum, pe toată perioada.
 - **Grafic**: temperatura de afară pe o bandă separată (măsurată, apoi
   prognoza orară punctat; pragul de oprire ca linie punctată) și următoarea
   pornire / oprire anticipată ca perioadă umbrită, cu ora de început.

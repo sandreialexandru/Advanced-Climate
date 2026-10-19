@@ -170,6 +170,8 @@ class House:
         self.person_classes: dict[str, str | None] = {}
         self.arriving = False
         self.forecast_cutoff = False
+        # End of the current calendar event (its level holds until then).
+        self.calendar_end: datetime | None = None
         # Hourly forecast (UTC moment, °C), for the optimal start / stop.
         self.hourly_forecast: list[tuple[datetime, float]] = []
         self.calendar_message: str | None = None
@@ -616,11 +618,17 @@ class House:
         )
 
     def _update_vacation(self, now: datetime) -> None:
-        # Clear a finished period.
         """Forget a vacation period that has ended."""
         if self.vacation_end and now >= self.vacation_end:
             self.vacation_start = None
             self.vacation_end = None
+
+    def vacation_until(self, now: datetime) -> datetime | None:
+        """When the vacation level ends (the preheating starts); None when unknown."""
+        if self.mode == MODE_VACATION:
+            return None  # the mode, until it is changed
+        resume = self._vacation_resume()
+        return resume if resume is not None and resume > now else None
 
     def vacation_active(self, now: datetime | None = None) -> bool:
         """Return True when the vacation level applies."""
@@ -657,12 +665,14 @@ class House:
         """Read the current calendar event (profile or level name)."""
         calendar = self.options.get(CONF_CALENDAR)
         self.calendar_message = None
+        self.calendar_end = None
         if not calendar:
             return
         state = self.hass.states.get(calendar)
         if state is not None and state.state == STATE_ON:
             message = state.attributes.get("message")
             self.calendar_message = str(message).strip() if message else None
+            self.calendar_end = from_iso(state.attributes.get("end_time"))
 
     def is_workday(self, day: date) -> bool:
         """Return whether a day is a workday."""

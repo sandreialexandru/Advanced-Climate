@@ -294,6 +294,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "stop_forecast": _forecast(room, unit),
             "next_estimate": _estimate(room, unit),
             "no_heat_reason": room.no_heat_reason(),
+            "hold_until": iso(room.hold_until(dt_util.utcnow())),
             "alerts": room.house.alerts_for(room),
             "optimal_stop_cancelled": room.stop_cancelled,
             "rate_learned": bool(room.learner.episodes),

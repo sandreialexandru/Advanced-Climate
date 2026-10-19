@@ -351,6 +351,12 @@ badges, the *Profile* select, the *Child lock* switch and *Back to automatic*.
   16°* (or *on (forecast)*). It is not shown where the cutoff cannot act: mode
   Off or Summer, outside the heating season and in a pause (in Vacation it
   stays: *away* still heats).
+- **Chart**: the planned part follows what will happen: the schedule; a
+  manual change for a set time until it ends; a planned vacation until its
+  preheating and a calendar event until its end, then the schedule; a window,
+  frost protection or the valve exercise only for now (the schedule ahead);
+  mode Off / Summer, outside the season, pause, everyone away or nearby, failed
+  sensors and warm outside as they are now, for the whole period.
 - **Chart**: the outdoor temperature in its own band (measured, then the hourly
   forecast dashed; the cutoff limit as a dotted line) and the next optimal
   start / stop as a shaded period with its start time.
