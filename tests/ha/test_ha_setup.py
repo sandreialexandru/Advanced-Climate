@@ -72,6 +72,9 @@ async def test_relay_room(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -
     assert decision.state == "schedule"
     assert decision.attributes["preset"] == "home"
     assert hass.states.get("sensor.bedroom_target_temperature").state == "21.0"
+    # The reason for the card, in its language.
+    assert decision.attributes["reason_key"] == "schedule"
+    assert decision.attributes["reason_params"] == {"preset": "home"}
     assert hass.states.get("input_boolean.heater").state == "on"
     assert hass.states.get("sensor.home_presence").state == "home"
     # Nothing learned yet: no cooling rate.

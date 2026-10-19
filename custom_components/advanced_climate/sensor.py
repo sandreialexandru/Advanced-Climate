@@ -263,6 +263,9 @@ class DecisionSensor(RoomEntity, SensorEntity):
             "entry_id": room.house.entry.entry_id,
             "room_name": room.name,
             "reason": decision.description if decision else None,
+            # The reason for the card, in its language (temperatures in the house unit).
+            "reason_key": decision.key if decision else None,
+            "reason_params": _reason_params(decision.params, unit) if decision else {},
             "target_kind": decision.target.kind if decision else None,
             "preset": decision.target.preset if decision else None,
             "temperature_unit": unit,
@@ -432,6 +435,15 @@ def _forecast(room: Room, unit: str) -> dict[str, Any] | None:
     if forecast is None:
         return None
     return {"at": forecast["at"], "temperature": _t(forecast["temperature"], unit, 1)}
+
+
+def _reason_params(params: dict[str, Any], unit: str) -> dict[str, Any]:
+    """Values of the reason, temperatures in the unit of the house."""
+    temperatures = {"temperature", "limited", "max", "frost", "current", "value"}
+    return {
+        k: (_t(v, unit, 1) if k in temperatures and isinstance(v, (int, float)) else v)
+        for k, v in params.items()
+    }
 
 
 def _override(room: Room, unit: str) -> dict[str, Any] | None:

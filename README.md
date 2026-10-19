@@ -371,6 +371,9 @@ badges, the *Profile* select, the *Child lock* switch and *Back to automatic*.
   schedule; cold rooms are reported only in those rooms.
 - **Links**: values, states, badges and details open the more-info dialog of
   their entity.
+- **Language**: the reason of the decision and the names of the adjustments are
+  shown in the language of the card (the *Decision* sensor has them as
+  `reason_key` and `reason_params`; `reason` stays the English text).
 
 
 ## Translations

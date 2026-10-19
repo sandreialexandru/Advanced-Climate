@@ -1241,6 +1241,7 @@ class Room:
             self.override["interrupted"] = True
         if self.stop_cancelled and decision.rule == RULE_SCHEDULE:
             decision.description += " (optimal stop cancelled: the room got colder than expected)"
+            decision.params = {**decision.params, "stop_cancelled": True}
         self._record(decision, now)
         self.decision = decision
         self.target_temperature = self._resolve_temperature(decision.target)

@@ -392,6 +392,9 @@ fereastră / schimbare manuală, selectorul *Profile*, comutatorul *Child lock*
   programul; camerele reci sunt semnalate doar în acele camere.
 - **Linkuri**: valorile, stările, insignele și detaliile deschid fereastra cu
   detaliile entității.
+- **Limbă**: motivul deciziei și numele ajustărilor apar în limba cardului
+  (senzorul *Decision* le are ca `reason_key` și `reason_params`; `reason`
+  rămâne textul în engleză).
 
 
 ## Traduceri

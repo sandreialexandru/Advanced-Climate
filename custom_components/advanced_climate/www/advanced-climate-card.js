@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.13.0";
+const CARD_VERSION = "1.13.1";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -210,6 +210,39 @@ const TEXT = {
     al_schedule_invalid: "The schedule is invalid ({error}); the default schedule is used.",
     al_battery_low: "Low battery on {device} ({level}%).",
     open_entity: "Open the entity",
+    r_pause: "Paused: no commands are sent",
+    r_valve_exercise: "Valve exercise: valves fully open for a few minutes",
+    r_mode_off: "Mode off: frost protection only",
+    r_summer: "Summer mode: heating off",
+    r_out_of_season: "Outside the heating season: heating off",
+    r_window_off: "Window open: heating off",
+    r_window_frost: "Window open: frost protection",
+    r_override: "Manual change is respected",
+    r_vacation: "Vacation",
+    r_far: "Everyone is far away (outside the nearby zones)",
+    r_nearby: "Nobody home, someone nearby",
+    r_nearby_temperature: "Nobody home, someone nearby: {temperature}",
+    r_no_schedule: "No schedule available",
+    r_sensor_fallback: "Temperature sensors unavailable: eco until they recover",
+    r_unoccupied: "Room unoccupied (schedule: {preset})",
+    r_schedule: "Schedule: {preset}",
+    r_optimal_start: "Optimal start: heating early for {preset}",
+    r_optimal_stop: "Optimal stop: lowering early to {preset}",
+    r_cutoff: "Warm outside: heating off (would be {would})",
+    r_max_level: "Maximum temperature ({preset} is above {max})",
+    r_frost_level: "Frost protection ({preset} is below {frost})",
+    r_max_device: "Maximum temperature: {value} is above {max}",
+    r_frost_below: "Frost protection: {current} is below {frost}",
+    r_frost_holding: "Frost protection: heating up to {frost}",
+    rs_arriving: "someone is on the way home",
+    rs_vacation_preheat: "vacation ends soon: preheating",
+    rs_limited: "limited to {limited}",
+    rs_stop_cancelled: "optimal stop cancelled: the room got colder than expected",
+    off_compensation: "outdoor compensation",
+    off_tariff_high: "high tariff",
+    off_tariff_low: "low tariff",
+    off_pv_surplus: "solar surplus",
+    off_solar_gain: "solar gain",
   },
   ro: {
     title: "Încălzire",
@@ -364,6 +397,39 @@ const TEXT = {
     al_schedule_invalid: "Programul e invalid ({error}); se folosește programul implicit.",
     al_battery_low: "Baterie descărcată la {device} ({level}%).",
     open_entity: "Deschide entitatea",
+    r_pause: "Pauză: nu se trimit comenzi",
+    r_valve_exercise: "Exercitarea ventilelor: ventilele complet deschise câteva minute",
+    r_mode_off: "Mod oprit: doar antiîngheț",
+    r_summer: "Mod vară: încălzire oprită",
+    r_out_of_season: "În afara sezonului de încălzire: încălzire oprită",
+    r_window_off: "Fereastră deschisă: încălzire oprită",
+    r_window_frost: "Fereastră deschisă: antiîngheț",
+    r_override: "Modificarea manuală e respectată",
+    r_vacation: "Vacanță",
+    r_far: "Toți sunt departe (în afara zonelor apropiate)",
+    r_nearby: "Nimeni acasă, cineva în apropiere",
+    r_nearby_temperature: "Nimeni acasă, cineva în apropiere: {temperature}",
+    r_no_schedule: "Niciun program disponibil",
+    r_sensor_fallback: "Senzorii de temperatură indisponibili: eco până revin",
+    r_unoccupied: "Cameră neocupată (program: {preset})",
+    r_schedule: "Program: {preset}",
+    r_optimal_start: "Pornire anticipată: încălzește mai devreme pentru {preset}",
+    r_optimal_stop: "Oprire anticipată: coboară mai devreme la {preset}",
+    r_cutoff: "Cald afară: încălzire oprită (ar fi {would})",
+    r_max_level: "Temperatura maximă ({preset} e peste {max})",
+    r_frost_level: "Antiîngheț ({preset} e sub {frost})",
+    r_max_device: "Temperatura maximă: {value} e peste {max}",
+    r_frost_below: "Antiîngheț: {current} e sub {frost}",
+    r_frost_holding: "Antiîngheț: încălzește până la {frost}",
+    rs_arriving: "cineva e pe drum spre casă",
+    rs_vacation_preheat: "vacanța se termină curând: preîncălzire",
+    rs_limited: "limitat la {limited}",
+    rs_stop_cancelled: "oprire anticipată anulată: camera s-a răcit mai repede decât se aștepta",
+    off_compensation: "compensare după exterior",
+    off_tariff_high: "tarif ridicat",
+    off_tariff_low: "tarif redus",
+    off_pv_surplus: "surplus solar",
+    off_solar_gain: "câștig solar",
   },
 };
 
@@ -968,7 +1034,7 @@ class AdvancedClimateCard extends HTMLElement {
     if (folded) return `<section class="block room">${head}</section>`;
 
     const parts = [
-      `<p class="reason">${esc(a.reason || "")}</p>`,
+      `<p class="reason">${esc(this._reasonText(a))}</p>`,
       this._noHeatHtml(a),
       cfg.show_timeline ? this._timelineHtml(a) : "",
       this._controlsHtml(a, e),
@@ -978,6 +1044,41 @@ class AdvancedClimateCard extends HTMLElement {
       cfg.show_schedule_editor ? this._scheduleHtml(a, stateObj) : "",
     ];
     return `<section class="block room">${head}${parts.join("")}</section>`;
+  }
+
+  /** The reason of the decision in the language of the card (the English text otherwise). */
+  _reasonText(a) {
+    const key = a.reason_key;
+    const base = key ? this._t(`r_${key}`) : null;
+    if (!key || base === `r_${key}`) return a.reason || "";
+    const p = a.reason_params || {};
+    const temp = (v) => (num(v) === null ? "–" : this._temp(v));
+    const values = {
+      preset: p.preset ? this._presetName(a, p.preset) : "",
+      temperature: temp(p.temperature),
+      max: temp(p.max),
+      frost: temp(p.frost),
+      current: temp(p.current),
+      value: temp(p.value),
+      limited: temp(p.limited),
+      would: p.preset ? `${this._presetName(a, p.preset)}${num(p.temperature) !== null ? ` ${this._temp(p.temperature)}` : ""}` : temp(p.temperature),
+    };
+    const fill = (text) => text.replace(/\{(\w+)\}/g, (m, k) => (values[k] !== undefined ? values[k] : m));
+    let text = fill(base);
+    if (p.extra) text += ` (${this._t(`rs_${p.extra}`)})`;
+    const offsets = (a.offsets || [])
+      .map(([label, delta]) => `${this._offsetName(label)} ${delta > 0 ? "+" : ""}${delta}°`)
+      .join(", ");
+    if (offsets) text += ` (${offsets})`;
+    if (p.limited !== undefined) text += ` (${fill(this._t("rs_limited"))})`;
+    if (p.stop_cancelled) text += ` (${this._t("rs_stop_cancelled")})`;
+    return text;
+  }
+
+  /** Name of an adjustment of the target. */
+  _offsetName(label) {
+    const text = this._t(`off_${label}`);
+    return text === `off_${label}` ? label : text;
   }
 
   /** Why a room below its target does not heat. */
@@ -1709,7 +1810,7 @@ class AdvancedClimateCard extends HTMLElement {
     const rate = this._state(e.heating_rate);
     const runtime = this._state(e.heating_runtime);
     const offsets =
-      (a.offsets || []).map(([label, delta]) => `${label} ${delta > 0 ? "+" : ""}${delta}°`).join(", ") ||
+      (a.offsets || []).map(([label, delta]) => `${this._offsetName(label)} ${delta > 0 ? "+" : ""}${delta}°`).join(", ") ||
       this._t("none");
     const active = a.device_level !== undefined ? a.device_level : a.device_preset;
     const fromDevice = a.custom_levels ? a.device_levels || [] : [];
@@ -2825,7 +2926,7 @@ const EDITOR_LABELS = {
     rooms: "Rooms (Decision sensors; empty = all)",
     show_house: "House: presence, mode, pause, guests, vacation",
     show_rooms: "Rooms",
-    show_timeline: "Today's schedule",
+    show_timeline: "Chart: last 24 hours and the next 12",
     show_quick_override: "Set a level for a while",
     show_levels: "Level temperatures",
     show_details: "Details",
@@ -2839,7 +2940,7 @@ const EDITOR_LABELS = {
     rooms: "Camere (senzorii Decision; gol = toate)",
     show_house: "Casa: prezență, mod, pauză, oaspeți, vacanță",
     show_rooms: "Camere",
-    show_timeline: "Programul de azi",
+    show_timeline: "Grafic: ultimele 24 de ore și următoarele 12",
     show_quick_override: "Setare temporară a unui nivel",
     show_levels: "Temperaturile nivelurilor",
     show_details: "Detalii",

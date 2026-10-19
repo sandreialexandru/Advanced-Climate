@@ -147,6 +147,10 @@ class Decision:
     target: Target
     description: str
     offsets: list[tuple[str, float]] = field(default_factory=list)
+    # The reason as a key and its values (temperatures in °C), so the card can
+    # show it in its language; ``description`` is the English text.
+    key: str = ""
+    params: dict = field(default_factory=dict)
 
     def as_dict(self) -> dict:
         """Serialize."""
@@ -173,7 +177,7 @@ def _off(inputs: RoomInputs) -> Target:
 def base_decision(inputs: RoomInputs) -> Decision:
     """Evaluate rules 2-9 (without adjustments and safety)."""
     if inputs.paused:
-        return Decision(RULE_PAUSE, Target(KIND_NONE), "Paused: no commands are sent")
+        return Decision(RULE_PAUSE, Target(KIND_NONE), "Paused: no commands are sent", key="pause")
     # The valves are exercised in every mode (above all in summer), but not
     # with a window open.
     if inputs.valve_exercise and not inputs.window_open:
@@ -186,32 +190,38 @@ def base_decision(inputs: RoomInputs) -> Decision:
                 else inputs.max_temp,
             ),
             "Valve exercise: valves fully open for a few minutes",
+            key="valve_exercise",
         )
     if inputs.mode == MODE_OFF:
         return Decision(
             RULE_MODE_OFF,
             Target(KIND_TEMPERATURE, temperature=inputs.frost_temp),
             "Mode off: frost protection only",
+            key="mode_off",
         )
     if inputs.mode == MODE_SUMMER:
-        return Decision(RULE_SUMMER, _off(inputs), "Summer mode: heating off")
+        return Decision(RULE_SUMMER, _off(inputs), "Summer mode: heating off", key="summer")
     if not inputs.season_active:
         return Decision(
-            RULE_OUT_OF_SEASON, _off(inputs), "Outside the heating season: heating off"
+            RULE_OUT_OF_SEASON, _off(inputs), "Outside the heating season: heating off",
+            key="out_of_season",
         )
     if inputs.window_open:
         if inputs.window_action == WINDOW_ACTION_OFF:
-            return Decision(RULE_WINDOW, _off(inputs), "Window open: heating off")
+            return Decision(RULE_WINDOW, _off(inputs), "Window open: heating off", key="window_off")
         return Decision(
             RULE_WINDOW,
             Target(KIND_TEMPERATURE, temperature=inputs.frost_temp),
             "Window open: frost protection",
+            key="window_frost",
         )
     if inputs.override_active:
-        return Decision(RULE_OVERRIDE, Target(KIND_NONE), "Manual change is respected")
+        return Decision(
+            RULE_OVERRIDE, Target(KIND_NONE), "Manual change is respected", key="override"
+        )
     if inputs.mode == MODE_VACATION or inputs.vacation_active:
         return Decision(
-            RULE_VACATION, Target(KIND_PRESET, preset=PRESET_AWAY), "Vacation"
+            RULE_VACATION, Target(KIND_PRESET, preset=PRESET_AWAY), "Vacation", key="vacation"
         )
     if not inputs.arriving and not inputs.vacation_preheat:
         if inputs.presence == PRESENCE_FAR:
@@ -219,6 +229,7 @@ def base_decision(inputs: RoomInputs) -> Decision:
                 RULE_FAR,
                 Target(KIND_PRESET, preset=PRESET_AWAY),
                 "Everyone is far away (outside the nearby zones)",
+                key="far",
             )
         if inputs.presence == PRESENCE_NEARBY:
             if inputs.nearby_mode == NEARBY_TEMPERATURE and inputs.nearby_temp is not None:
@@ -226,11 +237,14 @@ def base_decision(inputs: RoomInputs) -> Decision:
                     RULE_NEARBY,
                     Target(KIND_TEMPERATURE, temperature=inputs.nearby_temp),
                     "Nobody home, someone nearby: fixed temperature",
+                    key="nearby_temperature",
+                    params={"temperature": inputs.nearby_temp},
                 )
             return Decision(
                 RULE_NEARBY,
                 Target(KIND_PRESET, preset=PRESET_ECO),
                 "Nobody home, someone nearby",
+                key="nearby",
             )
     arriving = (
         " (vacation ends soon: preheating)"
@@ -240,29 +254,40 @@ def base_decision(inputs: RoomInputs) -> Decision:
         else ""
     )
     if inputs.schedule_preset is None:
-        return Decision(RULE_SCHEDULE, Target(KIND_NONE), "No schedule available")
+        return Decision(RULE_SCHEDULE, Target(KIND_NONE), "No schedule available", key="no_schedule")
     preset = inputs.schedule_preset
     if inputs.sensor_failed:
         return Decision(
             RULE_SENSOR_FALLBACK,
             Target(KIND_PRESET, preset=PRESET_ECO),
             "Temperature sensors unavailable: eco until they recover",
+            key="sensor_fallback",
         )
     if inputs.room_unoccupied and _warmer(inputs, preset, PRESET_ECO):
         return Decision(
             RULE_UNOCCUPIED,
             Target(KIND_PRESET, preset=PRESET_ECO),
             f"Room unoccupied (schedule: {preset})",
+            key="unoccupied",
+            params={"preset": preset},
         )
     descriptions = {
         RULE_SCHEDULE: f"Schedule: {preset}",
         RULE_OPTIMAL_START: f"Optimal start: heating early for {preset}",
         RULE_OPTIMAL_STOP: f"Optimal stop: lowering early to {preset}",
     }
+    keys = {RULE_OPTIMAL_START: "optimal_start", RULE_OPTIMAL_STOP: "optimal_stop"}
+    params: dict = {"preset": preset}
+    if inputs.vacation_preheat:
+        params["extra"] = "vacation_preheat"
+    elif inputs.arriving:
+        params["extra"] = "arriving"
     return Decision(
         inputs.schedule_rule,
         Target(KIND_PRESET, preset=preset),
         descriptions.get(inputs.schedule_rule, f"Schedule: {preset}") + arriving,
+        key=keys.get(inputs.schedule_rule, "schedule"),
+        params=params,
     )
 
 
@@ -293,6 +318,13 @@ def decide(inputs: RoomInputs) -> Decision:
             RULE_CUTOFF,
             _off(inputs),
             f"Warm outside: heating off (would be {target.describe(inputs.unit)})",
+            key="cutoff",
+            params={
+                "preset": target.preset,
+                "temperature": target.temperature
+                if target.kind == KIND_TEMPERATURE
+                else inputs.level_temp(target.preset or ""),
+            },
         )
         target = decision.target
     elif adjustable and _heating(target) and inputs.offsets:
@@ -318,6 +350,8 @@ def decide(inputs: RoomInputs) -> Decision:
                     target,
                     f"{decision.description} ({labels})",
                     list(inputs.offsets),
+                    key=decision.key,
+                    params=decision.params,
                 )
 
     return apply_safety(decision, inputs)
@@ -338,6 +372,8 @@ def apply_safety(decision: Decision, inputs: RoomInputs) -> Decision:
                 target,
                 f"{decision.description} (limited to {fmt_temp(clamped, inputs.unit)})",
                 decision.offsets,
+                key=decision.key,
+                params={**decision.params, "limited": clamped},
             )
         return decision
     if target.kind == KIND_PRESET:
@@ -347,12 +383,16 @@ def apply_safety(decision: Decision, inputs: RoomInputs) -> Decision:
                 RULE_MAX,
                 Target(KIND_TEMPERATURE, preset=target.preset, temperature=maximum),
                 f"Maximum temperature ({target.preset} is above {fmt_temp(maximum, inputs.unit)})",
+                key="max_level",
+                params={"preset": target.preset, "max": maximum},
             )
         if level is not None and level < frost:
             return Decision(
                 RULE_SAFETY,
                 Target(KIND_TEMPERATURE, preset=target.preset, temperature=frost),
                 f"Frost protection ({target.preset} is below {fmt_temp(frost, inputs.unit)})",
+                key="frost_level",
+                params={"preset": target.preset, "frost": frost},
             )
         return decision
     # No command (manual change, pause): the maximum temperature still applies
@@ -367,6 +407,8 @@ def apply_safety(decision: Decision, inputs: RoomInputs) -> Decision:
             Target(KIND_TEMPERATURE, temperature=maximum),
             f"Maximum temperature: {fmt_temp(inputs.device_setpoint, inputs.unit)} is above "
             f"{fmt_temp(maximum, inputs.unit)}",
+            key="max_device",
+            params={"value": inputs.device_setpoint, "max": maximum},
         )
     # Off or no command: protect against frost. Once started it continues while the
     # device still heats, so it does not switch on and off around the limit.
@@ -377,7 +419,13 @@ def apply_safety(decision: Decision, inputs: RoomInputs) -> Decision:
             if inputs.current_temp < frost
             else f"Frost protection: heating up to {fmt_temp(frost, inputs.unit)}"
         )
-        return Decision(RULE_SAFETY, Target(KIND_TEMPERATURE, temperature=frost), text)
+        return Decision(
+            RULE_SAFETY,
+            Target(KIND_TEMPERATURE, temperature=frost),
+            text,
+            key="frost_below" if inputs.current_temp < frost else "frost_holding",
+            params={"current": inputs.current_temp, "frost": frost},
+        )
     return decision
 
 

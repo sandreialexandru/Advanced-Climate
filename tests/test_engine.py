@@ -324,3 +324,24 @@ class FrostHoldTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReasonKeyTest(unittest.TestCase):
+    """Every decision has a reason key for the card."""
+
+    def test_every_decision_has_a_key(self) -> None:
+        import itertools
+
+        for paused, valve, mode, window, override, presence, cutoff, current in itertools.product(
+            [False, True], [False, True],
+            [const.MODE_AUTO, const.MODE_VACATION, const.MODE_OFF, const.MODE_SUMMER],
+            [False, True], [False, True],
+            [const.PRESENCE_HOME, const.PRESENCE_NEARBY, const.PRESENCE_FAR],
+            [False, True], [5.0, 20.0],
+        ):
+            d = engine.decide(replace(
+                inputs(), paused=paused, valve_exercise=valve, mode=mode, window_open=window,
+                override_active=override, presence=presence, cutoff_active=cutoff,
+                current_temp=current,
+            ))
+            self.assertTrue(d.key, d)
