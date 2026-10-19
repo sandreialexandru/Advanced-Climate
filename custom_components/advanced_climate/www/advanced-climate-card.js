@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.12.4";
+const CARD_VERSION = "1.12.5";
 
 // A target that is only a temperature (no level): neutral.
 const TEMP_COLOR = "var(--ac-fixed)";
@@ -1136,17 +1136,29 @@ class AdvancedClimateCard extends HTMLElement {
       .map((p) => ({ t: Date.parse(p.at), preset: p.preset }))
       .filter((p) => Number.isFinite(p.t))
       .sort((x, y) => x.t - y.t);
-    const upcoming = plan.filter((p) => p.t > now && p.t < t1);
+    let upcoming = plan.filter((p) => p.t > now && p.t < t1);
     let cursor = now;
     let preset = a.preset;
     let value = num(a.target_temperature);
+    // A manual change for a set time keeps its value until it ends (the
+    // schedule changes meanwhile do not apply); then the schedule of that moment.
+    const ovUntil = a.override?.until ? Date.parse(a.override.until) : NaN;
+    if (a.override && Number.isFinite(ovUntil) && ovUntil > now) {
+      const end = Math.min(ovUntil, t1);
+      if (value !== null) segs.push({ s: now, e: end, v: value, preset, future: true });
+      cursor = end;
+      const atEnd = plan.filter((p) => p.t <= ovUntil).at(-1);
+      preset = atEnd ? atEnd.preset : a.preset;
+      value = atEnd ? num(levels[preset]) : null;
+      upcoming = plan.filter((p) => p.t > ovUntil && p.t < t1);
+    }
     for (const change of upcoming) {
       if (value !== null) segs.push({ s: cursor, e: change.t, v: value, preset, future: true });
       cursor = change.t;
       preset = change.preset;
       value = num(levels[preset]);
     }
-    if (value !== null) segs.push({ s: cursor, e: t1, v: value, preset, future: true });
+    if (value !== null && cursor < t1) segs.push({ s: cursor, e: t1, v: value, preset, future: true });
     // Neighbours with the same level form one segment.
     const merged = [];
     for (const sg of segs) {
