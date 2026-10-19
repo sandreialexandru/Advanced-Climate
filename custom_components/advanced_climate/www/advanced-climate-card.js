@@ -17,8 +17,10 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.12.6";
+const CARD_VERSION = "1.12.7";
 
+// Decisions that last only a while: the planned part of the chart shows the schedule.
+const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
 // A target that is only a temperature (no level): neutral.
 const TEMP_COLOR = "var(--ac-fixed)";
 const PRESET_COLORS = {
@@ -1140,6 +1142,13 @@ class AdvancedClimateCard extends HTMLElement {
     let cursor = now;
     let preset = a.preset;
     let value = num(a.target_temperature);
+    // A window open, frost protection or the valve exercise last only a while:
+    // ahead the plan shows the schedule (they are seen in the past and now).
+    const rule = this._rooms().find((r) => r.attributes.room_id === a.room_id)?.state;
+    if (TEMPORARY_RULES.includes(rule) && plan.length && plan[0].t <= now + 60000) {
+      preset = plan[0].preset;
+      value = num(levels[preset]);
+    }
     // A manual change for a set time keeps its value until it ends (the
     // schedule changes meanwhile do not apply); then the schedule of that moment.
     const ovUntil = a.override?.until ? Date.parse(a.override.until) : NaN;
