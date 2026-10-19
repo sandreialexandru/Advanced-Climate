@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "1.13.1";
+const CARD_VERSION = "1.13.2";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -93,8 +93,8 @@ const TEXT = {
     to: "To",
     set_vacation: "Save vacation",
     clear_vacation: "Clear vacation",
-    reevaluate: "Reevaluate now",
-    clear_all: "Clear all manual changes",
+    reevaluate: "Reevaluate",
+    clear_all: "Clear manual changes",
     profile: "Profile",
     child_lock: "Child lock",
     next: "Next",
@@ -280,8 +280,8 @@ const TEXT = {
     to: "Până la",
     set_vacation: "Salvează vacanța",
     clear_vacation: "Șterge vacanța",
-    reevaluate: "Reevaluează acum",
-    clear_all: "Anulează toate modificările manuale",
+    reevaluate: "Reevaluează",
+    clear_all: "Anulează modificările",
     profile: "Profil",
     child_lock: "Blocare modificări",
     next: "Următor",
@@ -937,12 +937,13 @@ class AdvancedClimateCard extends HTMLElement {
             ${this._error[`vac-${house.id}`] ? `<p class="error">${esc(this._error[`vac-${house.id}`])}</p>` : ""}
           </div>
         </details>
-        <div class="row wrap">
-          ${e.reevaluate ? this._btn(this._t("reevaluate"), `data-action="press" data-entity="${esc(e.reevaluate)}"`, { icon: "refresh" }) : ""}
+        <div class="house-actions">
+          ${e.reevaluate ? this._btn(this._t("reevaluate"), `data-action="press" data-entity="${esc(e.reevaluate)}"`, { icon: "refresh", kind: "soft-accent" }) : ""}
           ${
             e.clear_overrides
               ? this._btn(this._t("clear_all"), `data-action="press" data-entity="${esc(e.clear_overrides)}"`, {
                   icon: "restore",
+                  kind: "soft-warn",
                 })
               : ""
           }
@@ -2634,6 +2635,14 @@ const STYLE = `
     padding: 7px 14px; border-radius: 10px; border: 1px solid var(--ac-line); background: var(--card-background-color);
     color: var(--primary-text-color); cursor: pointer; transition: background .15s, border-color .15s; }
   .btn:hover { background: var(--ac-surface-2); }
+  .house-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+  .house-actions .btn { justify-content: center; padding: 7px 8px; min-width: 0; }
+  .house-actions .btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .btn.soft-accent { color: color-mix(in srgb, var(--ac-accent) 75%, var(--primary-text-color)); background: color-mix(in srgb, var(--ac-accent) 12%, transparent);
+    border-color: color-mix(in srgb, var(--ac-accent) 40%, transparent); }
+  .btn.soft-warn { color: color-mix(in srgb, var(--warning-color, #f0ad4e) 70%, var(--primary-text-color)); background: color-mix(in srgb, var(--warning-color, #f0ad4e) 12%, transparent);
+    border-color: color-mix(in srgb, var(--warning-color, #f0ad4e) 45%, transparent); }
+  .btn.soft-accent:hover, .btn.soft-warn:hover { filter: brightness(1.1); }
   .btn ha-icon { --mdc-icon-size: 18px; }
   .btn.primary { background: var(--ac-accent); border-color: var(--ac-accent); color: var(--text-primary-color, #fff); }
   .btn.primary:hover { filter: brightness(1.08); }
