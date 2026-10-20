@@ -384,7 +384,9 @@ badges, the *Profile* select, the *Child lock* switch and *Back to automatic*.
   sensors and warm outside as they are now, for the whole period.
 - **Chart**: the outdoor temperature in its own band (measured, then the hourly
   forecast dashed; the cutoff limit as a dotted line) and the next optimal
-  start / stop as a shaded period with its start time.
+  start / stop as a shaded period with its start time (never longer than the
+  room settings allow); in it the planned target is already the next level, and
+  the tooltip shows *Early start* / *Early stop* above it.
 - **Pause**: a banner at the top of the card while the house is paused (the
   *Pause* switch stays the only control).
 - **Details**, grouped: the alerts of the room and of the house (first, in the

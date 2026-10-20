@@ -404,7 +404,10 @@ fereastră / schimbare manuală, selectorul *Profile*, comutatorul *Child lock*
   sunt acum, pe toată perioada.
 - **Grafic**: temperatura de afară pe o bandă separată (măsurată, apoi
   prognoza orară punctat; pragul de oprire ca linie punctată) și următoarea
-  pornire / oprire anticipată ca perioadă umbrită, cu ora de început.
+  pornire / oprire anticipată ca perioadă umbrită, cu ora de început (niciodată
+  mai lungă decât permit setările camerei); în ea ținta programată este deja
+  nivelul următor, iar tooltip-ul arată *Pornire anticipată* / *Oprire
+  anticipată* deasupra ei.
 - **Pauză**: o bandă sus pe card cât timp casa e în pauză (comutatorul *Pause*
   rămâne singurul control).
 - **Detalii**, pe grupuri: alertele camerei și ale casei (primele, în limba

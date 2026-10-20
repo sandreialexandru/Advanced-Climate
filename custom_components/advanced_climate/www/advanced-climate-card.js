@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.1.0";
+const CARD_VERSION = "2.1.1";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -142,6 +142,8 @@ const TEXT = {
     legend_target: "Target / plan",
     legend_heat: "Heating",
     planned: "Planned",
+    tip_early_start: "Early start",
+    tip_early_stop: "Early stop",
     loading: "loading history…",
     drag_hint: "Drag the handles on the bar to move a start time in 5-minute steps (arrow keys: 5 min, Shift: 1 h). Levels are chosen in the list.",
     copy_to: "Copy over…",
@@ -340,6 +342,8 @@ const TEXT = {
     legend_target: "Țintă / program",
     legend_heat: "Încălzire",
     planned: "Programat",
+    tip_early_start: "Pornire anticipată",
+    tip_early_stop: "Oprire anticipată",
     loading: "se încarcă istoricul…",
     drag_hint: "Trage de mânerele de pe bară ca să muți o oră de început din 5 în 5 minute (săgeți: 5 min, Shift: 1 h). Nivelurile se aleg în listă.",
     copy_to: "Copiază peste…",
@@ -1328,11 +1332,42 @@ class AdvancedClimateCard extends HTMLElement {
       value = num(levels[preset]);
     }
     if (value !== null && cursor < t1) segs.push({ s: cursor, e: t1, v: value, preset, future: true });
+    // Optimal start / stop: from its beginning the target is already the next
+    // level (the shaded period of the chart, limited by the room settings).
+    const est = a.next_estimate;
+    if (est && (est.started_at || num(est.minutes))) {
+      const b0 = Math.max(Date.parse(est.started_at || est.starts_at), now);
+      const b1 = Date.parse(est.at);
+      const bv = num(est.temperature) ?? num(levels[est.preset]);
+      if (Number.isFinite(b0) && Number.isFinite(b1) && b1 > b0 && bv !== null) {
+        // The planned parts in that period give way to the next level.
+        const split = [];
+        for (const sg of segs) {
+          if (!sg.future || sg.e <= b0 || sg.s >= b1) {
+            split.push(sg);
+            continue;
+          }
+          if (sg.s < b0) split.push({ ...sg, e: b0 });
+          if (sg.e > b1) split.push({ ...sg, s: b1 });
+        }
+        split.push({ s: b0, e: Math.min(b1, t1), v: bv, preset: est.preset, future: true, opt: est.kind });
+        split.sort((p, q) => p.s - q.s);
+        segs.length = 0;
+        segs.push(...split);
+      }
+    }
     // Neighbours with the same level form one segment.
     const merged = [];
     for (const sg of segs) {
       const prev = merged[merged.length - 1];
-      if (prev && prev.v === sg.v && prev.preset === sg.preset && prev.future === sg.future && prev.e >= sg.s - 1000) {
+      if (
+        prev &&
+        prev.v === sg.v &&
+        prev.preset === sg.preset &&
+        prev.future === sg.future &&
+        prev.opt === sg.opt &&
+        prev.e >= sg.s - 1000
+      ) {
         prev.e = sg.e;
       } else {
         merged.push({ ...sg });
@@ -1738,6 +1773,9 @@ class AdvancedClimateCard extends HTMLElement {
     const time = new Date(t).toLocaleString(this._lang(), { weekday: "short", hour: "2-digit", minute: "2-digit" });
     const rows = [`<b>${esc(time)}</b>`];
     if (t <= d.now && temp !== null) rows.push(`<span><i class="lg-temp"></i>${temp.toFixed(1)}°</span>`);
+    if (seg && seg.opt) {
+      rows.push(`<span class="optword">${esc(this._t(seg.opt === "optimal_start" ? "tip_early_start" : "tip_early_stop"))}</span>`);
+    }
     if (seg) {
       rows.push(
         `<span><i style="background:${PRESET_COLORS[seg.preset] || TEMP_COLOR}"></i>${
@@ -2882,6 +2920,7 @@ const STYLE = `
   .tip span { display: inline-flex; align-items: center; gap: 6px; }
   .tip i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; }
   .tip .hotword { color: var(--ac-hot); font-weight: 600; }
+  .tip .optword { font-weight: 600; }
   .lg { display: inline-flex; align-items: center; gap: 6px; }
   .lg i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
   .lg-temp { background: var(--ac-accent); }
