@@ -34,6 +34,7 @@ from .const import (
     PRESENCE_NEARBY,
     PRESET_AWAY,
     PRESET_ECO,
+    PRESET_FROST,
     RULE_CUTOFF,
     RULE_FAR,
     RULE_MAX,
@@ -255,6 +256,14 @@ def base_decision(inputs: RoomInputs) -> Decision:
     )
     if inputs.schedule_preset is None:
         return Decision(RULE_SCHEDULE, Target(KIND_NONE), "No schedule available", key="no_schedule")
+    if inputs.schedule_preset == PRESET_FROST:
+        # No active profile covers this day: frost protection only.
+        return Decision(
+            RULE_SCHEDULE,
+            Target(KIND_TEMPERATURE, temperature=inputs.frost_temp),
+            "No active schedule profile for this day: frost protection",
+            key="no_profile",
+        )
     preset = inputs.schedule_preset
     if inputs.sensor_failed:
         return Decision(
@@ -305,13 +314,15 @@ def decide(inputs: RoomInputs) -> Decision:
     decision = base_decision(inputs)
     target = decision.target
 
+    # Frost protection for a day without an active profile is not adjusted,
+    # like the other frost protections.
     adjustable = decision.rule not in (
         RULE_PAUSE,
         RULE_MODE_OFF,
         RULE_VALVE_EXERCISE,
         RULE_WINDOW,
         RULE_OVERRIDE,
-    )
+    ) and decision.key != "no_profile"
     # Outdoor cutoff: heating is not needed when it is warm outside.
     if adjustable and inputs.cutoff_active and _heating(target):
         decision = Decision(

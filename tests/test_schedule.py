@@ -135,3 +135,121 @@ class LookupTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+TEXT = (
+    "workday: 00:00 sleep, 06:00 home, 22:00 sleep\n"
+    "weekend: 00:00 sleep, 08:00 home, 23:00 sleep\n"
+    "workday2: 00:00 sleep, 06:00 comfort, 22:00 sleep\n"
+    "wednesday: 00:00 sleep, 09:00 activity, 22:00 sleep\n"
+    "week: 00:00 sleep, 07:00 home, 22:00 sleep"
+)
+# 2026-10-12 Monday, 2026-10-14 Wednesday, 2026-10-15 Thursday, 2026-10-17 Saturday.
+MON, WED, THU, SAT = (datetime(2026, 10, d, 12, 0, tzinfo=TZ) for d in (12, 14, 15, 17))
+
+
+class ProfileDaysTest(unittest.TestCase):
+    def _sched(self, days: dict | None) -> object:
+        return schedule.Schedule(schedule.parse_schedule(TEXT, PRESETS), 0, days)
+
+    def test_defaults_keep_the_earlier_selection(self) -> None:
+        days = schedule.default_profile_days(["workday", "weekend", "fri", "party"])
+        self.assertEqual(days["workday"], {"days": "workday", "enabled": True})
+        self.assertEqual(days["weekend"], {"days": "weekend", "enabled": True})
+        self.assertEqual(days["fri"], {"days": ["fri"], "enabled": True})
+        self.assertEqual(days["party"], {"days": "all", "enabled": False})
+        # Only one of workday / weekend: it is for all days, as before.
+        self.assertEqual(
+            schedule.default_profile_days(["workday", "x"])["workday"], {"days": "all", "enabled": True}
+        )
+        # No known name: the first profile for all days.
+        only = schedule.default_profile_days(["home_office", "late"])
+        self.assertEqual(only["home_office"], {"days": "all", "enabled": True})
+        self.assertFalse(only["late"]["enabled"])
+
+    def test_selection(self) -> None:
+        sched = self._sched(
+            {
+                "workday2": {"days": "workday", "enabled": True},
+                "weekend": {"days": "weekend", "enabled": True},
+                "wednesday": {"days": ["wed"], "enabled": True},
+            }
+        )
+        self.assertEqual(sched.lookup(MON, weekday_info).profile, "workday2")
+        self.assertEqual(sched.lookup(MON, weekday_info).preset, "comfort")
+        # A profile of a weekday is above the workday profile on that day only.
+        self.assertEqual(sched.lookup(WED, weekday_info).profile, "wednesday")
+        self.assertEqual(sched.lookup(THU, weekday_info).profile, "workday2")
+        self.assertEqual(sched.lookup(SAT, weekday_info).profile, "weekend")
+        # A holiday on a weekday uses the weekend profile.
+        self.assertEqual(sched.lookup(MON, lambda d: (False, None)).profile, "weekend")
+        # A calendar event forces any profile, also one that is off.
+        self.assertEqual(sched.lookup(MON, lambda d: (True, "week")).profile, "week")
+
+    def test_all_days(self) -> None:
+        sched = self._sched({"week": {"days": "all", "enabled": True}})
+        for moment in (MON, WED, SAT):
+            self.assertEqual(sched.lookup(moment, weekday_info).profile, "week")
+
+    def test_uncovered_day_is_frost(self) -> None:
+        sched = self._sched({"workday": {"days": "workday", "enabled": True}})
+        state = sched.lookup(SAT, weekday_info)
+        self.assertIsNone(state.profile)
+        self.assertEqual(state.preset, const.PRESET_FROST)
+        # Friday evening: the next change is the frost of Saturday 00:00.
+        friday = datetime(2026, 10, 16, 23, 0, tzinfo=TZ)
+        state = sched.lookup(friday, weekday_info)
+        self.assertEqual(state.next_change, datetime(2026, 10, 17, 0, 0, tzinfo=TZ))
+        self.assertEqual(state.next_preset, const.PRESET_FROST)
+        # Sunday: Monday 00:00 is sleep again.
+        sunday = datetime(2026, 10, 18, 12, 0, tzinfo=TZ)
+        state = sched.lookup(sunday, weekday_info)
+        self.assertEqual((state.preset, state.next_preset), (const.PRESET_FROST, "sleep"))
+        self.assertEqual(state.next_change, datetime(2026, 10, 19, 0, 0, tzinfo=TZ))
+
+    def test_overlap(self) -> None:
+        o = schedule.overlap
+        self.assertTrue(o("all", "workday"))
+        self.assertTrue(o("all", "weekend"))
+        self.assertTrue(o("workday", "workday"))
+        self.assertFalse(o("workday", "weekend"))
+        self.assertFalse(o(["wed"], "workday"))
+        self.assertFalse(o(["wed"], "all"))
+        self.assertTrue(o(["wed", "fri"], ["fri"]))
+        self.assertFalse(o(["wed"], ["thu"]))
+
+    def test_validate_and_normalize(self) -> None:
+        names = ["workday", "weekend", "workday2"]
+        with self.assertRaises(schedule.ScheduleError):
+            schedule.validate_profile_days(
+                {"workday": {"days": "workday", "enabled": True}, "workday2": {"days": "workday", "enabled": True}},
+                names,
+            )
+        for bad in ({"nope": {"days": "all", "enabled": True}}, {"workday": {"days": [], "enabled": True}},
+                    {"workday": {"days": ["xyz"], "enabled": True}}, {"workday": {"days": "daily"}}):
+            with self.assertRaises(schedule.ScheduleError):
+                schedule.validate_profile_days(bad, names)
+        ok = schedule.validate_profile_days({"workday2": {"days": ["fri", "mon"], "enabled": True}}, names)
+        self.assertEqual(ok["workday2"], {"days": ["mon", "fri"], "enabled": True})
+        # Profiles without data are off; overlapping saved data: the later one is turned off.
+        self.assertEqual(ok["workday"], {"days": "all", "enabled": False})
+        fixed = schedule.normalize_profile_days(
+            {"workday": {"days": "all", "enabled": True}, "weekend": {"days": "weekend", "enabled": True}}, names
+        )
+        self.assertFalse(fixed["weekend"]["enabled"])
+
+    def test_uncovered_days(self) -> None:
+        u = schedule.uncovered_days
+        self.assertEqual(
+            u({"a": {"days": "workday", "enabled": True}, "b": {"days": "weekend", "enabled": True}}),
+            {"days": [], "free_days": False, "workdays": False},
+        )
+        self.assertEqual(
+            u({"a": {"days": "workday", "enabled": True}}),
+            {"days": ["sat", "sun"], "free_days": True, "workdays": False},
+        )
+        self.assertEqual(
+            u({"a": {"days": ["mon", "wed"], "enabled": True}, "b": {"days": "weekend", "enabled": True}}),
+            {"days": ["tue", "thu", "fri"], "free_days": False, "workdays": True},
+        )
+        self.assertEqual(u({"a": {"days": "all", "enabled": True}})["days"], [])

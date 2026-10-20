@@ -141,7 +141,7 @@
           "day_boundary": "Ziua programului începe la"
         },
         "data_description": {
-          "workday_sensor": "Senzorul integrării Workday, ca sărbătorile să folosească profilul de weekend. Fără el, luni–vineri sunt zile lucrătoare.",
+          "workday_sensor": "Senzorul integrării Workday, ca sărbătorile să folosească profilul zilelor de weekend. Fără el, luni–vineri sunt zile lucrătoare.",
           "calendar": "Opțional. Un eveniment cu numele unui profil (de ex. home_office) sau al unui nivel (de ex. away) îl aplică cât durează evenimentul. Lasă gol dacă nu planifici zilele în calendar.",
           "day_boundary": "Lasă 00:00. Schimbă doar pentru ture de noapte, ca noaptea să aparțină zilei de dinainte."
         }
@@ -567,7 +567,7 @@
           "data": {
             "schedule": "Program"
           },
-          "description": "Un profil pe linie: `profil: HH:MM preset, HH:MM preset`. Profiluri: workday, weekend, mon…sun sau orice nume (manual sau din calendar). {error}",
+          "description": "Un profil pe linie: `profil: HH:MM preset, HH:MM preset`. Zilele fiecărui profil și dacă e pornit se setează în card (Program). Profilurile mai vechi numite workday, weekend sau mon…sun își păstrează zilele. {error}",
           "data_description": {
             "schedule": "de ex. `workday: 00:00 sleep, 06:00 home, 22:00 sleep`. Mai simplu de editat din card."
           }
@@ -703,12 +703,6 @@
           "vacation": "Vacanță",
           "off": "Oprit",
           "summer": "Vară"
-        }
-      },
-      "profile": {
-        "name": "Profil",
-        "state": {
-          "auto": "Auto"
         }
       }
     },
@@ -974,6 +968,10 @@
         "profiles": {
           "name": "Profiluri",
           "description": "Profiluri ca obiect: nume profil -> listă de ore și preseturi (folosit de card)."
+        },
+        "profile_days": {
+          "name": "Zilele profilurilor",
+          "description": "Zilele și pornit / oprit pentru fiecare profil: nume profil -> {\"days\": \"all\" | \"workday\" | \"weekend\" | [\"mon\", …], \"enabled\": true | false} (folosit de card). Profilurile pornite nu se pot suprapune."
         }
       }
     }

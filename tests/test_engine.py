@@ -234,6 +234,20 @@ class OptimalPeriodTest(unittest.TestCase):
         self.assertEqual((minutes, out), (120, -4.0))
 
 
+class NoProfileTest(unittest.TestCase):
+    def test_day_without_profile_is_frost(self) -> None:
+        d = engine.decide(inputs(schedule_preset=const.PRESET_FROST, offsets=[("tariff", 3.0)]))
+        self.assertEqual(d.key, "no_profile")
+        self.assertEqual(d.rule, const.RULE_SCHEDULE)
+        self.assertEqual(d.target.kind, engine.KIND_TEMPERATURE)
+        # Not adjusted: the frost temperature itself.
+        self.assertEqual(d.target.temperature, inputs().frost_temp)
+        # Rules above the schedule still apply.
+        self.assertEqual(
+            engine.decide(inputs(schedule_preset=const.PRESET_FROST, presence=const.PRESENCE_FAR)).key, "far"
+        )
+
+
 class OptimalTest(unittest.TestCase):
     def test_start(self) -> None:
         change = NOW + timedelta(minutes=50)

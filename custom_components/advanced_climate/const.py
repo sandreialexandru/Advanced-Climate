@@ -23,6 +23,9 @@ PRESET_AWAY: Final = "away"
 PRESET_COMFORT: Final = "comfort"
 PRESET_ACTIVITY: Final = "activity"
 PRESET_NONE: Final = "none"
+# Not a level of the device: the schedule has no active profile for the day,
+# so the room keeps its frost protection.
+PRESET_FROST: Final = "frost"
 
 PRESETS: Final = (
     PRESET_HOME,
@@ -270,6 +273,11 @@ CONF_WINDOW_DROP_DEGREES: Final = "window_drop_degrees"
 CONF_WINDOW_DROP_MINUTES: Final = "window_drop_minutes"
 CONF_SCHEDULE_SOURCE: Final = "schedule_source"
 CONF_SCHEDULE: Final = "schedule"
+# Days and on / off of each profile: {name: {"days": ..., "enabled": bool}}.
+CONF_PROFILE_DAYS: Final = "profile_days"
+DAYS_ALL: Final = "all"
+DAYS_WORKDAY: Final = "workday"
+DAYS_WEEKEND: Final = "weekend"
 CONF_SCHEDULE_HELPER: Final = "schedule_helper"
 CONF_HELPER_ON_PRESET: Final = "helper_on_preset"
 CONF_HELPER_OFF_PRESET: Final = "helper_off_preset"

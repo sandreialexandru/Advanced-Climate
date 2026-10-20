@@ -13,10 +13,24 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_SCHEDULE, DOMAIN, PRESETS, SCHEDULE_INTERNAL, CONF_SCHEDULE_SOURCE
+from .const import (
+    CONF_PROFILE_DAYS,
+    CONF_SCHEDULE,
+    CONF_SCHEDULE_SOURCE,
+    DOMAIN,
+    PRESETS,
+    SCHEDULE_INTERNAL,
+)
 from .engine import KIND_PRESET, KIND_TEMPERATURE, Target
 from .util import to_celsius
-from .schedule import ScheduleError, format_schedule, parse_schedule, profiles_from_dict
+from .schedule import (
+    ScheduleError,
+    format_schedule,
+    normalize_profile_days,
+    parse_schedule,
+    profiles_from_dict,
+    validate_profile_days,
+)
 
 if TYPE_CHECKING:
     from .house import House
@@ -31,6 +45,7 @@ ATTR_START = "start"
 ATTR_END = "end"
 ATTR_SCHEDULE = "schedule"
 ATTR_PROFILES = "profiles"
+ATTR_PROFILE_DAYS = "profile_days"
 ATTR_ENTRY = "config_entry_id"
 
 SERVICE_SET_OVERRIDE = "set_override"
@@ -66,6 +81,7 @@ SET_SCHEDULE_SCHEMA = vol.Schema(
         **ROOM_SELECTOR,
         vol.Optional(ATTR_SCHEDULE): cv.string,
         vol.Optional(ATTR_PROFILES): dict,
+        vol.Optional(ATTR_PROFILE_DAYS): dict,
     }
 )
 
@@ -219,12 +235,30 @@ def async_setup_services(hass: HomeAssistant) -> None:
                     translation_key="invalid_schedule",
                     translation_placeholders={"error": str(err)},
                 ) from err
+            days: Any = call.data.get(ATTR_PROFILE_DAYS)
+            try:
+                if days is not None:
+                    days = validate_profile_days(days, parsed)
+                else:
+                    # Without new days the profiles keep theirs (a new one is off).
+                    saved = room.config.get(CONF_PROFILE_DAYS)
+                    days = normalize_profile_days(saved, parsed) if saved is not None else None
+            except ScheduleError as err:
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN,
+                    translation_key="invalid_schedule",
+                    translation_placeholders={"error": str(err)},
+                ) from err
             entry = room.house.entry
             subentry = entry.subentries[room.id]
             hass.config_entries.async_update_subentry(
                 entry,
                 subentry,
-                data={**subentry.data, CONF_SCHEDULE: format_schedule(parsed)},
+                data={
+                    **subentry.data,
+                    CONF_SCHEDULE: format_schedule(parsed),
+                    CONF_PROFILE_DAYS: days,
+                },
             )
             # The update listener applies the new schedule without a reload.
 

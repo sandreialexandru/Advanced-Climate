@@ -142,10 +142,24 @@ workday: 00:00 sleep, 06:00 home, 22:00 sleep
 weekend: 00:00 sleep, 08:00 home, 23:00 sleep
 ```
 
-Profilurile se aleg în această ordine: selectorul *Profile* al camerei (dacă nu
-e `auto`) → un eveniment de calendar cu numele unui profil → un profil al zilei
-(`mon` … `sun`) → `workday` sau `weekend` (sărbătorile contează ca weekend).
-Programul se poate edita și din cardul Lovelace.
+Fiecare profil are **zilele lui** și este **pornit sau oprit** (se setează în
+card, *Program*): toate zilele, zile lucrătoare, weekend și sărbători, sau zile
+anume. O zi folosește, în această ordine: un eveniment de calendar cu numele
+unui profil (și un profil oprit) → profilul activ al acelei zile (de exemplu un
+profil pentru miercuri are prioritate față de cel de zile lucrătoare doar
+miercurea) → profilul activ al zilelor lucrătoare sau al weekendului → profilul
+activ pentru toate zilele. Pornirea unui profil le oprește pe cele active cu care
+se suprapune („toate zilele” se suprapune cu zilele lucrătoare și cu weekendul;
+zilele anume se suprapun când au o zi comună), deci o zi nu are niciodată două.
+
+O zi **neacoperită de niciun profil activ rămâne pe protecție la îngheț**; camera
+afișează o alertă (*Fără profil activ în program: …*), iar cardul avertizează
+înainte ca pornirea sau oprirea unui profil să lase astfel de zile. Profilurile
+salvate înainte de 2.2 își păstrează zilele: `mon` … `sun` pentru ziua lor,
+`workday` și `weekend` pentru tipul lor de zi (pentru toate zilele când lipsește
+celălalt), iar când niciunul nu există primul profil e pentru toate zilele;
+celelalte pornesc oprite. Selectorul *Profile* al camerelor a fost eliminat în
+2.2.
 
 ### Cum decide o cameră
 
@@ -177,7 +191,7 @@ vacanței și reevaluare.
 
 Cameră: *Decision* (enum, cu motivul în atribute), *Target temperature*, *Room
 temperature*, *Next change*, *Heating rate*, *Cooling rate*, *Heating
-runtime*, *Heat demand*, *Window open*, *Manual change*, *Profile* (select),
+runtime*, *Heat demand*, *Window open*, *Manual change*,
 *Child lock* (comutator), *Clear manual change*, *Reset heating learning* și
 *Reset cooling learning* (butoane) și, pentru camerele
 fără Generic Thermostat, temperaturile nivelurilor (numere).
@@ -383,8 +397,10 @@ type: custom:advanced-climate-card
 | `runtime_period` | `day` | Timpul de încălzire arătat pentru `day`, `week` sau `month` (perioade calendaristice, din statisticile pe termen lung; atinge valoarea în card ca s-o schimbi). Senzorii *Heating runtime* rămân totaluri cumulate |
 
 Fiecare cameră arată și decizia, motivul, insignele pentru încălzire /
-fereastră / schimbare manuală, selectorul *Profile*, comutatorul *Child lock*
-și *Înapoi la automat*.
+fereastră / schimbare manuală și *Înapoi la automat*; comutatorul *Child lock*
+este în *Setează temporar*. Secțiunile sunt, în ordine: *Setează temporar*,
+*Niveluri*, *Program* (fiecare profil cu zilele lui și un comutator pornit /
+oprit; zilele se aleg în editor) și *Detalii*.
 
 - **Nu încălzește**: sub țintă, camera spune de ce nu încălzește (în toleranța
   termostatului sau în histerezis, timp minim pornit / oprit, așteaptă alte

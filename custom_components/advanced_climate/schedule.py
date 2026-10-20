@@ -9,11 +9,18 @@ used in the configuration is one profile per line::
     fri: 00:00 sleep, 06:00 home, 23:30 sleep
     home_office: 00:00 sleep, 07:00 home, 23:00 sleep
 
-Profile selection for a day, highest priority first:
-1. a profile forced for that day (manual selection or a calendar event),
-2. a weekday profile (``mon`` ... ``sun``),
-3. ``workday`` or ``weekend`` depending on whether the day is a workday,
-4. any other profile (the first one defined).
+Each profile has its days and is on or off (``profile_days``): all days,
+workdays, weekend days, or chosen weekdays. Profile selection for a day,
+highest priority first:
+1. a profile forced for that day (a calendar event with its name),
+2. an active profile for that weekday (e.g. ``wed``),
+3. the active profile for workdays or for weekend days, else the active one
+   for all days.
+A day no active profile covers keeps the frost protection (``PRESET_FROST``).
+
+Active profiles never overlap: the profiles of all days, of workdays and of
+weekend days are one choice per kind of day, and profiles of chosen weekdays
+cannot share a day. A profile of a weekday is above the others on that day.
 
 The day boundary (default 00:00) moves the start of the schedule day, so a
 night shift can keep one profile from e.g. 04:00 to 04:00 the next day.
@@ -26,7 +33,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 import re
 
-from .const import WEEKDAYS
+from .const import DAYS_ALL, DAYS_WEEKEND, DAYS_WORKDAY, PRESET_FROST, WEEKDAYS
 
 PROFILE_WORKDAY = "workday"
 PROFILE_WEEKEND = "weekend"
@@ -59,7 +66,7 @@ class ScheduleState:
     """Result of a schedule lookup."""
 
     preset: str
-    profile: str
+    profile: str | None  # None: no active profile (frost protection)
     slot_start: datetime
     next_change: datetime | None
     next_preset: str | None
@@ -156,6 +163,139 @@ def profiles_from_dict(
     return parse_schedule(text, valid_presets)
 
 
+def _days_valid(days: object) -> bool:
+    """A days value: all / workday / weekend or a non empty list of weekdays."""
+    if days in (DAYS_ALL, DAYS_WORKDAY, DAYS_WEEKEND):
+        return True
+    return (
+        isinstance(days, (list, tuple))
+        and bool(days)
+        and all(d in WEEKDAYS for d in days)
+        and len(set(days)) == len(days)
+    )
+
+
+def default_profile_days(names: Iterable[str]) -> dict[str, dict]:
+    """Days of profiles saved before profiles had days (same selection as before).
+
+    ``mon`` ... ``sun`` are for their day, ``workday`` and ``weekend`` for their
+    kind of day (for all days when the other one is missing), and when none of
+    these exists the first profile is for all days. Other profiles are off.
+    """
+    names = list(names)
+    result: dict[str, dict] = {}
+    has_work, has_weekend = DAYS_WORKDAY in names, DAYS_WEEKEND in names
+    for name in names:
+        if name in WEEKDAYS:
+            result[name] = {"days": [name], "enabled": True}
+        elif name == DAYS_WORKDAY:
+            result[name] = {"days": DAYS_WORKDAY if has_weekend else DAYS_ALL, "enabled": True}
+        elif name == DAYS_WEEKEND:
+            result[name] = {"days": DAYS_WEEKEND if has_work else DAYS_ALL, "enabled": True}
+        else:
+            result[name] = {"days": DAYS_ALL, "enabled": False}
+    if names and not any(n in WEEKDAYS or n in (DAYS_WORKDAY, DAYS_WEEKEND) for n in names):
+        result[names[0]] = {"days": DAYS_ALL, "enabled": True}
+    return result
+
+
+def overlap(a: object, b: object) -> bool:
+    """True when two active profiles cannot be on together.
+
+    All days, workdays and weekend days are one choice per kind of day (all days
+    overlaps both, workdays and weekend days do not overlap). Chosen weekdays
+    overlap when they share a day; they are above the other kinds, not against
+    them.
+    """
+    a_list, b_list = isinstance(a, (list, tuple)), isinstance(b, (list, tuple))
+    if a_list and b_list:
+        return bool(set(a) & set(b))
+    if a_list or b_list:
+        return False
+    if DAYS_ALL in (a, b):
+        return True
+    return a == b
+
+
+def normalize_profile_days(
+    data: dict | None, names: Iterable[str]
+) -> dict[str, dict]:
+    """Days and on / off of every profile (missing or invalid entries fixed).
+
+    Without saved data the selection of earlier versions is kept. A profile
+    without (valid) data is off, for all days. When saved data has active
+    profiles that overlap, the later ones are turned off.
+    """
+    names = list(names)
+    if not isinstance(data, dict):
+        return default_profile_days(names)
+    result: dict[str, dict] = {}
+    for name in names:
+        item = data.get(name)
+        days = item.get("days") if isinstance(item, dict) else None
+        if isinstance(days, tuple):
+            days = list(days)
+        if not _days_valid(days):
+            result[name] = {"days": DAYS_ALL, "enabled": False}
+            continue
+        if isinstance(days, list):
+            days = [d for d in WEEKDAYS if d in days]
+        result[name] = {"days": days, "enabled": bool(item.get("enabled"))}
+    active: list[object] = []
+    for name in names:
+        if result[name]["enabled"]:
+            if any(overlap(result[name]["days"], other) for other in active):
+                result[name]["enabled"] = False
+            else:
+                active.append(result[name]["days"])
+    return result
+
+
+def validate_profile_days(data: object, names: Iterable[str]) -> dict[str, dict]:
+    """Check the days sent for a schedule; raise ScheduleError when they are wrong."""
+    names = list(names)
+    if not isinstance(data, dict):
+        raise ScheduleError("profile_days must be a mapping of profile names")
+    for name, item in data.items():
+        if name not in names:
+            raise ScheduleError(f"Unknown profile '{name}' in profile_days")
+        if not isinstance(item, dict) or not _days_valid(
+            list(item.get("days")) if isinstance(item.get("days"), tuple) else item.get("days")
+        ):
+            raise ScheduleError(f"Invalid days for profile '{name}'")
+    active = [(n, data[n]["days"]) for n in names if n in data and data[n].get("enabled")]
+    for i, (name, days) in enumerate(active):
+        for other, other_days in active[:i]:
+            if overlap(days, other_days):
+                raise ScheduleError(f"Profiles '{other}' and '{name}' are both on for the same days")
+    return normalize_profile_days(data, names)
+
+
+def uncovered_days(profile_days: dict[str, dict]) -> dict[str, object]:
+    """Days without an active profile.
+
+    ``days``: weekdays without a profile in a usual week (Monday to Friday
+    workdays, Saturday and Sunday free); ``free_days``: a free weekday (a
+    holiday) has no profile; ``workdays``: a workday on Saturday or Sunday has
+    no profile.
+    """
+    active = [m["days"] for m in profile_days.values() if m.get("enabled")]
+    specific = {d for days in active if isinstance(days, list) for d in days}
+    has_all = DAYS_ALL in active
+    work = has_all or DAYS_WORKDAY in active
+    free = has_all or DAYS_WEEKEND in active
+    days = [
+        d
+        for i, d in enumerate(WEEKDAYS)
+        if d not in specific and not (work if i < 5 else free)
+    ]
+    return {
+        "days": days,
+        "free_days": not free and any(d not in specific for d in WEEKDAYS[:5]),
+        "workdays": not work and any(d not in specific for d in WEEKDAYS[5:]),
+    }
+
+
 DayInfo = Callable[[date], tuple[bool, str | None]]
 """Return (is_workday, forced_profile) for a date."""
 
@@ -163,39 +303,52 @@ DayInfo = Callable[[date], tuple[bool, str | None]]
 class Schedule:
     """Evaluate a parsed schedule."""
 
-    def __init__(self, profiles: dict[str, list[Slot]], day_boundary: int = 0) -> None:
+    def __init__(
+        self,
+        profiles: dict[str, list[Slot]],
+        day_boundary: int = 0,
+        profile_days: dict | None = None,
+    ) -> None:
         """Initialize the schedule. ``day_boundary`` is in minutes after midnight."""
         if not profiles:
             raise ScheduleError("The schedule has no profiles")
         self.profiles = profiles
         self.boundary = day_boundary % MINUTES_PER_DAY
+        self.profile_days = normalize_profile_days(profile_days, profiles)
 
     @property
     def profile_names(self) -> list[str]:
         """Return the profile names in definition order."""
         return list(self.profiles)
 
-    def profile_for(self, day: date, is_workday: bool, forced: str | None) -> str:
-        """Return the profile used for the given schedule day."""
+    def profile_for(self, day: date, is_workday: bool, forced: str | None) -> str | None:
+        """Return the profile used for the given schedule day (None: no active profile)."""
         if forced and forced.lower() in self.profiles:
             return forced.lower()
         weekday = WEEKDAYS[day.weekday()]
-        if weekday in self.profiles:
-            return weekday
-        preferred = PROFILE_WORKDAY if is_workday else PROFILE_WEEKEND
-        if preferred in self.profiles:
-            return preferred
-        other = PROFILE_WEEKEND if is_workday else PROFILE_WORKDAY
-        if other in self.profiles:
-            return other
-        return next(iter(self.profiles))
+        active = [(n, m["days"]) for n, m in self.profile_days.items() if m["enabled"]]
+        for name, days in active:
+            if isinstance(days, list) and weekday in days:
+                return name
+        kind = DAYS_WORKDAY if is_workday else DAYS_WEEKEND
+        for wanted in (kind, DAYS_ALL):
+            for name, days in active:
+                if days == wanted:
+                    return name
+        return None
 
     def _key(self, minute: int) -> int:
         """Position of a clock minute inside the schedule day."""
         return (minute - self.boundary) % MINUTES_PER_DAY
 
-    def _ordered(self, profile: str) -> list[Slot]:
-        """Slots of a profile in the order of the schedule day."""
+    def _ordered(self, profile: str | None) -> list[Slot]:
+        """Slots of a profile in the order of the schedule day.
+
+        A day without an active profile is one slot of frost protection from
+        the start of the schedule day.
+        """
+        if profile is None:
+            return [Slot(self.boundary, PRESET_FROST)]
         return sorted(self.profiles[profile], key=lambda s: self._key(s.minute))
 
     def schedule_day(self, moment: datetime) -> date:

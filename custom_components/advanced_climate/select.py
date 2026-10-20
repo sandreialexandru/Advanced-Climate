@@ -1,4 +1,4 @@
-"""Selects for Advanced Climate: global mode and room profile."""
+"""Select for Advanced Climate: the global mode."""
 
 from __future__ import annotations
 
@@ -8,9 +8,8 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import AdvancedClimateConfigEntry
 from .const import MODES
-from .entity import HouseEntity, RoomEntity
+from .entity import HouseEntity
 from .house import House
-from .room import Room
 
 
 async def async_setup_entry(
@@ -21,8 +20,6 @@ async def async_setup_entry(
     """Set up selects."""
     house = entry.runtime_data
     async_add_entities([ModeSelect(house)])
-    for room in house.rooms.values():
-        async_add_entities([ProfileSelect(room)], config_subentry_id=room.id)
 
 
 class ModeSelect(HouseEntity, SelectEntity):
@@ -42,25 +39,3 @@ class ModeSelect(HouseEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         """Change the mode."""
         await self.house.async_set_mode(option)
-
-
-class ProfileSelect(RoomEntity, SelectEntity):
-    """Schedule profile: auto or a fixed profile."""
-
-    def __init__(self, room: Room) -> None:
-        """Initialize."""
-        super().__init__(room, "profile")
-
-    @property
-    def options(self) -> list[str]:
-        """Auto plus the profile names."""
-        return self.room.profile_options
-
-    @property
-    def current_option(self) -> str:
-        """Selected profile."""
-        return self.room.profile_select
-
-    async def async_select_option(self, option: str) -> None:
-        """Select a profile."""
-        await self.room.async_set_profile(option)

@@ -7,10 +7,14 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.helpers import (
+    config_validation as cv,
+    device_registry as dr,
+    entity_registry as er,
+)
 from homeassistant.helpers.typing import ConfigType
 
-from .const import CONF_SCHEDULE, DEFAULT_SCHEDULE, DOMAIN
+from .const import CONF_PROFILE_DAYS, CONF_SCHEDULE, DEFAULT_SCHEDULE, DOMAIN
 from .frontend import async_register_card, async_remove_lovelace_resource
 from .house import House
 from .services import async_setup_services
@@ -63,15 +67,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: AdvancedClimateConfigEnt
         .id
     )
     house.config_snapshot = _snapshot(entry)
+    _remove_old_entities(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
 
+def _remove_old_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove entities of earlier versions (the profile select of the rooms, 2.2)."""
+    registry = er.async_get(hass)
+    rooms = set(entry.subentries)
+    for item in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if item.domain == "select" and any(item.unique_id == f"{rid}_profile" for rid in rooms):
+            registry.async_remove(item.entity_id)
+
+
+_SCHEDULE_KEYS = (CONF_SCHEDULE, CONF_PROFILE_DAYS)
+
+
 def _snapshot(entry: ConfigEntry) -> tuple:
     """Settings of the house and rooms, without the schedules."""
     rooms = {
-        sid: (sub.title, sub.unique_id, {k: v for k, v in sub.data.items() if k != CONF_SCHEDULE})
+        sid: (
+            sub.title,
+            sub.unique_id,
+            {k: v for k, v in sub.data.items() if k not in _SCHEDULE_KEYS},
+        )
         for sid, sub in entry.subentries.items()
     }
     return (dict(entry.options), entry.title, rooms)
@@ -87,8 +108,13 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
     if house is not None and _snapshot(entry) == getattr(house, "config_snapshot", None):
         for sid, sub in entry.subentries.items():
             room = house.rooms.get(sid)
-            if room is not None and sub.data.get(CONF_SCHEDULE) != room.config.get(CONF_SCHEDULE):
-                room.apply_schedule(sub.data.get(CONF_SCHEDULE) or DEFAULT_SCHEDULE)
+            if room is not None and any(
+                sub.data.get(key) != room.config.get(key) for key in _SCHEDULE_KEYS
+            ):
+                room.apply_schedule(
+                    sub.data.get(CONF_SCHEDULE) or DEFAULT_SCHEDULE,
+                    sub.data.get(CONF_PROFILE_DAYS),
+                )
         house.async_save()
         house.async_request_evaluate(0)
         return

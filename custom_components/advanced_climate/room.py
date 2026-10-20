@@ -64,6 +64,7 @@ from .const import (
     CONF_PRESET_MAP,
     CONF_PRESET_NAMES,
     CONF_REFERENCE_ROOM,
+    CONF_PROFILE_DAYS,
     CONF_SCHEDULE,
     CONF_SCHEDULE_HELPER,
     CONF_SCHEDULE_SOURCE,
@@ -95,6 +96,7 @@ from .const import (
     MODE_SUMMER,
     OVERRIDE_FIXED,
     OVERRIDE_NEXT,
+    PRESET_FROST,
     PRESETS,
     PRESET_NONE,
     ROOM_DEFAULTS,
@@ -130,7 +132,14 @@ from .engine import (
     optimal_stop_state,
 )
 from .learning import CoolingLearner, HeatingRateLearner
-from .schedule import Schedule, ScheduleError, ScheduleState, Slot, parse_schedule
+from .schedule import (
+    Schedule,
+    ScheduleError,
+    ScheduleState,
+    Slot,
+    parse_schedule,
+    uncovered_days,
+)
 from .util import (
     aggregate,
     as_list,
@@ -153,7 +162,6 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-AUTO_PROFILE = "auto"
 
 
 def device_values(state: State) -> dict[str, Any]:
@@ -231,9 +239,6 @@ class Room:
             self.override["until"] = from_iso(self.override.get("until"))
             self.override["since"] = from_iso(self.override.get("since"))
         self.child_lock = bool(stored.get("child_lock", False))
-        self.profile_select: str = stored.get("profile_select", AUTO_PROFILE)
-        if self.profile_select != AUTO_PROFILE and self.profile_select not in self.schedule.profiles:
-            self.profile_select = AUTO_PROFILE
         self.learner = HeatingRateLearner.from_dict(stored.get("learner"))
         self.cooling = CoolingLearner.from_dict(stored.get("cooling"))
         self.runtime_s = float(stored.get("runtime_s", 0.0))
@@ -293,13 +298,12 @@ class Room:
     # ------------------------------------------------------------------
     # Setup
     # ------------------------------------------------------------------
-    def apply_schedule(self, text: str) -> None:
-        """Use a new schedule without reloading the integration."""
+    def apply_schedule(self, text: str, profile_days: dict | None = None) -> None:
+        """Use a new schedule (and the days of its profiles) without reloading."""
         self.config[CONF_SCHEDULE] = text
+        self.config[CONF_PROFILE_DAYS] = profile_days
         self.schedule_error = None
         self.schedule = self._build_schedule(text)
-        if self.profile_select != AUTO_PROFILE and self.profile_select not in self.schedule.profiles:
-            self.profile_select = AUTO_PROFILE
 
     def _build_schedule(self, text: str) -> Schedule:
         """Parse the schedule text; the default schedule is used when it is invalid."""
@@ -314,7 +318,8 @@ class Room:
             name: [Slot(s.minute, self.aliases.get(s.preset.lower(), s.preset)) for s in slots]
             for name, slots in profiles.items()
         }
-        return Schedule(normalized, self.house.day_boundary_minutes)
+        days = self.config.get(CONF_PROFILE_DAYS) if not self.schedule_error else None
+        return Schedule(normalized, self.house.day_boundary_minutes, days)
 
     @callback
     def async_start(self) -> None:
@@ -363,7 +368,6 @@ class Room:
             "nearby_temp": self.nearby_temp,
             "override": override,
             "child_lock": self.child_lock,
-            "profile_select": self.profile_select,
             "learner": self.learner.as_dict(),
             "cooling": self.cooling.as_dict(),
             "runtime_s": round(self.runtime_s, 1),
@@ -445,11 +449,6 @@ class Room:
         """Return True if a manual override is active."""
         return self.override is not None
 
-    @property
-    def profile_options(self) -> list[str]:
-        """Options of the profile select."""
-        return [AUTO_PROFILE, *self.schedule.profile_names]
-
     def display_name(self, preset: str | None) -> str | None:
         """Return the user facing name of a level."""
         if preset is None:
@@ -474,6 +473,8 @@ class Room:
 
     def level_temp(self, preset: str) -> float | None:
         """Return the temperature of a level, if known."""
+        if preset == PRESET_FROST:
+            return self.frost_temp()  # a day without an active profile
         if preset not in PRESETS:
             return None
         if self.source != SOURCE_GT:
@@ -1026,13 +1027,11 @@ class Room:
         return now - since >= timedelta(minutes=float(self.config[CONF_OCCUPANCY_MINUTES]))
 
     def _day_info(self, day: date) -> tuple[bool, str | None]:
-        """Whether a day is a workday, and a profile forced for today (select or calendar)."""
+        """Whether a day is a workday, and a profile forced for today (calendar)."""
         forced = None
         today = self.schedule.schedule_day(dt_util.now())  # local
         if day == today:
-            if self.profile_select != AUTO_PROFILE:
-                forced = self.profile_select
-            elif self.house.calendar_message:
+            if self.house.calendar_message:
                 message = self.house.calendar_message.lower()
                 if message in self.schedule.profiles:
                     forced = message
@@ -1890,6 +1889,30 @@ class Room:
             )
         else:
             house.clear_alert(f"schedule_{self.id}")
+        # Days without an active profile (frost protection on those days).
+        gaps = (
+            uncovered_days(self.schedule.profile_days)
+            if not (
+                self.config.get(CONF_SCHEDULE_SOURCE) == SCHEDULE_HELPER
+                and self.config.get(CONF_SCHEDULE_HELPER)
+            )
+            else {"days": [], "free_days": False, "workdays": False}
+        )
+        if gaps["days"] or gaps["free_days"] or gaps["workdays"]:
+            house.notify(
+                f"schedule_gap_{self.id}",
+                f"{self.name}: no active schedule profile on "
+                + ", ".join(
+                    [*gaps["days"], *(["free days"] if gaps["free_days"] else []),
+                     *(["workdays on the weekend"] if gaps["workdays"] else [])]
+                )
+                + "; the room keeps its frost protection on those days.",
+                code="schedule_gap",
+                params=dict(gaps),
+                room=self.id,
+            )
+        else:
+            house.clear_alert(f"schedule_gap_{self.id}")
 
     @callback
     def check_batteries(self) -> None:
@@ -1946,13 +1969,6 @@ class Room:
             self.nearby_temp = value
         else:
             self.levels[preset] = value
-        await self.house.async_evaluate_or_notify()
-
-    async def async_set_profile(self, profile: str) -> None:
-        """Select a profile manually (or auto)."""
-        if profile != AUTO_PROFILE and profile not in self.schedule.profiles:
-            raise HomeAssistantError(f"Unknown profile {profile}")
-        self.profile_select = profile
         await self.house.async_evaluate_or_notify()
 
     async def async_set_child_lock(self, on: bool) -> None:
@@ -2072,7 +2088,6 @@ class Room:
             "heat_demand": self.heat_demand,
             "window_open": self.window_open,
             "override": self.override_info(),
-            "profile_select": self.profile_select,
             "schedule_error": self.schedule_error,
             "schedule_state": (
                 {

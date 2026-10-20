@@ -95,8 +95,8 @@ home_office: 00:00 sleep, 07:00 comfort, 23:00 sleep
 
 | Option | Default | Description |
 | --- | --- | --- |
-| Profiles | workday + weekend | `workday`, `weekend`, weekday profiles `mon` … `sun`, or any name |
-| Profile selection | auto | Manual (select entity) → calendar event → weekday profile → workday / weekend |
+| Profiles | workday + weekend | Any names; each with its days (all, workdays, weekend days and holidays, or chosen weekdays) and on / off, set in the card. Active profiles do not overlap (chosen weekdays only among themselves) |
+| Profile selection | auto | Calendar event → active profile of the weekday → active profile of workdays / weekend days → active profile of all days → none: frost protection, with an alert |
 | Workdays | Workday integration | Holidays come from the Workday integration (including future days) |
 | Calendar | none | An event titled with a profile name selects that profile; a preset name selects that level |
 | Schedule source | internal | Internal schedule or an existing HA **Schedule helper** |
@@ -228,7 +228,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | `sensor.<room>_next_change` | Next scheduled change |
 | `binary_sensor.<room>_heat_demand` | Whether the room asks for heat; the `heating` attribute tells if its heat source runs |
 | `sensor.<house>_presence` | home / nearby / far |
-| `select.<house>_mode`, `select.<room>_profile` | Global mode and active profile |
+| `select.<house>_mode` | Global mode |
 | `number.*`, `button.*`, `switch.*` | Levels, clear overrides, reset heating / cooling learning (per room), guest mode, pause, child lock |
 | Services | `set_override`, `clear_override`, `set_vacation`, `reevaluate`, `set_schedule` |
 | Events | `advanced_climate_decision_changed` with room, old and new target and reason |

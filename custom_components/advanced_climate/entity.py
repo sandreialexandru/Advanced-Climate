@@ -113,7 +113,6 @@ ROOM_ENTITY_KEYS: dict[str, str] = {
     "heat_demand": "binary_sensor",
     "window_open": "binary_sensor",
     "manual_override": "binary_sensor",
-    "profile": "select",
     "child_lock": "switch",
     "clear_override": "button",
     "reset_heating_learning": "button",

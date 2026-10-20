@@ -141,7 +141,7 @@
           "day_boundary": "Schedule day starts at"
         },
         "data_description": {
-          "workday_sensor": "Workday integration sensor, so holidays use the weekend profile. Without it Mon–Fri are workdays.",
+          "workday_sensor": "Workday integration sensor, so holidays use the profile of weekend days. Without it Mon–Fri are workdays.",
           "calendar": "Optional. An event titled with a profile name (e.g. home_office) or a level name (e.g. away) applies it while the event lasts. Leave empty if you do not plan days in a calendar.",
           "day_boundary": "Leave 00:00. Change it only for night shifts, so a night belongs to the previous day."
         }
@@ -567,7 +567,7 @@
           "data": {
             "schedule": "Schedule"
           },
-          "description": "One profile per line: `profile: HH:MM preset, HH:MM preset`. Profiles: workday, weekend, mon…sun or any name (manual or calendar). {error}",
+          "description": "One profile per line: `profile: HH:MM preset, HH:MM preset`. Which days each profile is for, and whether it is on, is set in the card (Schedule). Earlier profiles named workday, weekend or mon…sun keep their days. {error}",
           "data_description": {
             "schedule": "e.g. `workday: 00:00 sleep, 06:00 home, 22:00 sleep`. Easier to edit from the card."
           }
@@ -703,12 +703,6 @@
           "vacation": "Vacation",
           "off": "Off",
           "summer": "Summer"
-        }
-      },
-      "profile": {
-        "name": "Profile",
-        "state": {
-          "auto": "Auto"
         }
       }
     },
@@ -974,6 +968,10 @@
         "profiles": {
           "name": "Profiles",
           "description": "Profiles as an object: profile name -> list of time and preset (used by the card)."
+        },
+        "profile_days": {
+          "name": "Profile days",
+          "description": "Days and on / off of each profile: profile name -> {\"days\": \"all\" | \"workday\" | \"weekend\" | [\"mon\", …], \"enabled\": true | false} (used by the card). Profiles that are on cannot overlap."
         }
       }
     }

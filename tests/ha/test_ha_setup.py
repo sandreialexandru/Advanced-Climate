@@ -9,6 +9,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 from homeassistant.core import Context, SupportsResponse
+from homeassistant.exceptions import ServiceValidationError
+import pytest
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     async_fire_time_changed,
@@ -178,6 +180,53 @@ async def test_set_schedule_service(hass: HomeAssistant, freezer: FrozenDateTime
     assert hass.states.get("sensor.bedroom_decision").attributes["preset"] == "eco"
     # Saving a schedule does not reload the integration.
     assert "unavailable" not in seen
+    # The profile select of earlier versions is gone.
+    assert hass.states.get("select.bedroom_profile") is None
+
+    # Days and on / off of the profiles: Monday has no active profile -> frost.
+    await hass.services.async_call(
+        DOMAIN,
+        "set_schedule",
+        {
+            "room": "Bedroom",
+            "profiles": {
+                "workday": [{"time": "00:00", "preset": "home"}],
+                "weekend": [{"time": "00:00", "preset": "sleep"}],
+            },
+            "profile_days": {
+                "workday": {"days": ["tue", "wed", "thu", "fri"], "enabled": True},
+                "weekend": {"days": "weekend", "enabled": True},
+            },
+        },
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    await _tick(hass, freezer, 15)
+    decision = hass.states.get("sensor.bedroom_decision")
+    assert decision.attributes["reason_key"] == "no_profile"
+    assert decision.attributes["profile"] is None
+    assert decision.attributes["profile_days"]["workday"]["days"] == ["tue", "wed", "thu", "fri"]
+    assert decision.attributes["next_preset"] == "home"
+    gap = [a for a in decision.attributes["alerts"] if a.get("code") == "schedule_gap"]
+    assert gap and gap[0]["params"]["days"] == ["mon"]
+    # Profiles on for the same days are refused.
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            "set_schedule",
+            {
+                "room": "Bedroom",
+                "profiles": {
+                    "workday": [{"time": "00:00", "preset": "home"}],
+                    "weekend": [{"time": "00:00", "preset": "sleep"}],
+                },
+                "profile_days": {
+                    "workday": {"days": "all", "enabled": True},
+                    "weekend": {"days": "weekend", "enabled": True},
+                },
+            },
+            blocking=True,
+        )
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
 

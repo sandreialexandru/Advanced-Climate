@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.1.2";
+const CARD_VERSION = "2.2.0";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -35,11 +35,56 @@ const PRESET_COLORS = {
   eco: "#2f9e8f",
   sleep: "#5f6fd1",
   away: "#8a96a3",
+  frost: "#74a9cf",
 };
 
 const MIN_ZOOM_SPAN = 20 * 60 * 1000; // closest zoom: 20 minutes
 
 const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+/** True when two active profiles cannot be on together (as the integration checks). */
+function profileOverlap(a, b) {
+  const la = Array.isArray(a);
+  const lb = Array.isArray(b);
+  if (la && lb) return a.some((d) => b.includes(d));
+  if (la || lb) return false; // chosen weekdays are above the other kinds of days
+  if (a === "all" || b === "all") return true;
+  return a === b;
+}
+
+/** Days without an active profile (as the integration reports them). */
+function uncoveredDays(meta) {
+  const active = Object.values(meta || {}).filter((m) => m && m.enabled).map((m) => m.days);
+  const specific = new Set(active.filter(Array.isArray).flat());
+  const all = active.includes("all");
+  const work = all || active.includes("workday");
+  const free = all || active.includes("weekend");
+  return {
+    days: WEEKDAY_KEYS.filter((d, i) => !specific.has(d) && !(i < 5 ? work : free)),
+    free_days: !free && WEEKDAY_KEYS.slice(0, 5).some((d) => !specific.has(d)),
+    workdays: !work && WEEKDAY_KEYS.slice(5).some((d) => !specific.has(d)),
+  };
+}
+
+/** Days a new profile is for, from its name (it starts off). */
+function guessDays(name) {
+  if (name === "workday" || name === "weekend") return name;
+  if (WEEKDAY_KEYS.includes(name)) return [name];
+  return "all";
+}
+
+/** Turn a profile on or off; the active profiles that overlap it are turned off. */
+function switchProfile(meta, name, on) {
+  const next = JSON.parse(JSON.stringify(meta || {}));
+  if (!next[name]) next[name] = { days: guessDays(name), enabled: false };
+  next[name].enabled = on;
+  if (on) {
+    for (const [other, m] of Object.entries(next)) {
+      if (other !== name && m.enabled && profileOverlap(m.days, next[name].days)) m.enabled = false;
+    }
+  }
+  return next;
+}
 
 const DEFAULTS = {
   show_house: true,
@@ -68,8 +113,20 @@ const TEXT = {
     quick_hint: "Keeps a level or a temperature as a manual change. Empty duration = the rule from the options.",
     days_workday: "Monday–Friday, except holidays",
     days_weekend: "Saturday, Sunday and holidays",
-    days_weekday: "Every {day}",
-    days_custom: "Chosen manually or by a calendar event",
+    days_all: "All days",
+    days_label: "Days",
+    days_opt_all: "All days",
+    days_opt_workday: "Workdays",
+    days_opt_weekend: "Weekend and holidays",
+    days_opt_days: "Chosen days",
+    profile_on: "On",
+    profile_off: "Off",
+    frost_level: "frost protection",
+    gap_free_days: "free days (holidays)",
+    gap_weekend_workdays: "workdays on the weekend",
+    gap_warning: "No active profile: {days}. On those days the room keeps its frost protection.",
+    gap_confirm: "{days} will have no active profile (frost protection). Continue?",
+    confirm: "Confirm",
     schedule_help: "Each time starts a level that lasts until the next time; the last one lasts until the first time of the next day. The schedule is used while someone is home; windows, manual changes, vacation, presence (nearby = eco, far = away) and the house mode come first.",
     schedule_active: "The schedule decides right now.",
     schedule_not_active: "Right now {rule} decides; the schedule applies again when that ends.",
@@ -95,7 +152,6 @@ const TEXT = {
     clear_vacation: "Clear vacation",
     reevaluate: "Reevaluate",
     clear_all: "Clear manual changes",
-    profile: "Profile",
     child_lock: "Child lock",
     next: "Next",
     quick: "Set for a while",
@@ -221,6 +277,7 @@ const TEXT = {
     al_sensor_unavailable_device: "The temperature sensors are unavailable; the device sensor is used.",
     al_sensor_unavailable_eco: "The temperature sensors are unavailable; eco is used.",
     al_schedule_invalid: "The schedule is invalid ({error}); the default schedule is used.",
+    al_schedule_gap: "No active schedule profile: {days}; the room keeps its frost protection on those days.",
     al_battery_low: "Low battery on {device} ({level}%).",
     open_entity: "Open the entity",
     r_pause: "Paused: no commands are sent",
@@ -236,6 +293,7 @@ const TEXT = {
     r_nearby: "Nobody home, someone nearby",
     r_nearby_temperature: "Nobody home, someone nearby: {temperature}",
     r_no_schedule: "No schedule available",
+    r_no_profile: "No active profile for this day: frost protection",
     r_sensor_fallback: "Temperature sensors unavailable: eco until they recover",
     r_unoccupied: "Room unoccupied (schedule: {preset})",
     r_schedule: "Schedule: {preset}",
@@ -268,8 +326,20 @@ const TEXT = {
     quick_hint: "Păstrează un nivel sau o temperatură ca modificare manuală. Durată goală = regula din opțiuni.",
     days_workday: "Luni–vineri, fără sărbători",
     days_weekend: "Sâmbătă, duminică și sărbători",
-    days_weekday: "În fiecare {day}",
-    days_custom: "Ales manual sau dintr-un eveniment din calendar",
+    days_all: "Toate zilele",
+    days_label: "Zile",
+    days_opt_all: "Toate zilele",
+    days_opt_workday: "Zile lucrătoare",
+    days_opt_weekend: "Weekend și sărbători",
+    days_opt_days: "Zile anume",
+    profile_on: "Pornit",
+    profile_off: "Oprit",
+    frost_level: "antiîngheț",
+    gap_free_days: "zilele libere (sărbători)",
+    gap_weekend_workdays: "zilele lucrătoare din weekend",
+    gap_warning: "Fără profil activ: {days}. În acele zile camera stă pe protecție la îngheț.",
+    gap_confirm: "{days} vor rămâne fără profil activ (protecție la îngheț). Continui?",
+    confirm: "Confirmă",
     schedule_help: "Fiecare oră pornește un nivel care ține până la ora următoare; ultimul ține până la prima oră din ziua următoare. Programul se folosește cât timp e cineva acasă; ferestrele, modificările manuale, vacanța, prezența (aproape = eco, departe = away) și modul casei au prioritate.",
     schedule_active: "Acum decide programul.",
     schedule_not_active: "Acum decide {rule}; programul se aplică din nou după ce se termină.",
@@ -295,7 +365,6 @@ const TEXT = {
     clear_vacation: "Șterge vacanța",
     reevaluate: "Reevaluează",
     clear_all: "Anulează modificările",
-    profile: "Profil",
     child_lock: "Blocare modificări",
     next: "Următor",
     quick: "Setează temporar",
@@ -421,6 +490,7 @@ const TEXT = {
     al_sensor_unavailable_device: "Senzorii de temperatură sunt indisponibili; se folosește senzorul dispozitivului.",
     al_sensor_unavailable_eco: "Senzorii de temperatură sunt indisponibili; se folosește eco.",
     al_schedule_invalid: "Programul e invalid ({error}); se folosește programul implicit.",
+    al_schedule_gap: "Fără profil activ în program: {days}; în acele zile camera stă pe protecție la îngheț.",
     al_battery_low: "Baterie descărcată la {device} ({level}%).",
     open_entity: "Deschide entitatea",
     r_pause: "Pauză: nu se trimit comenzi",
@@ -436,6 +506,7 @@ const TEXT = {
     r_nearby: "Nimeni acasă, cineva în apropiere",
     r_nearby_temperature: "Nimeni acasă, cineva în apropiere: {temperature}",
     r_no_schedule: "Niciun program disponibil",
+    r_no_profile: "Niciun profil activ pentru ziua de azi: protecție la îngheț",
     r_sensor_fallback: "Senzorii de temperatură indisponibili: eco până revin",
     r_unoccupied: "Cameră neocupată (program: {preset})",
     r_schedule: "Program: {preset}",
@@ -696,6 +767,7 @@ class AdvancedClimateCard extends HTMLElement {
 
   /** Name of a level for the user (custom names included). */
   _presetName(attrs, preset) {
+    if (preset === "frost") return this._t("frost_level");
     return (attrs.preset_names && attrs.preset_names[preset]) || preset;
   }
 
@@ -1078,10 +1150,10 @@ class AdvancedClimateCard extends HTMLElement {
       this._noHeatHtml(a),
       cfg.show_timeline ? this._timelineHtml(a) : "",
       this._controlsHtml(a, e),
-      cfg.show_quick_override ? this._quickHtml(a) : "",
+      cfg.show_quick_override ? this._quickHtml(a, e) : "",
       cfg.show_levels ? this._levelsHtml(a, e) : "",
-      cfg.show_details ? this._detailsHtml(a, e) : "",
       cfg.show_schedule_editor ? this._scheduleHtml(a, stateObj) : "",
+      cfg.show_details ? this._detailsHtml(a, e) : "",
     ];
     return `<section class="block room">${head}${parts.join("")}</section>`;
   }
@@ -1268,7 +1340,8 @@ class AdvancedClimateCard extends HTMLElement {
     const t0 = now - 24 * HOUR;
     const t1 = now + 12 * HOUR;
     const hist = this._history(a);
-    const levels = a.levels || {};
+    // A day without an active profile keeps the frost protection.
+    const levels = { ...(a.levels || {}), frost: a.min_temperature };
 
     // Target: history for the past, the plan for the future.
     const segs = [];
@@ -1711,7 +1784,7 @@ class AdvancedClimateCard extends HTMLElement {
           ${hasOut ? `<span class="lg"><i class="lg-out"></i>${this._t("legend_outdoor")}</span>` : ""}
           ${d.loading ? `<span class="muted">${this._t("loading")}</span>` : ""}
         </div>
-        <div class="meta"><span>${this._t("today")}: <b>${esc(a.profile || "–")}</b></span>${next}</div>`;
+        <div class="meta"><span>${this._t("today")}: <b>${esc(a.profile || (a.profile_days && a.schedule ? this._t("frost_level") : "–"))}</b></span>${next}</div>`;
     if (innerOnly) return inner;
     return `<div class="chart-card" data-chartcard="${esc(a.room_id)}">${inner}</div>`;
   }
@@ -1802,33 +1875,17 @@ class AdvancedClimateCard extends HTMLElement {
     tip.style.transform = f > 0.6 ? "translateX(calc(-100% - 10px))" : "translateX(10px)";
   }
 
-  /** Profile select, child lock and clear manual change. */
+  /** Back to automatic (while there is a manual change). */
   _controlsHtml(a, e) {
-    const profile = this._state(e.profile);
-    const options = (profile?.attributes?.options || [])
-      .map(
-        (opt) =>
-          `<option value="${esc(opt)}" ${profile.state === opt ? "selected" : ""}>${esc(
-            this._label(profile, opt)
-          )}</option>`
-      )
-      .join("");
-    const select = profile
-      ? `<label class="selectfield"><span>${this._t("profile")}</span><select data-action="select" data-entity="${esc(
-          e.profile
-        )}">${options}</select></label>`
-      : "";
-    const clear = a.override
-      ? this._btn(this._t("clear_override"), `data-action="clear" data-room="${esc(a.room_id)}"`, {
-          icon: "autorenew",
-          kind: "primary",
-        })
-      : "";
-    return `<div class="row wrap controls">${select}${this._toggle(e.child_lock, this._t("child_lock"))}${clear}</div>`;
+    if (!a.override) return "";
+    return `<div class="row wrap controls">${this._btn(this._t("clear_override"), `data-action="clear" data-room="${esc(a.room_id)}"`, {
+      icon: "autorenew",
+      kind: "primary",
+    })}</div>`;
   }
 
   /** Quick manual change: a level or a temperature, for an optional number of hours. */
-  _quickHtml(a) {
+  _quickHtml(a, e = {}) {
     const presets = (a.presets || Object.keys(PRESET_COLORS))
       .map(
         (p) => `<button class="preset" style="--c:${PRESET_COLORS[p] || "var(--primary-color)"}"
@@ -1845,6 +1902,7 @@ class AdvancedClimateCard extends HTMLElement {
       this._t("quick"),
       `<p class="hint">${this._t("quick_hint")}</p>
         <div class="presets">${presets}</div>
+        ${e.child_lock ? `<div class="row wrap">${this._toggle(e.child_lock, this._t("child_lock"))}</div>` : ""}
         <div class="row wrap">
           <label class="numfield"><span>${this._t("target_tag")}</span><input type="number" step="0.5" min="${
             num(a.min_temperature) ?? (fahrenheit ? 41 : 5)
@@ -2015,6 +2073,7 @@ class AdvancedClimateCard extends HTMLElement {
           entities: Array.isArray(p.entities) ? p.entities.join(", ") : p.entities,
           rooms: Array.isArray(p.rooms) ? p.rooms.map(([n, g]) => `${n} (−${g}°)`).join(", ") : p.rooms,
         };
+        if (al.code === "schedule_gap") values.days = this._gapText(p);
         text = text.replace(/\{(\w+)\}/g, (m, k) => (values[k] !== undefined ? String(values[k]) : m));
         const entity = p.entity || (Array.isArray(p.entities) ? p.entities[0] : null);
         return `<li class="${entity ? "link" : ""}" ${this._more(entity)}>${this._icon("alert-outline")}<span>${esc(
@@ -2025,22 +2084,37 @@ class AdvancedClimateCard extends HTMLElement {
     return `<div class="label">${esc(this._t("alerts"))}</div><ul class="alerts">${items}</ul>`;
   }
 
-  /** Which days a profile is used on, in words. */
-  _profileDays(name) {
-    const days = {
-      workday: this._t("days_workday"),
-      weekend: this._t("days_weekend"),
-    };
-    if (days[name]) return days[name];
-    const weekday = WEEKDAY_KEYS.indexOf(name);
-    if (weekday >= 0) return this._t("days_weekday").replace("{day}", this._weekdayName(weekday));
-    return this._t("days_custom");
+  /** Which days a profile is for, in words. */
+  _profileDays(meta) {
+    const days = meta ? meta.days : "all";
+    if (days === "workday") return this._t("days_workday");
+    if (days === "weekend") return this._t("days_weekend");
+    if (Array.isArray(days)) return days.map((d) => this._weekdayName(WEEKDAY_KEYS.indexOf(d), "short")).join(", ");
+    return this._t("days_all");
+  }
+
+  /** On / off switch of a profile (in the schedule and in the editor). */
+  _profileSwitch(room, name, on, action) {
+    return `<button class="toggle sm ${on ? "on" : ""}" role="switch" aria-checked="${on}" aria-label="${esc(
+      this._t(on ? "profile_on" : "profile_off")
+    )}" title="${esc(this._t(on ? "profile_on" : "profile_off"))}" data-action="${action}" data-room="${esc(room)}" data-profile="${esc(
+      name
+    )}"><span class="knob"></span><span>${esc(this._t(on ? "profile_on" : "profile_off"))}</span></button>`;
+  }
+
+  /** Days without an active profile, in words ("" when every day has one). */
+  _gapText(gap) {
+    if (!gap) return "";
+    const parts = (gap.days || []).map((d) => this._weekdayName(WEEKDAY_KEYS.indexOf(d)));
+    if (gap.free_days) parts.push(this._t("gap_free_days"));
+    if (gap.workdays) parts.push(this._t("gap_weekend_workdays"));
+    return parts.join(", ");
   }
 
   /** Weekday name in the language of the user (0 = Monday). */
-  _weekdayName(index) {
+  _weekdayName(index, style = "long") {
     // 2024-01-01 was a Monday.
-    return new Date(2024, 0, 1 + index).toLocaleDateString(this._lang(), { weekday: "long" });
+    return new Date(2024, 0, 1 + index).toLocaleDateString(this._lang(), { weekday: style });
   }
 
   /** Help text of the schedule and whether it decides the room right now. */
@@ -2058,7 +2132,17 @@ class AdvancedClimateCard extends HTMLElement {
       return this._fold(`sched-${a.room_id}`, this._t("schedule"), `<p class="hint">${this._t("not_editable")}</p>`);
     }
     const intro = this._scheduleIntro(a, stateObj);
+    const meta = a.profile_days || {};
     if (this._editing !== a.room_id) {
+      const gap = this._gapText(uncoveredDays(meta));
+      const pending = this._pendingProfile && this._pendingProfile.room === a.room_id ? this._pendingProfile : null;
+      const notice = pending
+        ? `<div class="confirmbox"><span>${esc(this._t("gap_confirm").replace("{days}", this._gapText(uncoveredDays(pending.days))))}</span>
+            ${this._btn(this._t("confirm"), `data-action="profile-confirm" data-room="${esc(a.room_id)}"`, { kind: "soft-warn" })}
+            ${this._btn(this._t("cancel"), `data-action="profile-cancel"`, {})}</div>`
+        : gap
+          ? `<p class="hint warn">${esc(this._t("gap_warning").replace("{days}", gap))}</p>`
+          : "";
       const profiles = Object.entries(a.schedule || {})
         .map(([name, slots]) => {
           const rows = this._intervals(slots)
@@ -2069,10 +2153,11 @@ class AdvancedClimateCard extends HTMLElement {
               }</span><span class="pname">${esc(this._presetName(a, it.preset))}</span></li>`
             )
             .join("");
-          return `<div class="profile ${a.profile === name ? "today" : ""}">
+          const on = !!(meta[name] && meta[name].enabled);
+          return `<div class="profile ${a.profile === name ? "today" : ""} ${on ? "" : "off"}">
               <div class="phead"><b>${esc(name)}</b>${
             a.profile === name ? `<span class="pill">${this._t("today")}</span>` : ""
-          }<span class="muted">${esc(this._profileDays(name))}</span></div>
+          }<span class="muted">${esc(this._profileDays(meta[name]))}</span>${this._profileSwitch(a.room_id, name, on, "profile-toggle")}</div>
               <div class="sbar ro">${this._barInner(a, name, slots, false)}</div>
               <ul class="intervals">${rows}</ul></div>`;
         })
@@ -2080,7 +2165,7 @@ class AdvancedClimateCard extends HTMLElement {
       return this._fold(
         `sched-${a.room_id}`,
         this._t("schedule"),
-        `${intro}<div class="profiles">${profiles}</div>
+        `${intro}${notice}<div class="profiles">${profiles}</div>
          <div class="row">${this._btn(this._t("edit"), `data-action="edit" data-room="${esc(a.room_id)}"`, {
            icon: "pencil",
            kind: "primary",
@@ -2114,13 +2199,31 @@ class AdvancedClimateCard extends HTMLElement {
             </div>`;
           })
           .join("");
-        return `<div class="profile edit">
-            <div class="phead"><b>${esc(name)}</b><span class="muted">${esc(this._profileDays(name))}</span>
+        const dm = (this._draftDays || {})[name] || { days: guessDays(name), enabled: false };
+        const kind = Array.isArray(dm.days) ? "days" : dm.days;
+        const daysSelect = `<label class="selectfield"><span>${this._t("days_label")}</span><select data-days="${esc(name)}">${[
+          "all",
+          "workday",
+          "weekend",
+          "days",
+        ]
+          .map((k) => `<option value="${k}" ${k === kind ? "selected" : ""}>${esc(this._t(`days_opt_${k}`))}</option>`)
+          .join("")}</select></label>`;
+        const dayChecks = Array.isArray(dm.days)
+          ? `<div class="daychecks">${WEEKDAY_KEYS.map(
+              (d, i) => `<label><input type="checkbox" data-dayof="${esc(name)}" data-day="${d}" ${
+                dm.days.includes(d) ? "checked" : ""
+              }>${esc(this._weekdayName(i, "short"))}</label>`
+            ).join("")}</div>`
+          : "";
+        return `<div class="profile edit ${dm.enabled ? "" : "off"}">
+            <div class="phead"><b>${esc(name)}</b>${this._profileSwitch(a.room_id, name, !!dm.enabled, "draft-toggle")}
               ${this._copySelect(name)}
               ${this._btn(this._t("remove_profile"), `data-action="del-profile" data-profile="${esc(name)}"`, {
                 icon: "delete-outline",
                 kind: "danger",
               })}</div>
+            <div class="row wrap">${daysSelect}${dayChecks}</div>
             <div class="sbar" data-bar="${esc(name)}">${this._barInner(a, name, slots, true)}</div>
             <div class="bar-ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
             <div class="slot-head"><span></span><span>${this._t("starts")}</span><span>${this._t("ends")}</span><span>${this._t(
@@ -2135,6 +2238,10 @@ class AdvancedClimateCard extends HTMLElement {
         <div class="ehead"><b>${this._t("schedule")}</b></div>
         ${intro}
         <p class="hint">${this._t("drag_hint")}</p>
+        ${(() => {
+          const gap = this._gapText(uncoveredDays(this._draftDays));
+          return gap ? `<p class="hint warn">${esc(this._t("gap_warning").replace("{days}", gap))}</p>` : "";
+        })()}
         ${blocks}
         <div class="row wrap">
           <label class="textfield"><span>${this._t("profile_name")}</span>
@@ -2534,7 +2641,27 @@ class AdvancedClimateCard extends HTMLElement {
       const value = num(el.value);
       if (value !== null) await this._call("number", "set_value", { entity_id: d.entity, value });
     } else if (d.copy !== undefined && this._draft?.[d.copy]) {
-      if (el.value) this._draft[el.value] = JSON.parse(JSON.stringify(this._draft[d.copy]));
+      if (el.value) {
+        if (!this._draft[el.value] && this._draftDays) {
+          this._draftDays[el.value] = { days: guessDays(el.value), enabled: false };
+        }
+        this._draft[el.value] = JSON.parse(JSON.stringify(this._draft[d.copy]));
+      }
+      this._render();
+    } else if (d.days !== undefined && this._draftDays) {
+      // Days of a profile; when it is on, the active profiles that now overlap it are turned off.
+      const m = this._draftDays[d.days] || { days: "all", enabled: false };
+      m.days = el.value === "days" ? (Array.isArray(m.days) ? m.days : ["mon"]) : el.value;
+      this._draftDays[d.days] = m;
+      if (m.enabled) this._draftDays = switchProfile(this._draftDays, d.days, true);
+      this._render();
+    } else if (d.dayof !== undefined && this._draftDays?.[d.dayof]) {
+      const m = this._draftDays[d.dayof];
+      const list = new Set(Array.isArray(m.days) ? m.days : []);
+      if (el.checked) list.add(d.day);
+      else if (list.size > 1) list.delete(d.day);
+      m.days = WEEKDAY_KEYS.filter((x) => list.has(x));
+      if (m.enabled) this._draftDays = switchProfile(this._draftDays, d.dayof, true);
       this._render();
     } else if (d.field && this._draft?.[d.profile]) {
       this._draft[d.profile][Number(d.index)][d.field] = el.value;
@@ -2647,12 +2774,55 @@ class AdvancedClimateCard extends HTMLElement {
         this._editing = room;
         this._open[`sched-${room}`] = true;
         this._draft = JSON.parse(JSON.stringify(stateObj.attributes.schedule));
+        this._draftDays = JSON.parse(JSON.stringify(stateObj.attributes.profile_days || {}));
+        this._pendingProfile = null;
         break;
       }
       case "cancel":
         this._editing = null;
         this._draft = null;
+        this._draftDays = null;
         break;
+      case "profile-toggle": {
+        // On / off from the schedule: saved at once; days left without a profile ask first.
+        const stateObj = this._rooms().find((s) => s.attributes.room_id === room);
+        if (!stateObj) return;
+        const meta = stateObj.attributes.profile_days || {};
+        const on = !(meta[profile] && meta[profile].enabled);
+        const days = switchProfile(meta, profile, on);
+        const gap = uncoveredDays(days);
+        const before = uncoveredDays(meta);
+        const worse = gap.days.some((d) => !before.days.includes(d)) || (gap.free_days && !before.free_days) || (gap.workdays && !before.workdays);
+        if (worse) {
+          this._pendingProfile = { room, days };
+          break;
+        }
+        this._pendingProfile = null;
+        await this._call("advanced_climate", "set_schedule", { room, profiles: stateObj.attributes.schedule, profile_days: days }, `sched-${room}`);
+        break;
+      }
+      case "profile-confirm": {
+        const pending = this._pendingProfile;
+        const stateObj = this._rooms().find((s) => s.attributes.room_id === room);
+        this._pendingProfile = null;
+        if (!pending || !stateObj) break;
+        await this._call(
+          "advanced_climate",
+          "set_schedule",
+          { room, profiles: stateObj.attributes.schedule, profile_days: pending.days },
+          `sched-${room}`
+        );
+        break;
+      }
+      case "profile-cancel":
+        this._pendingProfile = null;
+        break;
+      case "draft-toggle": {
+        if (!this._draftDays) return;
+        const on = !(this._draftDays[profile] && this._draftDays[profile].enabled);
+        this._draftDays = switchProfile(this._draftDays, profile, on);
+        break;
+      }
       case "add-slot": {
         // An hour after the last slot, else the first free time after it, else
         // the first free time of the day (5-minute steps); nothing when the day is full.
@@ -2673,23 +2843,37 @@ class AdvancedClimateCard extends HTMLElement {
         break;
       case "del-profile":
         delete this._draft[profile];
+        if (this._draftDays) delete this._draftDays[profile];
         break;
       case "add-profile": {
         const input = this.shadowRoot.querySelector(".newprofile");
         const name = (input?.value || "").trim().toLowerCase().replace(/\s+/g, "_");
-        if (name && !this._draft[name]) this._draft[name] = [{ time: "00:00", preset: "home" }];
+        if (name && !this._draft[name]) {
+          this._draft[name] = [{ time: "00:00", preset: "home" }];
+          if (this._draftDays) this._draftDays[name] = { days: guessDays(name), enabled: false };
+        }
         break;
       }
       case "save": {
         const ok = await this._call(
           "advanced_climate",
           "set_schedule",
-          { room, profiles: this._draft },
+          {
+            room,
+            profiles: this._draft,
+            profile_days: Object.fromEntries(
+              Object.keys(this._draft).map((name) => [
+                name,
+                (this._draftDays || {})[name] || { days: guessDays(name), enabled: false },
+              ])
+            ),
+          },
           `sched-${room}`
         );
         if (ok) {
           this._editing = null;
           this._draft = null;
+          this._draftDays = null;
         }
         break;
       }
@@ -2833,6 +3017,13 @@ const STYLE = `
   .tval.target .tnum { font-weight: 600; }
   .tval .eta { font-size: 0.68em; color: var(--ac-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .tval .eta.sub { font-size: 0.6em; opacity: 0.85; }
+  .toggle.sm { font-size: 0.85em; margin-left: auto; }
+  .profile.off > .sbar, .profile.off > .intervals { opacity: 0.45; }
+  .confirmbox { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px;
+    background: color-mix(in srgb, var(--ac-warn) 14%, transparent); }
+  .confirmbox > span { flex: 1 1 200px; }
+  .daychecks { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 0.9em; }
+  .daychecks label { display: inline-flex; gap: 4px; align-items: center; }
   dd small.sub { display: block; font-size: 0.8em; color: var(--ac-muted); }
   .decision { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .reason { margin: 0; color: var(--ac-muted); font-size: 0.9em; }

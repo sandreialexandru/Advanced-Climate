@@ -130,10 +130,22 @@ workday: 00:00 sleep, 06:00 home, 22:00 sleep
 weekend: 00:00 sleep, 08:00 home, 23:00 sleep
 ```
 
-Profiles are chosen in this order: the room *Profile* select (if not `auto`) →
-a calendar event titled with a profile name → a weekday profile (`mon` … `sun`)
-→ `workday` or `weekend` (holidays count as weekend). The schedule can also be
-edited in the Lovelace card.
+Each profile has its **days** and is **on or off** (set in the card, *Schedule*):
+all days, workdays, weekend days and holidays, or chosen weekdays. A day uses,
+in this order: a calendar event titled with a profile name (also a profile that
+is off) → the active profile of that weekday (e.g. a profile for Wednesday is
+above the workday profile on Wednesdays only) → the active profile of workdays
+or of weekend days → the active profile of all days. Turning a profile on turns
+off the active ones it overlaps (all days overlaps workdays and weekend days;
+chosen weekdays overlap when they share a day), so a day never has two.
+
+A day **no active profile covers keeps the frost protection**; the room shows an
+alert (*No active schedule profile: …*) and the card warns before turning a
+profile on or off leaves such days. Profiles saved before 2.2 keep their days:
+`mon` … `sun` for their day, `workday` and `weekend` for their kind of day (for
+all days when the other one is missing), and when none of these exists the first
+profile is for all days; other profiles start off. The *Profile* select of the
+rooms was removed in 2.2.
 
 ### How a room decides
 
@@ -164,7 +176,7 @@ buttons to clear manual changes, clear the vacation and reevaluate.
 
 Room: *Decision* (enum with the reason in the attributes), *Target temperature*,
 *Room temperature*, *Next change*, *Heating rate*, *Cooling rate*, *Heating runtime*, *Heat
-demand*, *Window open*, *Manual change*, *Profile* (select), *Child lock*
+demand*, *Window open*, *Manual change*, *Child lock*
 (switch), *Clear manual change*, *Reset heating learning* and *Reset cooling
 learning* (buttons) and, for rooms without Generic
 Thermostat, the level temperatures (numbers).
@@ -365,7 +377,10 @@ type: custom:advanced-climate-card
 | `runtime_period` | `day` | Heating time shown for `day`, `week` or `month` (calendar periods, from the long-term statistics; tap the value in the card to change it). The *Heating runtime* sensors stay cumulative totals |
 
 Every room also shows its decision, the reason, heating / window / manual change
-badges, the *Profile* select, the *Child lock* switch and *Back to automatic*.
+badges and *Back to automatic*; the *Child lock* switch is in *Set for a while*.
+The sections are, in order: *Set for a while*, *Levels*, *Schedule* (each
+profile with its days and an on / off switch; its days are chosen in the
+editor) and *Details*.
 
 - **Not heating**: below its target, a room says why it does not heat (within
   the thermostat tolerance or the hysteresis, a minimum on / off time, waiting

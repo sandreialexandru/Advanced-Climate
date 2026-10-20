@@ -99,8 +99,8 @@ home_office: 00:00 sleep, 07:00 comfort, 23:00 sleep
 
 | Opțiune | Implicit | Descriere |
 | --- | --- | --- |
-| Profiluri | workday + weekend | `workday`, `weekend`, profiluri pe zile `mon` … `sun` sau orice nume |
-| Alegerea profilului | auto | Manual (entitatea select) → eveniment de calendar → profilul zilei → workday / weekend |
+| Profiluri | workday + weekend | Orice nume; fiecare cu zilele lui (toate, zile lucrătoare, weekend și sărbători sau zile anume) și pornit / oprit, setate din card. Profilurile active nu se suprapun (zilele anume doar între ele) |
+| Alegerea profilului | auto | Eveniment de calendar → profilul activ al zilei → profilul activ al zilelor lucrătoare / weekendului → profilul activ pentru toate zilele → niciunul: protecție la îngheț, cu alertă |
 | Zile lucrătoare | integrarea Workday | Sărbătorile vin din integrarea Workday (inclusiv zilele viitoare) |
 | Calendar | niciunul | Un eveniment cu numele unui profil alege acel profil; numele unui preset alege acel nivel |
 | Sursa programului | intern | Program intern sau un **Schedule helper** existent în HA |
@@ -232,7 +232,7 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | `sensor.<room>_next_change` | Următoarea schimbare din program |
 | `binary_sensor.<room>_heat_demand` | Dacă camera cere căldură; atributul `heating` arată dacă sursa ei merge |
 | `sensor.<house>_presence` | acasă / aproape / departe |
-| `select.<house>_mode`, `select.<room>_profile` | Modul global și profilul activ |
+| `select.<house>_mode` | Modul global |
 | `number.*`, `button.*`, `switch.*` | Niveluri, anularea schimbărilor manuale, resetarea învățării încălzirii / răcirii (pe cameră), mod oaspeți, pauză, blocare pentru copii |
 | Servicii | `set_override`, `clear_override`, `set_vacation`, `reevaluate`, `set_schedule` |
 | Evenimente | `advanced_climate_decision_changed` cu camera, ținta veche și nouă și motivul |
