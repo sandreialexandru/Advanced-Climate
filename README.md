@@ -165,7 +165,8 @@ buttons to clear manual changes, clear the vacation and reevaluate.
 Room: *Decision* (enum with the reason in the attributes), *Target temperature*,
 *Room temperature*, *Next change*, *Heating rate*, *Cooling rate*, *Heating runtime*, *Heat
 demand*, *Window open*, *Manual change*, *Profile* (select), *Child lock*
-(switch), *Clear manual change* (button) and, for rooms without Generic
+(switch), *Clear manual change*, *Reset heating learning* and *Reset cooling
+learning* (buttons) and, for rooms without Generic
 Thermostat, the level temperatures (numbers).
 
 ## Heating learning
@@ -386,8 +387,13 @@ badges, the *Profile* select, the *Child lock* switch and *Back to automatic*.
   start / stop as a shaded period with its start time.
 - **Pause**: a banner at the top of the card while the house is paused (the
   *Pause* switch stays the only control).
-- **Details**: what the room learned (heating and cooling episodes and the rate
-  now) and the alerts of the room and of the house, in the language of the card.
+- **Details**, grouped: the alerts of the room and of the house (first, in the
+  language of the card); *Temperatures* (room, target, thermostat preset,
+  adjustments, level temperatures); *Schedule* (next optimal start / stop,
+  heating time); *Learning* (heating: episodes, fixed part and minutes per
+  degree now; cooling: episodes and how fast the room falls now; each with a
+  **Reset** button that asks to confirm with a second click; the last heating
+  episode at the end).
 - **Manual change**: where it was made (card / service or on the device), until
   when, *applies after: …* while a higher rule keeps a change from the card off
   the devices, and *comes back after: …* while a higher rule interrupts it.

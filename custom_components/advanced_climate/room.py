@@ -705,6 +705,16 @@ class Room:
         self.override = None
         self.house.async_save()
 
+    def reset_heating_learning(self) -> None:
+        """Forget the learned heating (episodes and the one in progress)."""
+        self.learner = HeatingRateLearner()
+        self.house.async_save()
+
+    def reset_cooling_learning(self) -> None:
+        """Forget the learned cooling (episodes and the one in progress)."""
+        self.cooling = CoolingLearner()
+        self.house.async_save()
+
     def _check_override(self, now: datetime, signature: tuple) -> None:
         """End the manual change when its time is over or something relevant changed."""
         if self.override is None:

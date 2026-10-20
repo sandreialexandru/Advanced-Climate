@@ -256,7 +256,10 @@ iar partea fixă nu putea fi învățată bine. Cu 25 + 25 episoadele mari răm�
 
 La aproximativ un episod mare pe zi, cele 25 de episoade mari se înnoiesc în
 aproximativ 25 de zile, deci după o schimbare (altă curbă de termoreglare,
-calorifere noi) învățarea o urmează în câteva săptămâni.
+calorifere noi) învățarea o urmează în câteva săptămâni. Ca să înceapă imediat
+de la zero, fiecare cameră are butoanele **Reset heating learning** și **Reset
+cooling learning** (și în *Detaliile* cardului, lângă fiecare învățare, cu un
+al doilea clic pentru confirmare).
 
 ---
 
@@ -500,8 +503,10 @@ afară de acum (`min/°C` sau `min/°F`). Atribute:
 oprire anticipată, cu ce temperatură de afară și dacă e învățată sau
 implicită) și `time_to_target`.
 
-**Card, Detalii** – *Învățare încălzire*: numărul de episoade, partea fixă și
-minutele pe grad acum (*12 episoade · 25 min + 49 min/°C acum*); *Învățare
-răcire*; următoarea pornire / oprire anticipată.
+**Card, Detalii** – grupul *Învățare*: *Învățare încălzire* (numărul de
+episoade, partea fixă și minutele pe grad acum, de exemplu *12 episoade ·
+25 min + 49 min/°C acum*) și *Învățare răcire*, fiecare cu butonul
+**Resetează**, apoi ultimul episod de încălzire (*+0.2° în 167 min, afară
+12.0°, 09:11*); grupul *Program*: următoarea pornire / oprire anticipată.
 
 **Diagnostice** – `learned_heating`, cu toate numerele modelului.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from homeassistant.components.button import ButtonEntity
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -27,7 +28,14 @@ async def async_setup_entry(
         ]
     )
     for room in house.rooms.values():
-        async_add_entities([ClearRoomOverrideButton(room)], config_subentry_id=room.id)
+        async_add_entities(
+            [
+                ClearRoomOverrideButton(room),
+                ResetHeatingLearningButton(room),
+                ResetCoolingLearningButton(room),
+            ],
+            config_subentry_id=room.id,
+        )
 
 
 class ClearOverridesButton(HouseEntity, ButtonEntity):
@@ -76,4 +84,34 @@ class ClearRoomOverrideButton(RoomEntity, ButtonEntity):
     async def async_press(self) -> None:
         """Press."""
         self.room.clear_override()
+        await self.house.async_evaluate_or_notify()
+
+
+class ResetHeatingLearningButton(RoomEntity, ButtonEntity):
+    """Forget what the room learned about heating (it is learned again)."""
+
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, room: Room) -> None:
+        """Initialize."""
+        super().__init__(room, "reset_heating_learning")
+
+    async def async_press(self) -> None:
+        """Press."""
+        self.room.reset_heating_learning()
+        await self.house.async_evaluate_or_notify()
+
+
+class ResetCoolingLearningButton(RoomEntity, ButtonEntity):
+    """Forget what the room learned about cooling (it is learned again)."""
+
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, room: Room) -> None:
+        """Initialize."""
+        super().__init__(room, "reset_cooling_learning")
+
+    async def async_press(self) -> None:
+        """Press."""
+        self.room.reset_cooling_learning()
         await self.house.async_evaluate_or_notify()

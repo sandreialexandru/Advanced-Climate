@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.0.2";
+const CARD_VERSION = "2.1.0";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -152,6 +152,14 @@ const TEXT = {
     period_hint: "Tap to change the period (today, this week, this month).",
     eta_learning: "learning…",
     heat_default: "default {value}",
+    grp_temps: "Temperatures",
+    grp_program: "Schedule",
+    grp_learning: "Learning",
+    reset: "Reset",
+    reset_confirm: "Confirm?",
+    last_episode: "Last heating episode",
+    last_episode_value: "+{rise} in {minutes} min, outdoor {outdoor}, {time}",
+    last_episode_value_no_out: "+{rise} in {minutes} min, {time}",
     eta_help: "Time until the target, as learned from the heating episodes for the current outdoor temperature.",
     stop_at: "~{temp} at {time}",
     stop_help: "Optimal stop: expected room temperature at the scheduled change, from the learned cooling and the outdoor temperature expected until then.",
@@ -194,7 +202,9 @@ const TEXT = {
     learn_cool: "Cooling learned",
     learn_none: "learning…",
     learn_heat_value: "{n} episodes · {fixed} min + {rate} now",
+    learn_heat_value_1: "1 episode · {fixed} min + {rate} now",
     learn_cool_value: "{n} episodes · falls {rate} now",
+    learn_cool_value_1: "1 episode · falls {rate} now",
     origin_card: "card / service",
     origin_device: "on the device",
     back_after: "comes back after: {rule}",
@@ -340,6 +350,14 @@ const TEXT = {
     period_hint: "Apasă ca să schimbi perioada (azi, săptămâna aceasta, luna aceasta).",
     eta_learning: "se învață…",
     heat_default: "implicit {value}",
+    grp_temps: "Temperaturi",
+    grp_program: "Program",
+    grp_learning: "Învățare",
+    reset: "Resetează",
+    reset_confirm: "Confirmi?",
+    last_episode: "Ultimul episod de încălzire",
+    last_episode_value: "+{rise} în {minutes} min, afară {outdoor}, {time}",
+    last_episode_value_no_out: "+{rise} în {minutes} min, {time}",
     eta_help: "Timpul până la țintă, după cât a durat încălzirea în episoadele învățate, la temperatura de afară de acum.",
     stop_at: "~{temp} la {time}",
     stop_help: "Oprire anticipată: temperatura estimată a camerei la schimbarea din program, după răcirea învățată și temperatura de afară prognozată până atunci.",
@@ -382,7 +400,9 @@ const TEXT = {
     learn_cool: "Învățare răcire",
     learn_none: "se învață…",
     learn_heat_value: "{n} episoade · {fixed} min + {rate} acum",
+    learn_heat_value_1: "1 episod · {fixed} min + {rate} acum",
     learn_cool_value: "{n} episoade · scade {rate} acum",
+    learn_cool_value_1: "1 episod · scade {rate} acum",
     origin_card: "card / serviciu",
     origin_device: "pe dispozitiv",
     back_after: "revine după: {rule}",
@@ -1849,39 +1869,42 @@ class AdvancedClimateCard extends HTMLElement {
           : rawPreset
         : null;
     const dl = (k, v) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`;
-    const html = `<dl class="details">
+    const group = (title, body) => (body.trim() ? `<div class="label">${esc(title)}</div>${body}` : "");
+    const estimate = a.next_estimate
+      ? `<div class="wide link" ${this._more(e.decision)}><dt>${esc(this._t("est_label"))}</dt><dd>${esc(
+          this._estimate(a)
+        )}${
+          a.next_estimate.kind === "optimal_start" && !a.next_estimate.learned && this._heatDefault(e)
+            ? `<small class="sub">${esc(this._heatDefault(e))}</small>`
+            : ""
+        }</dd></div>`
+      : "";
+    const runtimeHtml = runtime ? `<div>${this._runtimeButton(e.heating_runtime, "dt")}</div>` : "";
+    const temps = `<dl class="details">
         ${dl(this._t("room_temp"), esc(this._temp(a.current_temperature)))}
         ${dl(this._t("target"), esc(this._temp(a.target_temperature)))}
-        ${this._learnHtml(e)}
-        ${runtime ? `<div>${this._runtimeButton(e.heating_runtime, "dt")}</div>` : ""}
         ${devicePreset !== null ? dl(this._t("device_preset"), esc(devicePreset)) : ""}
         ${dl(this._t("adjustments"), esc(offsets))}
-        ${
-          a.next_estimate
-            ? `<div class="wide link" ${this._more(e.decision)}><dt>${esc(this._t("est_label"))}</dt><dd>${esc(
-                this._estimate(a)
-              )}${
-                a.next_estimate.kind === "optimal_start" && !a.next_estimate.learned && this._heatDefault(e)
-                  ? `<small class="sub">${esc(this._heatDefault(e))}</small>`
-                  : ""
-              }</dd></div>`
-            : ""
-        }
       </dl>
-      ${this._alertsHtml(a)}
       ${
         levelTemps
-          ? `<div class="label">${a.custom_levels ? this._t("levels") : this._t("level_temps_gt")}</div>
+          ? `<div class="sublabel">${a.custom_levels ? this._t("levels") : this._t("level_temps_gt")}</div>
              <div class="levels-line">${levelTemps}</div>`
           : ""
-      }
+      }`;
+    const program = estimate || runtimeHtml ? `<dl class="details">${estimate}${runtimeHtml}</dl>` : "";
+    const learning = this._learnHtml(e);
+    const html = `${this._alertsHtml(a)}
+      ${group(this._t("grp_temps"), temps)}
+      ${group(this._t("grp_program"), program)}
+      ${group(this._t("grp_learning"), learning ? `<dl class="details">${learning}</dl>` : "")}
       ${a.schedule_error ? `<p class="error">${esc(a.schedule_error)}</p>` : ""}`;
     return this._fold(`details-${a.room_id}`, this._t("details"), html);
   }
 
-  /** What the room learned (heating and cooling), each linked to its sensor. */
+  /** What the room learned (heating and cooling), each linked to its sensor, with its reset. */
   _learnHtml(e) {
-    const row = (entityId, label, valueKey) => {
+    const row = (entityId, label, valueKey, resetId) => {
       const s = this._state(entityId);
       if (!s) return "";
       const n = num(s.attributes.episodes) ?? 0;
@@ -1891,7 +1914,7 @@ class AdvancedClimateCard extends HTMLElement {
       const heating = valueKey === "learn_heat_value";
       const fixed = num(s.attributes.fixed_minutes);
       const text = n
-        ? this._t(valueKey)
+        ? this._t(n === 1 ? `${valueKey}_1` : valueKey)
             .replace("{n}", String(n))
             .replace("{fixed}", fixed === null ? "–" : String(Math.round(fixed)))
             .replace(
@@ -1900,12 +1923,40 @@ class AdvancedClimateCard extends HTMLElement {
             )
         : this._t("learn_none");
       const sub = heating && !n ? this._heatDefault({ heating_rate: entityId }) : "";
-      return `<div class="link" ${this._more(entityId)}><dt>${esc(label)}</dt><dd>${esc(text)}${
+      const confirming = this._confirmReset === resetId;
+      const reset =
+        resetId && this._state(resetId)
+          ? this._btn(this._t(confirming ? "reset_confirm" : "reset"), `data-action="reset-learning" data-entity="${esc(resetId)}"`, {
+              icon: "refresh",
+              kind: confirming ? "soft-warn" : "",
+            })
+          : "";
+      return `<div class="wide learn"><div class="link" ${this._more(entityId)}><dt>${esc(label)}</dt><dd>${esc(text)}${
         sub ? `<small class="sub">${esc(sub)}</small>` : ""
-      }</dd></div>`;
+      }</dd></div>${reset}</div>`;
     };
-    return row(e.heating_rate, this._t("learn_heat"), "learn_heat_value") +
-      row(e.cooling_rate, this._t("learn_cool"), "learn_cool_value");
+    return (
+      row(e.heating_rate, this._t("learn_heat"), "learn_heat_value", e.reset_heating_learning) +
+      row(e.cooling_rate, this._t("learn_cool"), "learn_cool_value", e.reset_cooling_learning) +
+      this._lastEpisodeHtml(e)
+    );
+  }
+
+  /** The last heating episode learned: rise, minutes, outdoor temperature and time. */
+  _lastEpisodeHtml(e) {
+    const s = this._state(e.heating_rate);
+    const list = s && Array.isArray(s.attributes.last_episodes) ? s.attributes.last_episodes : [];
+    const last = list[list.length - 1];
+    if (!last || num(last.rise) === null || num(last.minutes) === null) return "";
+    const outdoor = num(last.outdoor);
+    const text = this._t(outdoor === null ? "last_episode_value_no_out" : "last_episode_value")
+      .replace("{rise}", this._temp(last.rise))
+      .replace("{minutes}", String(Math.round(last.minutes)))
+      .replace("{outdoor}", outdoor === null ? "" : this._temp(outdoor))
+      .replace("{time}", last.at ? this._fmtTime(last.at) : "–");
+    return `<div class="wide link" ${this._more(e.heating_rate)}><dt>${esc(this._t("last_episode"))}</dt><dd>${esc(
+      text
+    )}</dd></div>`;
   }
 
   /** Alerts of the room and of the whole house, in the language of the card. */
@@ -2511,6 +2562,20 @@ class AdvancedClimateCard extends HTMLElement {
       case "press":
         await this._call("button", "press", { entity_id: entity });
         return;
+      case "reset-learning":
+        // Two clicks: the first asks to confirm (for a few seconds), the second resets.
+        clearTimeout(this._confirmTimer);
+        if (this._confirmReset !== entity) {
+          this._confirmReset = entity;
+          this._confirmTimer = setTimeout(() => {
+            this._confirmReset = null;
+            this._render();
+          }, 4000);
+          break;
+        }
+        this._confirmReset = null;
+        await this._call("button", "press", { entity_id: entity });
+        break;
       case "vacation": {
         const h = this._houses().find((x) => x.id === house);
         if (!h) return;
@@ -2846,6 +2911,10 @@ const STYLE = `
   .details { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 0; }
   .details div { background: var(--ac-surface); border-radius: 10px; padding: 8px 10px; }
   .details div.wide { grid-column: 1 / -1; }
+  .details div.learn { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 0; background: none; }
+  .details div.learn > div.link { flex: 1; min-width: 0; }
+  .details div.learn .btn { flex: none; min-width: 7.5em; justify-content: center; }
+  .sublabel { font-size: 0.75em; color: var(--ac-muted); margin: 6px 0 -2px; }
   .details dt { font-size: 0.75em; color: var(--ac-muted); }
   .details dd { margin: 2px 0 0; font-variant-numeric: tabular-nums; font-weight: 500; }
   .levels-line { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.85em; align-items: center; }

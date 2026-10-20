@@ -233,7 +233,7 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | `binary_sensor.<room>_heat_demand` | Dacă camera cere căldură; atributul `heating` arată dacă sursa ei merge |
 | `sensor.<house>_presence` | acasă / aproape / departe |
 | `select.<house>_mode`, `select.<room>_profile` | Modul global și profilul activ |
-| `number.*`, `button.*`, `switch.*` | Niveluri, anularea schimbărilor manuale, mod oaspeți, pauză, blocare pentru copii |
+| `number.*`, `button.*`, `switch.*` | Niveluri, anularea schimbărilor manuale, resetarea învățării încălzirii / răcirii (pe cameră), mod oaspeți, pauză, blocare pentru copii |
 | Servicii | `set_override`, `clear_override`, `set_vacation`, `reevaluate`, `set_schedule` |
 | Evenimente | `advanced_climate_decision_changed` cu camera, ținta veche și nouă și motivul |
 | Cardul Lovelace | Starea și decizia camerei; grafic pe 24 h (temperatură, țintă, încălzire) cu următoarele 12 h planificate și zoom până la minut (o bară sub graficul mărit îl mută; tragerea pe grafic citește valorile); program editabil prin tragere (5 minute), copierea unei zile; timpul până la țintă sau, în timpul unei opriri anticipate, temperatura estimată la schimbare; următoarea pornire / oprire anticipată în detaliile camerei; grafic cu grilă pe grade, ținta ca linie în trepte, încălzirea pe o bandă separată, temperatura de afară (măsurată și prognozată) pe banda ei și următoarea pornire / oprire anticipată; de ce nu încălzește o cameră sub țintă; pragul de oprire activ, cu limita lui; bandă de pauză; starea învățării și alertele în detalii; originea schimbării manuale; linkuri către entități; timpul de încălzire pe zi / săptămână / lună; mod compact |

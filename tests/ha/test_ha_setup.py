@@ -86,6 +86,26 @@ async def test_relay_room(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -
     assert heating.attributes["fixed_minutes"] == 0.0
     assert heating.attributes["episodes"] == 0
 
+    # The learning of each kind can be reset from its button.
+    room = next(iter(entry.runtime_data.rooms.values()))
+    room.learner.episodes.append([5.0, 2.0, 120.0, ""])
+    room.learner._model = None
+    room.cooling.episodes.append([5.0, 0.02, ""])
+    await hass.services.async_call(
+        "button", "press", {"entity_id": "button.bedroom_reset_heating_learning"}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert room.learner.episodes == []
+    assert room.cooling.episodes == [[5.0, 0.02, ""]]
+    await hass.services.async_call(
+        "button", "press", {"entity_id": "button.bedroom_reset_cooling_learning"}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert room.cooling.episodes == []
+    assert hass.states.get("sensor.bedroom_decision").attributes["entities"]["reset_heating_learning"] == (
+        "button.bedroom_reset_heating_learning"
+    )
+
     # Warm room: the relay turns off.
     hass.states.async_set("sensor.room_temp", "21.5", {"unit_of_measurement": "°C"})
     await _tick(hass, freezer, 5)

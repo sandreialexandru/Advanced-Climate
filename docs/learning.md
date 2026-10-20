@@ -253,7 +253,9 @@ stay.
 
 At about one large episode a day, the 25 large ones are renewed in about 25
 days, so after a change (a new weather curve on the boiler, new radiators)
-the learning follows within a few weeks.
+the learning follows within a few weeks. To start again at once, each room has
+the buttons **Reset heating learning** and **Reset cooling learning** (also in
+the card *Details*, next to each learning, with a second click to confirm).
 
 ---
 
@@ -500,8 +502,10 @@ heating (°C/h); attributes: the coefficient, the episodes, the tolerance.
 stop begins, with which outdoor temperature, and whether it is learned or
 default) and `time_to_target`.
 
-**Card, Details** – *Heating learned*: number of episodes, the fixed part and
-the minutes per degree now (*12 episodes · 25 min + 49 min/°C now*); *Cooling
-learned*; the next optimal start / stop.
+**Card, Details** – group *Learning*: *Heating learned* (number of episodes,
+the fixed part and the minutes per degree now, e.g. *12 episodes · 25 min +
+49 min/°C now*) and *Cooling learned*, each with its **Reset** button, then the
+last heating episode (*+0.2° in 167 min, outdoor 12.0°, 09:11*); group
+*Schedule*: the next optimal start / stop.
 
 **Diagnostics** – `learned_heating` with all the numbers of the model.

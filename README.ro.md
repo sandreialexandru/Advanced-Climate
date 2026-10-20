@@ -178,7 +178,8 @@ vacanței și reevaluare.
 Cameră: *Decision* (enum, cu motivul în atribute), *Target temperature*, *Room
 temperature*, *Next change*, *Heating rate*, *Cooling rate*, *Heating
 runtime*, *Heat demand*, *Window open*, *Manual change*, *Profile* (select),
-*Child lock* (comutator), *Clear manual change* (buton) și, pentru camerele
+*Child lock* (comutator), *Clear manual change*, *Reset heating learning* și
+*Reset cooling learning* (butoane) și, pentru camerele
 fără Generic Thermostat, temperaturile nivelurilor (numere).
 
 ## Învățarea încălzirii
@@ -406,8 +407,13 @@ fereastră / schimbare manuală, selectorul *Profile*, comutatorul *Child lock*
   pornire / oprire anticipată ca perioadă umbrită, cu ora de început.
 - **Pauză**: o bandă sus pe card cât timp casa e în pauză (comutatorul *Pause*
   rămâne singurul control).
-- **Detalii**: ce a învățat camera (episoade de încălzire și răcire și viteza
-  de acum) și alertele camerei și ale casei, în limba cardului.
+- **Detalii**, pe grupuri: alertele camerei și ale casei (primele, în limba
+  cardului); *Temperaturi* (camera, ținta, presetul termostatului, ajustările,
+  temperaturile nivelurilor); *Program* (următoarea pornire / oprire
+  anticipată, timpul de încălzire); *Învățare* (încălzire: episoade, partea
+  fixă și minutele pe grad acum; răcire: episoade și cât de repede scade camera
+  acum; fiecare cu un buton **Resetează** care cere confirmare printr-un al
+  doilea clic; ultimul episod de încălzire la sfârșit).
 - **Schimbare manuală**: unde a fost făcută (card / serviciu sau pe dispozitiv),
   până când, *se aplică după: …* cât timp o regulă de mai sus ține o schimbare
   din card departe de dispozitive și *revine după: …* cât timp o regulă de mai
