@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.1.1";
+const CARD_VERSION = "2.1.2";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -1339,7 +1339,7 @@ class AdvancedClimateCard extends HTMLElement {
       const b0 = Math.max(Date.parse(est.started_at || est.starts_at), now);
       const b1 = Date.parse(est.at);
       const bv = num(est.temperature) ?? num(levels[est.preset]);
-      if (Number.isFinite(b0) && Number.isFinite(b1) && b1 > b0 && bv !== null) {
+      if (Number.isFinite(b0) && Number.isFinite(b1) && b1 > b0 && b0 < t1 && bv !== null) {
         // The planned parts in that period give way to the next level.
         const split = [];
         for (const sg of segs) {
@@ -1604,7 +1604,10 @@ class AdvancedClimateCard extends HTMLElement {
     // A label for each level wide enough, not over another label.
     const placed = [];
     const labels = d.segs
-      .filter((sg) => {
+      .filter((sg, i) => {
+        // The rest of the same level after an optimal start / stop has no second label.
+        const before = d.segs[i - 1];
+        if (before && before.opt && before.v === sg.v && before.preset === sg.preset && before.e >= sg.s - 1000) return false;
         const [xs, xe] = visible(sg);
         const yy = y(sg.v);
         const wide = sg.preset ? 190 : 90;
