@@ -87,6 +87,5 @@ set_schedule:
       selector:
         object:
     profile_days:
-      example: '{"workday": {"days": "workday", "enabled": true}, "weekend": {"days": "weekend", "enabled": true}}'
       selector:
         object:

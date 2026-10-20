@@ -971,7 +971,7 @@
         },
         "profile_days": {
           "name": "Profile days",
-          "description": "Days and on / off of each profile: profile name -> {\"days\": \"all\" | \"workday\" | \"weekend\" | [\"mon\", …], \"enabled\": true | false} (used by the card). Profiles that are on cannot overlap."
+          "description": "Days and on / off of each profile: profile name -> days (all, workday, weekend, or a list of mon … sun) and enabled (true / false). Used by the card. Profiles that are on cannot overlap."
         }
       }
     }

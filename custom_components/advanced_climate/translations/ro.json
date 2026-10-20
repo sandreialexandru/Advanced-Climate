@@ -971,7 +971,7 @@
         },
         "profile_days": {
           "name": "Zilele profilurilor",
-          "description": "Zilele și pornit / oprit pentru fiecare profil: nume profil -> {\"days\": \"all\" | \"workday\" | \"weekend\" | [\"mon\", …], \"enabled\": true | false} (folosit de card). Profilurile pornite nu se pot suprapune."
+          "description": "Zilele și pornit / oprit pentru fiecare profil: nume profil -> days (all, workday, weekend sau o listă din mon … sun) și enabled (true / false). Folosit de card. Profilurile pornite nu se pot suprapune."
         }
       }
     }
