@@ -1,8 +1,8 @@
-# Advanced Climate – specification
+# Smart Heating Control – specification
 
 **English** | [Română](SPEC.ro.md)
 
-Advanced Climate computes **one target per room** from the schedule, presence,
+Smart Heating Control computes **one target per room** from the schedule, presence,
 windows, weather and manual changes, and applies it to the heating devices.
 Everything is configured from the UI (config flow, options flow and room
 subentries); no YAML is needed.

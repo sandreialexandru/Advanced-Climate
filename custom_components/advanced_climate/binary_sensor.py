@@ -1,4 +1,4 @@
-"""Binary sensors for Advanced Climate."""
+"""Binary sensors for Smart Heating Control."""
 
 from __future__ import annotations
 

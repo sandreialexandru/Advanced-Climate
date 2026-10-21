@@ -1,4 +1,4 @@
-"""Serve the Advanced Climate Lovelace card and add it to the dashboards.
+"""Serve the Smart Heating Control Lovelace card and add it to the dashboards.
 
 1. The file is served by the integration at CARD_URL (no cache headers).
 2. It is added as a Lovelace **resource** (storage mode). Resources are loaded
@@ -64,7 +64,7 @@ async def async_register_card(hass: HomeAssistant) -> None:
             if not await async_ensure_lovelace_resource(hass, url):
                 _extra_module()
         except Exception as err:  # noqa: BLE001 - never block setup
-            _LOGGER.warning("Could not add the Advanced Climate card as a resource: %s", err)
+            _LOGGER.warning("Could not add the Smart Heating Control card as a resource: %s", err)
             _extra_module()
 
     if hass.state is CoreState.running:
@@ -92,7 +92,7 @@ async def async_ensure_lovelace_resource(hass: HomeAssistant, url: str) -> bool:
     if resources is None:
         _LOGGER.info(
             "Dashboards are in YAML mode: add %s (type: module) to the resources "
-            "if the Advanced Climate card does not show up",
+            "if the Smart Heating Control card does not show up",
             url,
         )
         return False
@@ -112,7 +112,7 @@ async def async_ensure_lovelace_resource(hass: HomeAssistant, url: str) -> bool:
             await resources.async_delete_item(item["id"])
         return True
     await resources.async_create_item({"res_type": "module", "url": url})
-    _LOGGER.info("Added the Advanced Climate card to the dashboard resources (%s)", url)
+    _LOGGER.info("Added the Smart Heating Control card to the dashboard resources (%s)", url)
     return True
 
 

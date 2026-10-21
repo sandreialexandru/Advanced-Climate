@@ -1,4 +1,4 @@
-"""Diagnostics for Advanced Climate."""
+"""Diagnostics for Smart Heating Control."""
 
 from __future__ import annotations
 

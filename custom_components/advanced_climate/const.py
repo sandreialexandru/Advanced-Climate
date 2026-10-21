@@ -1,4 +1,4 @@
-"""Constants for the Advanced Climate integration."""
+"""Constants for the Smart Heating Control integration."""
 
 from __future__ import annotations
 

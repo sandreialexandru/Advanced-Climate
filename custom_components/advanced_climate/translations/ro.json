@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Advanced Climate",
+        "title": "Smart Heating Control",
         "description": "Creează casa. Camerele se adaugă apoi cu „Adaugă cameră”; restul opțiunilor sunt în opțiunile integrării.",
         "data": {
           "temperature_unit": "Unitatea de temperatură",
@@ -92,7 +92,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Opțiuni Advanced Climate",
+        "title": "Opțiuni Smart Heating Control",
         "menu_options": {
           "heating": "Încălzirea întregii case",
           "presence": "Prezență",
@@ -978,7 +978,7 @@
   },
   "exceptions": {
     "house_not_found": {
-      "message": "Nu există o casă Advanced Climate cu id-ul {entry}."
+      "message": "Nu există o casă Smart Heating Control cu id-ul {entry}."
     },
     "house_ambiguous": {
       "message": "Sunt configurate mai multe case; dă config_entry_id."

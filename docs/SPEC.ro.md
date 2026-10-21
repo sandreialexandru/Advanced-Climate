@@ -1,8 +1,8 @@
-# Advanced Climate – specificație
+# Smart Heating Control – specificație
 
 [English](SPEC.md) | **Română**
 
-Advanced Climate calculează **o țintă pentru fiecare cameră** din program,
+Smart Heating Control calculează **o țintă pentru fiecare cameră** din program,
 prezență, ferestre, vreme și schimbări manuale, și o aplică dispozitivelor de
 încălzire. Totul se configurează din interfață (config flow, options flow și
 subintrările camerelor); nu e nevoie de YAML.

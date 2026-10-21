@@ -1,5 +1,5 @@
 /*
- * Advanced Climate card – every option of the integration in one card.
+ * Smart Heating Control card – every option of the integration in one card.
  *
  *   type: custom:advanced-climate-card
  *   title: Heating               # optional
@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.3.3";
+const CARD_VERSION = "2.3.4";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -183,7 +183,7 @@ const TEXT = {
     adjustments: "Adjustments",
     none: "none",
     not_editable: "This room follows a Schedule helper; edit the helper instead.",
-    no_rooms: "No heating devices yet. Add them in Settings → Devices & services → Advanced Climate → Configure → Heating of the whole house (or add rooms).",
+    no_rooms: "No heating devices yet. Add them in Settings → Devices & services → Smart Heating Control → Configure → Heating of the whole house (or add rooms).",
     error: "Could not save",
     persons: "People",
     on: "On",
@@ -397,7 +397,7 @@ const TEXT = {
     adjustments: "Ajustări",
     none: "niciuna",
     not_editable: "Camera urmează un helper de program; editează helperul.",
-    no_rooms: "Încă nu sunt dispozitive de încălzire. Adaugă-le din Setări → Dispozitive și servicii → Advanced Climate → Configurează → Încălzirea întregii case (sau adaugă camere).",
+    no_rooms: "Încă nu sunt dispozitive de încălzire. Adaugă-le din Setări → Dispozitive și servicii → Smart Heating Control → Configurează → Încălzirea întregii case (sau adaugă camere).",
     error: "Nu s-a putut salva",
     persons: "Persoane",
     on: "Pornit",
@@ -3338,13 +3338,13 @@ if (!window.__advancedClimateCardLoaded) {
   if (!window.customCards.some((c) => c.type === CARD_TAG)) {
     window.customCards.push({
       type: CARD_TAG,
-      name: "Advanced Climate",
-      description: "House and rooms of Advanced Climate with every control and an editable schedule.",
+      name: "Smart Heating Control",
+      description: "House and rooms of Smart Heating Control with every control and an editable schedule.",
       preview: true,
       documentationURL: "https://github.com/sandreialexandru/Advanced-Climate#lovelace-card",
     });
   }
-  console.info(`%c ADVANCED-CLIMATE-CARD %c ${CARD_VERSION} `, "color:#fff;background:#f08c00", "");
+  console.info(`%c SMART-HEATING-CONTROL-CARD %c ${CARD_VERSION} `, "color:#fff;background:#f08c00", "");
   let checks = 0;
   const watch = setInterval(() => {
     registerCard();

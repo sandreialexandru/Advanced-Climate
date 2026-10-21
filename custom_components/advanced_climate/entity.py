@@ -1,4 +1,4 @@
-"""Base entities for Advanced Climate."""
+"""Base entities for Smart Heating Control."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ class HouseEntity(Entity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, house.entry.entry_id)},
             name=house.entry.title,
-            manufacturer="Advanced Climate",
+            manufacturer="Smart Heating Control",
             model="House",
             entry_type=DeviceEntryType.SERVICE,
         )
@@ -62,7 +62,7 @@ class RoomEntity(Entity):
         info = DeviceInfo(
             identifiers={(DOMAIN, room.id)},
             name=room.name,
-            manufacturer="Advanced Climate",
+            manufacturer="Smart Heating Control",
             model="Whole house" if room.is_whole_house else "Room",
             entry_type=DeviceEntryType.SERVICE,
             suggested_area=room.area_name,

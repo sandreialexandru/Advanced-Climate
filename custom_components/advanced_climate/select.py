@@ -1,4 +1,4 @@
-"""Select for Advanced Climate: the global mode."""
+"""Select for Smart Heating Control: the global mode."""
 
 from __future__ import annotations
 

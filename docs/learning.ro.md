@@ -1,4 +1,4 @@
-# Cum învață Advanced Climate (încălzire și răcire)
+# Cum învață Smart Heating Control (încălzire și răcire)
 
 *[English](learning.md)*
 

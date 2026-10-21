@@ -1,4 +1,4 @@
-"""Services for Advanced Climate."""
+"""Services for Smart Heating Control."""
 
 from __future__ import annotations
 

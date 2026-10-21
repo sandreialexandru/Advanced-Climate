@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Advanced Climate",
+        "title": "Smart Heating Control",
         "description": "Create the house. Rooms are added afterwards with \"Add room\"; all other options are in the integration options.",
         "data": {
           "temperature_unit": "Temperature unit",
@@ -92,7 +92,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Advanced Climate options",
+        "title": "Smart Heating Control options",
         "menu_options": {
           "heating": "Heating of the whole house",
           "presence": "Presence",
@@ -978,7 +978,7 @@
   },
   "exceptions": {
     "house_not_found": {
-      "message": "No Advanced Climate house with id {entry}."
+      "message": "No Smart Heating Control house with id {entry}."
     },
     "house_ambiguous": {
       "message": "Several houses are configured; give config_entry_id."

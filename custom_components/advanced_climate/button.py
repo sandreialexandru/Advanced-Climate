@@ -1,4 +1,4 @@
-"""Buttons for Advanced Climate."""
+"""Buttons for Smart Heating Control."""
 
 from __future__ import annotations
 

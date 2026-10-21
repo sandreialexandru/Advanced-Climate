@@ -1,6 +1,6 @@
 {
   "domain": "advanced_climate",
-  "name": "Advanced Climate",
+  "name": "Smart Heating Control",
   "after_dependencies": [
     "calendar",
     "frontend",
@@ -21,5 +21,5 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/sandreialexandru/Advanced-Climate/issues",
   "requirements": [],
-  "version": "2.3.3"
+  "version": "2.3.4"
 }

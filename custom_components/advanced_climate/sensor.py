@@ -1,4 +1,4 @@
-"""Sensors for Advanced Climate."""
+"""Sensors for Smart Heating Control."""
 
 from __future__ import annotations
 

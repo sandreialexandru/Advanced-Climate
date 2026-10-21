@@ -1,4 +1,4 @@
-"""Config flow for Advanced Climate: the house entry and room subentries."""
+"""Config flow for Smart Heating Control: the house entry and room subentries."""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
-<img src="custom_components/advanced_climate/brand/icon@2x.png" alt="Advanced Climate" width="128" align="right">
+<img src="custom_components/advanced_climate/brand/icon@2x.png" alt="Smart Heating Control" width="128" align="right">
 
-# Advanced Climate
+# Smart Heating Control
 
 **English** | [Română](README.ro.md)
 
@@ -12,7 +12,11 @@ Heating schedules for Home Assistant that follow **presence, zones, windows,
 weather and manual changes** – with one clear decision per room and the reason
 for it.
 
-Advanced Climate is built around **Generic Thermostat**: it uses the same preset
+> Formerly **Advanced Climate**. Only the name changed: the `advanced_climate`
+> domain, the entities, the services and the `custom:advanced-climate-card`
+> card type stay the same, so nothing has to be set up again.
+
+Smart Heating Control is built around **Generic Thermostat**: it uses the same preset
 names (`home`, `sleep`, `eco`, `away`, `comfort`, `activity`) and only selects
 the right one; your thermostat keeps working exactly as before. Rooms with TRVs,
 other thermostats or plain relays are supported as well.
@@ -84,8 +88,8 @@ The full specification is in [docs/SPEC.md](docs/SPEC.md) ([Română](docs/SPEC.
 
 1. HACS → ⋮ → **Custom repositories** → add
    `https://github.com/sandreialexandru/Advanced-Climate` as **Integration**.
-2. Install **Advanced Climate** and restart Home Assistant.
-3. **Settings → Devices & services → Add integration → Advanced Climate**.
+2. Install **Smart Heating Control** and restart Home Assistant.
+3. **Settings → Devices & services → Add integration → Smart Heating Control**.
 
 ### Manual
 

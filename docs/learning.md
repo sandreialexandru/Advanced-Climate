@@ -1,4 +1,4 @@
-# How Advanced Climate learns (heating and cooling)
+# How Smart Heating Control learns (heating and cooling)
 
 *[Română](learning.ro.md)*
 

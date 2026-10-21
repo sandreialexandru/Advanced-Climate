@@ -1,4 +1,4 @@
-"""Numbers for Advanced Climate: level temperatures (rooms without GT)."""
+"""Numbers for Smart Heating Control: level temperatures (rooms without GT)."""
 
 from __future__ import annotations
 

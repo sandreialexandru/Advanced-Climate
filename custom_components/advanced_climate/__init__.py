@@ -1,4 +1,4 @@
-"""Advanced Climate: heating schedules by presence, zones, windows and weather."""
+"""Smart Heating Control: heating schedules by presence, zones, windows and weather."""
 
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AdvancedClimateConfigEnt
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, entry.entry_id)},
             name=entry.title,
-            manufacturer="Advanced Climate",
+            manufacturer="Smart Heating Control",
             model="House",
             entry_type=dr.DeviceEntryType.SERVICE,
         )

@@ -1,4 +1,4 @@
-"""Switches for Advanced Climate: pause, guest mode, child lock."""
+"""Switches for Smart Heating Control: pause, guest mode, child lock."""
 
 from __future__ import annotations
 

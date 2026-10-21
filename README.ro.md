@@ -1,6 +1,6 @@
-<img src="custom_components/advanced_climate/brand/icon@2x.png" alt="Advanced Climate" width="128" align="right">
+<img src="custom_components/advanced_climate/brand/icon@2x.png" alt="Smart Heating Control" width="128" align="right">
 
-# Advanced Climate
+# Smart Heating Control
 
 [English](README.md) | **Română**
 
@@ -12,7 +12,12 @@ Programe de încălzire pentru Home Assistant care țin cont de **prezență, zo
 ferestre, vreme și schimbări manuale**, cu o singură decizie clară pentru
 fiecare cameră și motivul ei.
 
-Advanced Climate este construită în jurul **Generic Thermostat**: folosește
+> Fostă **Advanced Climate**. S-a schimbat doar numele: domeniul
+> `advanced_climate`, entitățile, serviciile și tipul de card
+> `custom:advanced-climate-card` rămân la fel, deci nu trebuie configurat nimic
+> din nou.
+
+Smart Heating Control este construită în jurul **Generic Thermostat**: folosește
 aceleași nume de preseturi (`home`, `sleep`, `eco`, `away`, `comfort`,
 `activity`) și doar îl alege pe cel potrivit; termostatul funcționează exact ca
 înainte. Sunt acceptate și camere cu TRV-uri, alte termostate sau relee simple.
@@ -93,8 +98,8 @@ Specificația completă este în [docs/SPEC.ro.md](docs/SPEC.ro.md).
 
 1. HACS → ⋮ → **Custom repositories** → adaugă
    `https://github.com/sandreialexandru/Advanced-Climate` ca **Integration**.
-2. Instalează **Advanced Climate** și repornește Home Assistant.
-3. **Setări → Dispozitive și servicii → Adaugă integrare → Advanced Climate**.
+2. Instalează **Smart Heating Control** și repornește Home Assistant.
+3. **Setări → Dispozitive și servicii → Adaugă integrare → Smart Heating Control**.
 
 ### Manual
 

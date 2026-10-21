@@ -1,4 +1,4 @@
-"""Vacation start / end for Advanced Climate."""
+"""Vacation start / end for Smart Heating Control."""
 
 from __future__ import annotations
 

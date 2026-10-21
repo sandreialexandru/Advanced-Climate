@@ -138,7 +138,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class House:
-    """Controller for one Advanced Climate config entry (the house)."""
+    """Controller for one Smart Heating Control config entry (the house)."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize."""
@@ -1161,7 +1161,7 @@ class House:
         key: str,
         message: str,
         *,
-        title: str = "Advanced Climate",
+        title: str = "Smart Heating Control",
         repeat: timedelta | None = None,
         code: str | None = None,
         params: dict[str, Any] | None = None,
