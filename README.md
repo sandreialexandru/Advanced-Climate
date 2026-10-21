@@ -5,8 +5,8 @@
 **English** | [Română](README.ro.md)
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
-[![Validate](https://github.com/sandreialexandru/Advanced-Climate/actions/workflows/validate.yml/badge.svg)](https://github.com/sandreialexandru/Advanced-Climate/actions/workflows/validate.yml)
-[![Tests](https://github.com/sandreialexandru/Advanced-Climate/actions/workflows/tests.yml/badge.svg)](https://github.com/sandreialexandru/Advanced-Climate/actions/workflows/tests.yml)
+[![Validate](https://github.com/sandreialexandru/Smart-Heating-Control/actions/workflows/validate.yml/badge.svg)](https://github.com/sandreialexandru/Smart-Heating-Control/actions/workflows/validate.yml)
+[![Tests](https://github.com/sandreialexandru/Smart-Heating-Control/actions/workflows/tests.yml/badge.svg)](https://github.com/sandreialexandru/Smart-Heating-Control/actions/workflows/tests.yml)
 
 Heating schedules for Home Assistant that follow **presence, zones, windows,
 weather and manual changes** – with one clear decision per room and the reason
@@ -15,7 +15,9 @@ for it.
 > Formerly **Advanced Climate**. The `advanced_climate` domain, the entities
 > and the services stay the same, so nothing has to be set up again. The card
 > type is now `custom:smart-heating-control-card`; dashboards with the old
-> `custom:advanced-climate-card` keep working.
+> `custom:advanced-climate-card` keep working. The repository moved to
+> `sandreialexandru/Smart-Heating-Control`; GitHub redirects the old address,
+> but in HACS it is safer to add the repository again with the new one.
 
 Smart Heating Control is built around **Generic Thermostat**: it uses the same preset
 names (`home`, `sleep`, `eco`, `away`, `comfort`, `activity`) and only selects
@@ -88,7 +90,7 @@ The full specification is in [docs/SPEC.md](docs/SPEC.md) ([Română](docs/SPEC.
 ### HACS
 
 1. HACS → ⋮ → **Custom repositories** → add
-   `https://github.com/sandreialexandru/Advanced-Climate` as **Integration**.
+   `https://github.com/sandreialexandru/Smart-Heating-Control` as **Integration**.
 2. Install **Smart Heating Control** and restart Home Assistant.
 3. **Settings → Devices & services → Add integration → Smart Heating Control**.
 

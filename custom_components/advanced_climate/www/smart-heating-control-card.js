@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.3.4";
+const CARD_VERSION = "2.3.5";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -3342,7 +3342,7 @@ if (!window.__smartHeatingControlCardLoaded) {
       name: "Smart Heating Control",
       description: "House and rooms of Smart Heating Control with every control and an editable schedule.",
       preview: true,
-      documentationURL: "https://github.com/sandreialexandru/Advanced-Climate#lovelace-card",
+      documentationURL: "https://github.com/sandreialexandru/Smart-Heating-Control#lovelace-card",
     });
   }
   console.info(`%c SMART-HEATING-CONTROL-CARD %c ${CARD_VERSION} `, "color:#fff;background:#f08c00", "");

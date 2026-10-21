@@ -16,10 +16,10 @@
     "@sandreialexandru"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/sandreialexandru/Advanced-Climate",
+  "documentation": "https://github.com/sandreialexandru/Smart-Heating-Control",
   "integration_type": "hub",
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/sandreialexandru/Advanced-Climate/issues",
+  "issue_tracker": "https://github.com/sandreialexandru/Smart-Heating-Control/issues",
   "requirements": [],
-  "version": "2.3.4"
+  "version": "2.3.5"
 }

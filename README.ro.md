@@ -5,8 +5,8 @@
 [English](README.md) | **Română**
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
-[![Validate](https://github.com/sandreialexandru/Advanced-Climate/actions/workflows/validate.yml/badge.svg)](https://github.com/sandreialexandru/Advanced-Climate/actions/workflows/validate.yml)
-[![Tests](https://github.com/sandreialexandru/Advanced-Climate/actions/workflows/tests.yml/badge.svg)](https://github.com/sandreialexandru/Advanced-Climate/actions/workflows/tests.yml)
+[![Validate](https://github.com/sandreialexandru/Smart-Heating-Control/actions/workflows/validate.yml/badge.svg)](https://github.com/sandreialexandru/Smart-Heating-Control/actions/workflows/validate.yml)
+[![Tests](https://github.com/sandreialexandru/Smart-Heating-Control/actions/workflows/tests.yml/badge.svg)](https://github.com/sandreialexandru/Smart-Heating-Control/actions/workflows/tests.yml)
 
 Programe de încălzire pentru Home Assistant care țin cont de **prezență, zone,
 ferestre, vreme și schimbări manuale**, cu o singură decizie clară pentru
@@ -15,7 +15,9 @@ fiecare cameră și motivul ei.
 > Fostă **Advanced Climate**. Domeniul `advanced_climate`, entitățile și
 > serviciile rămân la fel, deci nu trebuie configurat nimic din nou. Tipul de
 > card este acum `custom:smart-heating-control-card`; dashboardurile cu vechiul
-> `custom:advanced-climate-card` merg în continuare.
+> `custom:advanced-climate-card` merg în continuare. Repository-ul s-a mutat la
+> `sandreialexandru/Smart-Heating-Control`; GitHub redirecționează adresa
+> veche, dar în HACS e mai sigur să adaugi din nou repository-ul cu cea nouă.
 
 Smart Heating Control este construită în jurul **Generic Thermostat**: folosește
 aceleași nume de preseturi (`home`, `sleep`, `eco`, `away`, `comfort`,
@@ -97,7 +99,7 @@ Specificația completă este în [docs/SPEC.ro.md](docs/SPEC.ro.md).
 ### HACS
 
 1. HACS → ⋮ → **Custom repositories** → adaugă
-   `https://github.com/sandreialexandru/Advanced-Climate` ca **Integration**.
+   `https://github.com/sandreialexandru/Smart-Heating-Control` ca **Integration**.
 2. Instalează **Smart Heating Control** și repornește Home Assistant.
 3. **Setări → Dispozitive și servicii → Adaugă integrare → Smart Heating Control**.
 
