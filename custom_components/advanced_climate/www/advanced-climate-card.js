@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.2.1";
+const CARD_VERSION = "2.2.2";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -1886,7 +1886,7 @@ class AdvancedClimateCard extends HTMLElement {
 
   /** Quick manual change: a level or a temperature, for an optional number of hours. */
   _quickHtml(a, e = {}) {
-    const presets = (a.presets || Object.keys(PRESET_COLORS))
+    const presets = (a.presets || Object.keys(PRESET_COLORS).filter((p) => p !== "frost"))
       .map(
         (p) => `<button class="preset" style="--c:${PRESET_COLORS[p] || "var(--primary-color)"}"
           data-action="quick-preset" data-room="${esc(a.room_id)}" data-preset="${esc(p)}"><span class="dot"></span>${esc(
@@ -1902,7 +1902,7 @@ class AdvancedClimateCard extends HTMLElement {
       this._t("quick"),
       `<p class="hint">${this._t("quick_hint")}</p>
         <div class="presets">${presets}</div>
-        ${e.child_lock ? `<div class="row wrap">${this._toggle(e.child_lock, this._t("child_lock"))}</div>` : ""}
+        ${e.child_lock ? `<div class="lockrow">${this._toggle(e.child_lock, this._t("child_lock"))}</div>` : ""}
         <div class="row wrap">
           <label class="numfield"><span>${this._t("target_tag")}</span><input type="number" step="0.5" min="${
             num(a.min_temperature) ?? (fahrenheit ? 41 : 5)
@@ -3018,6 +3018,10 @@ const STYLE = `
   .tval .eta { font-size: 0.68em; color: var(--ac-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .tval .eta.sub { font-size: 0.6em; opacity: 0.85; }
   .toggle.sm { font-size: 0.85em; margin-left: auto; }
+  .lockrow { display: flex; align-items: center; background: var(--ac-surface); border-radius: 10px; padding: 4px 10px; }
+  .lockrow .toggle { width: 100%; justify-content: space-between; flex-direction: row-reverse; font-size: 0.9em; }
+  .lockrow .toggle .knob { background: var(--ac-line); }
+  .lockrow .toggle.on .knob { background: var(--ac-accent); }
   .profile.off > .sbar, .profile.off > .intervals { opacity: 0.45; }
   .confirmbox { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px;
     background: color-mix(in srgb, var(--ac-warn) 14%, transparent); }
@@ -3121,11 +3125,10 @@ const STYLE = `
   .lg-target { background: linear-gradient(90deg, #f08c00, #5f6fd1); }
   .lg-heat { background: var(--ac-hot); height: 8px !important; opacity: 0.8; }
   .meta { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 0.85em; margin-top: 4px; }
-  .presets { display: flex; flex-wrap: wrap; gap: 8px; }
-  .preset { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 0.85em; padding: 6px 12px;
-    border-radius: 10px; cursor: pointer; background: color-mix(in srgb, var(--c) 12%, transparent);
-    color: var(--primary-text-color); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); }
-  .preset:hover { background: color-mix(in srgb, var(--c) 28%, transparent); }
+  .presets { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+  .preset { display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: 0.85em; padding: 4px 8px;
+    border-radius: 999px; cursor: pointer; background: none; color: var(--primary-text-color); border: none; }
+  .preset:hover, .preset:focus-visible { background: var(--ac-surface-2); }
   .preset small { color: var(--ac-muted); }
   .preset .dot { background: var(--c); }
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); display: inline-block; flex: none; }
