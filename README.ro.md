@@ -49,7 +49,10 @@ interfața în engleză; cu Home Assistant în română ele apar traduse.
   devreme; când media prognozei pe acele ore e la temperatura de repornire
   (prag − histerezis) sau sub ea, oprirea dată de media măsurată se anulează,
   iar camerele încălzesc din nou la nevoie (o după-amiază caldă nu mai ține
-  încălzirea oprită într-o seară rece). În medie, fiecare valoare din prognoză
+  încălzirea oprită într-o seară rece). Anularea se termină când acea medie
+  urcă peste temperatura de repornire (oprirea revine) sau când media măsurată
+  coboară la ea (oprirea se încheie). Pragul, histerezisul, *Medie pe* și *Ore
+  de prognoză* vin toate din opțiuni. În medie, fiecare valoare din prognoză
   e valabilă pentru ora ei; până la următoarea oră din prognoză contează
   valoarea măsurată. Fără prognoză decide doar media măsurată.
 - **Schimbări manuale**: detectate automat și păstrate o durată fixă sau până

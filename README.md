@@ -42,7 +42,10 @@ other thermostats or plain relays are supported as well.
   earlier; when the mean forecast of those hours is at or below the resume
   temperature (threshold − hysteresis) a stop of the measured average is
   cancelled, so rooms heat again when they need it (a warm afternoon does not
-  keep the heating off in a cold evening). In the mean each forecast value holds
+  keep the heating off in a cold evening). The cancel ends when that mean rises
+  above the resume temperature (the stop comes back) or when the measured
+  average falls to it (the cutoff turns off). Cutoff, hysteresis, *Average over*
+  and *Forecast hours* all come from the options. In the mean each forecast value holds
   for its hour; until the next forecast hour the measured value counts. Without
   a forecast only the measured average decides.
 - **Manual changes**: detected automatically and kept for a fixed time or until

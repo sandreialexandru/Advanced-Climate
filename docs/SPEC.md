@@ -156,12 +156,12 @@ what the schedule asks.
 | Option | Default | Description |
 | --- | --- | --- |
 | Outdoor temperature | `weather` | Local sensor or the weather entity |
-| Cutoff | 18 °C | Heating off above the average (1 °C hysteresis) |
+| Cutoff | 18 °C | Heating off when the average is at or above it; on again at or below cutoff − hysteresis (hysteresis 1 °C) |
 | Average over | 6 h (at least 1 h) | Average, not the instantaneous value. Also how long an outdoor value stays valid: with no new value for this time the outdoor temperature is unknown (no cutoff, compensation or ignored windows, no learning episodes, no optimal stop) until the sensor or weather reports again |
 | Heating season | always | Always, between dates (e.g. 10-15 → 04-15) or automatic |
 | Automatic season | 3 days / 15 °C | Starts/ends after X consecutive days below/above the threshold |
 | Outdoor compensation | off | Small adjustment, e.g. +0.5 °C below −5 °C |
-| Forecast | off | A forecast value of the next forecast hours (the current hour included) at or above the cutoff: the heating stops earlier. The mean forecast of those hours (each value for its hour, the measured value until the next forecast hour) at or below the resume temperature: a stop of the measured average is cancelled (rooms heat when they need it) |
+| Forecast | off | A forecast value of the next forecast hours (the current hour included) at or above the cutoff: the heating stops earlier. The mean forecast of those hours (each value for its hour, the measured value until the next forecast hour) at or below the resume temperature: a stop of the measured average is cancelled (rooms heat when they need it) until that mean rises above the resume temperature or the measured average falls to it |
 | Solar gain per room | off | Negative offset while the sun shines (needs the weather entity) |
 
 ## 7. Manual changes
@@ -232,7 +232,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | `number.*`, `button.*`, `switch.*` | Levels, clear overrides, reset heating / cooling learning (per room), guest mode, pause, child lock |
 | Services | `set_override`, `clear_override`, `set_vacation`, `reevaluate`, `set_schedule` |
 | Events | `advanced_climate_decision_changed` with room, old and new target and reason |
-| Lovelace card | Room state and decision; 24 h chart (temperature, target, heating) with the next 12 h planned and zoom to the minute (a bar under the zoomed chart moves it; dragging on the chart reads the values); schedule editable by dragging (5 minutes), copy of a day; time to the target or, during an optimal stop, the expected temperature at the change; the next optimal start / stop in the room details; chart with a degree grid, the target as a step line, the heating in its own lane, the outdoor temperature (measured and forecast) in its own band and the next optimal start / stop; why a room below its target does not heat; the active cutoff with its limit; a pause banner; learning status and alerts in the details; the origin of a manual change; links to the entities; heating time per day / week / month; compact mode |
+| Lovelace card | Room state and decision; 24 h chart (temperature, target, heating) with the next 12 h planned and zoom to the minute (a bar under the zoomed chart moves it; dragging on the chart reads the values); schedule editable by dragging (5 minutes), copy of a day; time to the target or, during an optimal stop, the expected temperature at the change; the next optimal start / stop in the room details; chart with a degree grid, the target as a step line, the heating in its own lane, the outdoor temperature (measured and forecast) in its own band and the next optimal start / stop; why a room below its target does not heat; the active cutoff with its limit, or its cancel by the forecast; a pause banner; learning status and alerts in the details; the origin of a manual change; links to the entities; heating time per day / week / month; compact mode |
 | Diagnostics | Configuration and the last 100 decisions |
 
 ## 12. Rule hierarchy

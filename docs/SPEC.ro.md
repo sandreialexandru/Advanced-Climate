@@ -160,12 +160,12 @@ ce cere programul.
 | Opțiune | Implicit | Descriere |
 | --- | --- | --- |
 | Temperatura de afară | `weather` | Senzor local sau entitatea meteo |
-| Prag de oprire | 18 °C | Încălzire oprită peste medie (histerezis 1 °C) |
+| Prag de oprire | 18 °C | Încălzire oprită când media e la prag sau peste; repornește la prag − histerezis sau sub (histerezis 1 °C) |
 | Medie pe | 6 h (cel puțin 1 h) | Media, nu valoarea instantanee. Este și cât rămâne valabilă o valoare de afară: fără o valoare nouă în acest timp, temperatura de afară e necunoscută (fără prag de oprire, compensare sau ferestre ignorate, fără episoade de învățare, fără oprire anticipată) până când senzorul sau meteo raportează din nou |
 | Sezon de încălzire | mereu | Mereu, între date (de exemplu 10-15 → 04-15) sau automat |
 | Sezon automat | 3 zile / 15 °C | Începe / se termină după X zile consecutive sub / peste prag |
 | Compensare după temperatura de afară | oprită | Ajustare mică, de exemplu +0,5 °C sub −5 °C |
-| Prognoză | oprită | O valoare din prognoză pe următoarele ore de prognoză (inclusiv ora în curs) la prag sau peste: încălzirea se oprește mai devreme. Media prognozei pe acele ore (fiecare valoare pentru ora ei, valoarea măsurată până la următoarea oră din prognoză) la temperatura de repornire sau sub ea: oprirea dată de media măsurată se anulează (camerele încălzesc la nevoie) |
+| Prognoză | oprită | O valoare din prognoză pe următoarele ore de prognoză (inclusiv ora în curs) la prag sau peste: încălzirea se oprește mai devreme. Media prognozei pe acele ore (fiecare valoare pentru ora ei, valoarea măsurată până la următoarea oră din prognoză) la temperatura de repornire sau sub ea: oprirea dată de media măsurată se anulează (camerele încălzesc la nevoie) până când acea medie urcă peste temperatura de repornire sau media măsurată coboară la ea |
 | Câștig solar pe cameră | oprit | Ajustare negativă cât e soare (are nevoie de entitatea meteo) |
 
 ## 7. Schimbări manuale
@@ -236,7 +236,7 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | `number.*`, `button.*`, `switch.*` | Niveluri, anularea schimbărilor manuale, resetarea învățării încălzirii / răcirii (pe cameră), mod oaspeți, pauză, blocare pentru copii |
 | Servicii | `set_override`, `clear_override`, `set_vacation`, `reevaluate`, `set_schedule` |
 | Evenimente | `advanced_climate_decision_changed` cu camera, ținta veche și nouă și motivul |
-| Cardul Lovelace | Starea și decizia camerei; grafic pe 24 h (temperatură, țintă, încălzire) cu următoarele 12 h planificate și zoom până la minut (o bară sub graficul mărit îl mută; tragerea pe grafic citește valorile); program editabil prin tragere (5 minute), copierea unei zile; timpul până la țintă sau, în timpul unei opriri anticipate, temperatura estimată la schimbare; următoarea pornire / oprire anticipată în detaliile camerei; grafic cu grilă pe grade, ținta ca linie în trepte, încălzirea pe o bandă separată, temperatura de afară (măsurată și prognozată) pe banda ei și următoarea pornire / oprire anticipată; de ce nu încălzește o cameră sub țintă; pragul de oprire activ, cu limita lui; bandă de pauză; starea învățării și alertele în detalii; originea schimbării manuale; linkuri către entități; timpul de încălzire pe zi / săptămână / lună; mod compact |
+| Cardul Lovelace | Starea și decizia camerei; grafic pe 24 h (temperatură, țintă, încălzire) cu următoarele 12 h planificate și zoom până la minut (o bară sub graficul mărit îl mută; tragerea pe grafic citește valorile); program editabil prin tragere (5 minute), copierea unei zile; timpul până la țintă sau, în timpul unei opriri anticipate, temperatura estimată la schimbare; următoarea pornire / oprire anticipată în detaliile camerei; grafic cu grilă pe grade, ținta ca linie în trepte, încălzirea pe o bandă separată, temperatura de afară (măsurată și prognozată) pe banda ei și următoarea pornire / oprire anticipată; de ce nu încălzește o cameră sub țintă; pragul de oprire activ, cu limita lui, sau anularea lui de prognoză; bandă de pauză; starea învățării și alertele în detalii; originea schimbării manuale; linkuri către entități; timpul de încălzire pe zi / săptămână / lună; mod compact |
 | Diagnostic | Configurația și ultimele 100 de decizii |
 
 ## 12. Ierarhia regulilor
