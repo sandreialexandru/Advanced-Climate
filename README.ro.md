@@ -43,7 +43,15 @@ interfața în engleză; cu Home Assistant în română ele apar traduse.
   când senzorul sau meteo e indisponibil; după el temperatura de afară e
   necunoscută), sezon de încălzire (date sau automat), compensare după
   temperatura de afară, prognoză, câștig solar pe cameră (are nevoie de
-  entitatea meteo a casei; setarea apare doar atunci).
+  entitatea meteo a casei; setarea apare doar atunci). Cu *Folosește prognoza*,
+  prognoza pe următoarele *Ore de prognoză* corectează pragul în ambele
+  sensuri: când o valoare din prognoză atinge pragul, încălzirea se oprește mai
+  devreme; când media prognozei pe acele ore e la temperatura de repornire
+  (prag − histerezis) sau sub ea, oprirea dată de media măsurată se anulează,
+  iar camerele încălzesc din nou la nevoie (o după-amiază caldă nu mai ține
+  încălzirea oprită într-o seară rece). În medie, fiecare valoare din prognoză
+  e valabilă pentru ora ei; până la următoarea oră din prognoză contează
+  valoarea măsurată. Fără prognoză decide doar media măsurată.
 - **Schimbări manuale**: detectate automat și păstrate o durată fixă sau până
   la următoarea reevaluare (schimbare de program, prezență, fereastră sau mod).
   Un dispozitiv care doar raportează mai târziu valorile trimise de integrare
@@ -407,8 +415,12 @@ oprit; zilele se aleg în editor) și *Detalii*.
   camere sau camera de referință, sursa de căldură oprită sau necunoscută,
   termostatul oprit). Senzorul *Decision* îl are ca `no_heat_reason`.
 - **Cald afară**: cât pragul e activ, casa îl arată cu limita lui, de exemplu
-  *Cald afară: pornit • încălzirea e oprită până media scade la 16°* (sau
-  *pornit (prognoză)*). Nu apare unde pragul nu are efect: modul Off sau
+  *Cald afară: pornit • încălzirea e oprită până media scade la 16°*, *pornit
+  (prognoză) • încălzirea e oprită, prognoza ajunge curând la 18°*, sau cât
+  prognoza îl anulează *anulat (prognoză) • vine frigul: media prognozei pe 3 h
+  este 12.4°, camerele încălzesc la nevoie*; senzorul *Outdoor average* are
+  `cutoff_reason` (`measured`, `forecast_warm`, `forecast_cold`) și
+  `forecast_mean`. Nu apare unde pragul nu are efect: modul Off sau
   Summer, în afara sezonului de încălzire și în pauză (în Vacanță rămâne:
   *away* încă încălzește).
 - **Grafic**: partea planificată urmează ce se va întâmpla: programul; o

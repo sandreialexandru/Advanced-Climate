@@ -22,6 +22,7 @@ from .const import (
     CONF_CUTOFF_HYSTERESIS,
     CONF_CUTOFF_TEMP,
     CONF_FORECAST_ENABLED,
+    CONF_FORECAST_HOURS,
     DOMAIN,
     PRESENCE_STATES,
     PRESETS,
@@ -182,6 +183,9 @@ class OutdoorAverageSensor(HouseEntity, _HouseUnitTemperature):
             "average_hours": self.house.average_hours,
             "cutoff_active": self.house.cutoff_active,
             "forecast_cutoff": self.house.forecast_cutoff,
+            "cutoff_reason": self.house.cutoff_reason,
+            "forecast_mean": _t(self.house.forecast_mean, unit, 1),
+            "forecast_hours": float(opts[CONF_FORECAST_HOURS]),
             "heating_season": self.house.season_active,
             # The cutoff for the card: on at the threshold, off again below it
             # by the hysteresis.

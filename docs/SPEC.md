@@ -161,7 +161,7 @@ what the schedule asks.
 | Heating season | always | Always, between dates (e.g. 10-15 → 04-15) or automatic |
 | Automatic season | 3 days / 15 °C | Starts/ends after X consecutive days below/above the threshold |
 | Outdoor compensation | off | Small adjustment, e.g. +0.5 °C below −5 °C |
-| Forecast | off | Delay heating if the forecast reaches the cutoff soon |
+| Forecast | off | A forecast value of the next forecast hours at or above the cutoff: the heating stops earlier. The mean forecast of those hours (each value for its hour, the measured value until the next forecast hour) at or below the resume temperature: a stop of the measured average is cancelled (rooms heat when they need it) |
 | Solar gain per room | off | Negative offset while the sun shines (needs the weather entity) |
 
 ## 7. Manual changes

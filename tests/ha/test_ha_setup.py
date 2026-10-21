@@ -649,6 +649,84 @@ async def test_rounded_down_to_the_step_at_the_maximum(
     await hass.async_block_till_done()
 
 
+async def test_forecast_cancels_or_triggers_the_cutoff(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """The forecast mean of the next hours stops the heating earlier or cancels the stop."""
+    freezer.move_to("2026-10-12 09:00:00+00:00")
+    hass.states.async_set("weather.home", "sunny", {"temperature": 20.0, "temperature_unit": "°C"})
+    start = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
+
+    def forecast(value: float) -> None:
+        async_mock_service(
+            hass,
+            "weather",
+            "get_forecasts",
+            response={
+                "weather.home": {
+                    "forecast": [
+                        {"datetime": (start + timedelta(hours=h)).isoformat(), "temperature": value}
+                        for h in range(48)
+                    ]
+                }
+            },
+            supports_response=SupportsResponse.ONLY,
+        )
+
+    forecast(20.0)
+    entry = await _setup(
+        hass,
+        freezer,
+        house_options={
+            "weather": "weather.home",
+            "cutoff_enabled": True,
+            "cutoff_temp": 18.0,
+            "cutoff_hysteresis": 1.0,
+            "cutoff_avg_hours": 1,
+            "forecast_enabled": True,
+            "forecast_hours": 3,
+        },
+    )
+    house = entry.runtime_data
+    await _tick(hass, freezer, 15)
+    # Warm measured and warm forecast: off, because of the measured average.
+    assert house.cutoff_reason == "measured"
+    assert hass.states.get("binary_sensor.home_outdoor_cutoff").state == "on"
+
+    # It gets cold: the forecast mean (12 °C) is below the resume temperature
+    # (17 °C), so the stop is cancelled while the measured average is still warm.
+    forecast(12.0)
+    await house._async_refresh_forecast()
+    await _tick(hass, freezer, 15)
+    assert house.outdoor.cutoff_active
+    assert house.cutoff_reason == "forecast_cold"
+    assert hass.states.get("binary_sensor.home_outdoor_cutoff").state == "off"
+    outdoor = hass.states.get("sensor.home_outdoor_average").attributes
+    assert outdoor["cutoff_reason"] == "forecast_cold"
+    assert outdoor["forecast_hours"] == 3
+    assert hass.states.get("sensor.bedroom_decision").state != "outdoor_cutoff"
+
+    # Measured cold, forecast warm: the heating stops earlier (a forecast value
+    # of the next hours reaches the threshold).
+    hass.states.async_set("weather.home", "cloudy", {"temperature": 10.0, "temperature_unit": "°C"})
+    await _tick(hass, freezer, 2 * 3600)
+    forecast(24.0)
+    await house._async_refresh_forecast()
+    await _tick(hass, freezer, 15)
+    assert not house.outdoor.cutoff_active
+    assert house.cutoff_reason == "forecast_warm"
+    assert hass.states.get("binary_sensor.home_outdoor_cutoff").state == "on"
+    assert hass.states.get("sensor.bedroom_decision").state == "outdoor_cutoff"
+
+    # Cold measured and cold forecast: no cutoff.
+    forecast(12.0)
+    await house._async_refresh_forecast()
+    await _tick(hass, freezer, 15)
+    assert house.cutoff_reason is None
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
 async def test_optimal_stop_and_start_with_the_forecast(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:

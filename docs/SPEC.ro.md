@@ -165,7 +165,7 @@ ce cere programul.
 | Sezon de încălzire | mereu | Mereu, între date (de exemplu 10-15 → 04-15) sau automat |
 | Sezon automat | 3 zile / 15 °C | Începe / se termină după X zile consecutive sub / peste prag |
 | Compensare după temperatura de afară | oprită | Ajustare mică, de exemplu +0,5 °C sub −5 °C |
-| Prognoză | oprită | Amână încălzirea dacă prognoza atinge curând pragul de oprire |
+| Prognoză | oprită | O valoare din prognoză pe următoarele ore de prognoză la prag sau peste: încălzirea se oprește mai devreme. Media prognozei pe acele ore (fiecare valoare pentru ora ei, valoarea măsurată până la următoarea oră din prognoză) la temperatura de repornire sau sub ea: oprirea dată de media măsurată se anulează (camerele încălzesc la nevoie) |
 | Câștig solar pe cameră | oprit | Ajustare negativă cât e soare (are nevoie de entitatea meteo) |
 
 ## 7. Schimbări manuale

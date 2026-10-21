@@ -169,7 +169,6 @@ class House:
         # Runtime state
         self.person_classes: dict[str, str | None] = {}
         self.arriving = False
-        self.forecast_cutoff = False
         # End of the current calendar event (its level holds until then).
         self.calendar_end: datetime | None = None
         # Hourly forecast (UTC moment, °C), for the optimal start / stop.
@@ -792,13 +791,66 @@ class House:
         return max(1.0, float(self.options[CONF_CUTOFF_AVG_HOURS]))
 
     @property
+    def forecast_mean(self) -> float | None:
+        """Mean outdoor temperature forecast for the next forecast hours (None without one).
+
+        Used only with "Use the forecast" on. Each hourly value holds for its
+        hour; until the next forecast hour the measured temperature is used.
+        """
+        opts = self.options
+        if not (opts.get(CONF_WEATHER) and opts[CONF_FORECAST_ENABLED] and self.hourly_forecast):
+            return None
+        now = dt_util.utcnow()
+        end = now + timedelta(hours=float(opts[CONF_FORECAST_HOURS]))
+        mean, source = expected_outdoor(now, now, end, self.outdoor_now, self.hourly_forecast)
+        return mean if source == "forecast" else None
+
+    @property
+    def forecast_max(self) -> float | None:
+        """Warmest forecast value in the next forecast hours (None without one)."""
+        opts = self.options
+        if not (opts.get(CONF_WEATHER) and opts[CONF_FORECAST_ENABLED] and self.hourly_forecast):
+            return None
+        now = dt_util.utcnow()
+        horizon = now + timedelta(hours=float(opts[CONF_FORECAST_HOURS]))
+        temps = [v for t, v in self.hourly_forecast if now <= t <= horizon]
+        return max(temps) if temps else None
+
+    @property
+    def cutoff_reason(self) -> str | None:
+        """Why the cutoff is on, or that the forecast cancels it.
+
+        ``measured``: the measured average is warm; ``forecast_warm``: the
+        forecast reaches the threshold in the next forecast hours (heating
+        stops earlier);
+        ``forecast_cold``: the measured average would stop the heating but the
+        forecast mean is at or below the resume temperature, so the stop is
+        cancelled (rooms heat when they need it). None: no cutoff.
+        """
+        opts = self.options
+        if not opts[CONF_CUTOFF_ENABLED]:
+            return None
+        threshold = float(opts[CONF_CUTOFF_TEMP])
+        resume = threshold - float(opts[CONF_CUTOFF_HYSTERESIS])
+        # An unknown outdoor temperature does not cut the heating off.
+        measured = self.outdoor_average is not None and self.outdoor.cutoff_active
+        if measured:
+            mean = self.forecast_mean
+            return "forecast_cold" if mean is not None and mean <= resume else "measured"
+        warmest = self.forecast_max
+        if warmest is not None and warmest >= threshold:
+            return "forecast_warm"
+        return None
+
+    @property
     def cutoff_active(self) -> bool:
         """Return True when heating is cut off by warm weather."""
-        if not self.options[CONF_CUTOFF_ENABLED]:
-            return False
-        # An unknown outdoor temperature does not cut the heating off.
-        known = self.outdoor_average is not None
-        return (known and self.outdoor.cutoff_active) or self.forecast_cutoff
+        return self.cutoff_reason in ("measured", "forecast_warm")
+
+    @property
+    def forecast_cutoff(self) -> bool:
+        """The heating stops earlier because the forecast is warm."""
+        return self.cutoff_reason == "forecast_warm"
 
     @property
     def season_active(self) -> bool:
@@ -806,7 +858,7 @@ class House:
         return self.outdoor.season_active
 
     def _forecast_needed(self) -> bool:
-        """The hourly forecast is read for the forecast cutoff or an optimal start / stop."""
+        """The hourly forecast is read for the cutoff or an optimal start / stop."""
         if not self.options.get(CONF_WEATHER):
             return False
         return bool(self.options[CONF_FORECAST_ENABLED]) or any(
@@ -815,10 +867,9 @@ class House:
         )
 
     async def _async_refresh_forecast(self, _now: datetime | None = None) -> None:
-        """Read the hourly forecast: for the cutoff (warm soon) and the optimal start / stop."""
+        """Read the hourly forecast: for the cutoff and the optimal start / stop."""
         weather = self.options.get(CONF_WEATHER)
         if not weather or not self._forecast_needed():
-            self.forecast_cutoff = False
             self.hourly_forecast = []
             return
         try:
@@ -832,14 +883,10 @@ class House:
             )
         except (HomeAssistantError, ValueError) as err:
             _LOGGER.debug("Forecast not available: %s", err)
-            self.forecast_cutoff = False
             self.hourly_forecast = []
             return
         forecast = ((response or {}).get(weather) or {}).get("forecast") or []
         unit = self._weather_unit(self.hass.states.get(weather))
-        now = dt_util.utcnow()
-        horizon = now + timedelta(hours=float(self.options[CONF_FORECAST_HOURS]))
-        temps = []
         hourly: list[tuple[datetime, float]] = []
         for item in forecast:
             moment = from_iso(item.get("datetime"))
@@ -851,14 +898,7 @@ class House:
             except (TypeError, ValueError):
                 continue
             hourly.append((dt_util.as_utc(moment), value))
-            if now <= moment <= horizon:
-                temps.append(value)
         self.hourly_forecast = sorted(hourly)
-        self.forecast_cutoff = (
-            bool(self.options[CONF_FORECAST_ENABLED])
-            and bool(temps)
-            and max(temps) >= float(self.options[CONF_CUTOFF_TEMP])
-        )
 
     def forecast_ahead(self, hours: float = 12) -> list[tuple[datetime, float]]:
         """Hourly forecast for the next hours (the hour that holds now included)."""

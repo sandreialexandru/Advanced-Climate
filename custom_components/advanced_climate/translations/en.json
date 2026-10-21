@@ -161,7 +161,7 @@
           "outdoor_sensor": "Outdoor temperature for the cutoff, season and compensation. If empty, the weather entity temperature is used.",
           "weather": "Used for the forecast, for the solar gain and as outdoor temperature when there is no sensor.",
           "cutoff_enabled": "Stops heating when the outdoor average is above the cutoff temperature. Needs an outdoor sensor or a weather entity.",
-          "forecast_enabled": "Delays heating when the forecast says it will be warm soon. Needs a weather entity with an hourly forecast.",
+          "forecast_enabled": "Stops the heating earlier when the forecast says it will be warm soon, and cancels a stop of the outdoor average when the mean forecast of the next hours is cold. Needs a weather entity with an hourly forecast.",
           "season_mode": "'Always' if you switch the season with the Summer mode. 'Between dates' or 'Automatic' to stop heating outside the season by itself.",
           "compensation_enabled": "Raises the target a little when it is very cold outside (walls are colder). Leave off if the rooms keep the temperature well.",
           "window_ignore_above": "Open windows do not lower the heating when it is this warm outside. Leave empty to always react."
@@ -308,7 +308,7 @@
           "cutoff_temp": "Heating stops above this average outdoor temperature.",
           "cutoff_hysteresis": "Heating starts again only below cutoff minus this value, so it does not flip around the cutoff.",
           "cutoff_avg_hours": "The cutoff uses the average of the last hours, so a sunny afternoon does not stop the heating.",
-          "forecast_hours": "How many hours of forecast are checked.",
+          "forecast_hours": "How many hours of forecast are checked (and averaged to cancel a stop).",
           "season_start": "First day of the season: month and day, e.g. 10-15.",
           "season_end": "Last day of the season: month and day, e.g. 04-15.",
           "season_days": "Days in a row below (or above) the threshold before the season starts (or ends).",
