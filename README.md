@@ -36,18 +36,24 @@ other thermostats or plain relays are supported as well.
   is also how long an outdoor value stays valid when the sensor or weather is
   unavailable; after it the outdoor temperature is unknown), heating season
   (dates or automatic), outdoor compensation, forecast, solar gain per room (needs the weather
-  entity of the house; the setting is shown only when one is set). With *Use
-  the forecast* the forecast of the next *Forecast hours* corrects the cutoff
-  both ways: when a forecast value (the current hour included) reaches the threshold the heating stops
-  earlier; when the mean forecast of those hours is at or below the resume
-  temperature (threshold − hysteresis) a stop of the measured average is
-  cancelled, so rooms heat again when they need it (a warm afternoon does not
-  keep the heating off in a cold evening). The cancel ends when that mean rises
-  above the resume temperature (the stop comes back) or when the measured
-  average falls to it (the cutoff turns off). Cutoff, hysteresis, *Average over*
-  and *Forecast hours* all come from the options. In the mean each forecast value holds
-  for its hour; until the next forecast hour the measured value counts. Without
-  a forecast only the measured average decides.
+  entity of the house; the setting is shown only when one is set). The measured
+  average of the last *Average over* hours turns the heating off when it
+  reaches the cutoff; the heating may run again when that average falls to the
+  resume temperature (cutoff − hysteresis). With *Use the forecast* the mean
+  forecast of the next *Forecast hours* also counts (never a single forecast
+  hour):
+  - heating off by the measured average, forecast mean at or below the resume
+    temperature: the heating may run (a warm afternoon does not keep it off in
+    a cold evening); forecast mean above the resume temperature: it stays off;
+  - heating running, forecast mean at or above the cutoff: the heating is
+    turned off earlier, while that mean stays at the cutoff or above; below the
+    cutoff it keeps running. The earlier the warm period in the window, the
+    earlier it is turned off: more *Forecast hours* turn it off earlier.
+
+  In the mean each forecast value holds for its hour; until the next forecast
+  hour the measured value counts. Cutoff, hysteresis, *Average over* and
+  *Forecast hours* all come from the options. Without a forecast only the
+  measured average decides.
 - **Manual changes**: detected automatically and kept for a fixed time or until
   the next reevaluation (schedule, presence, window or mode change). A device
   that only reports, later, the values the integration sent it (e.g. a sleepy
@@ -397,10 +403,10 @@ editor) and *Details*.
   the thermostat tolerance or the hysteresis, a minimum on / off time, waiting
   for other rooms or the reference room, the heat source off or unknown, the
   thermostat off). The *Decision* sensor has it as `no_heat_reason`.
-- **Warm outside**: while the cutoff is active the house shows it with its
-  limit, e.g. *Warm outside: on • heating is off until the average falls to
-  16°*, *on (forecast) • heating is off, the forecast reaches 18° soon*, or
-  while the forecast cancels it *cancelled (forecast) • it gets cold: the
+- **Warm outside**: while the heating is off because it is warm the house
+  shows why, e.g. *Warm outside: on • heating is off until the average falls to
+  16°*, *on (forecast) • heating is off: the forecast mean for 3 h is 19.2°*,
+  or while the forecast lets the heating run *cancelled (forecast) • it gets cold: the
   forecast mean for 3 h is 12.4°, rooms heat when they need it*; the *Outdoor
   average* sensor has the `cutoff_reason` (`measured`, `forecast_warm`,
   `forecast_cold`) and the `forecast_mean`. It is not shown where the cutoff cannot act: mode

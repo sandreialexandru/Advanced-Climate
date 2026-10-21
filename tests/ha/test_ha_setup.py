@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant
@@ -657,7 +657,7 @@ async def test_forecast_cancels_or_triggers_the_cutoff(
     hass.states.async_set("weather.home", "sunny", {"temperature": 20.0, "temperature_unit": "°C"})
     start = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
 
-    def forecast(value: float) -> None:
+    def forecast(value: float, warm_hour: datetime | None = None) -> None:
         async_mock_service(
             hass,
             "weather",
@@ -665,7 +665,10 @@ async def test_forecast_cancels_or_triggers_the_cutoff(
             response={
                 "weather.home": {
                     "forecast": [
-                        {"datetime": (start + timedelta(hours=h)).isoformat(), "temperature": value}
+                        {
+                            "datetime": (start + timedelta(hours=h)).isoformat(),
+                            "temperature": 30.0 if start + timedelta(hours=h) == warm_hour else value,
+                        }
                         for h in range(48)
                     ]
                 }
@@ -706,15 +709,31 @@ async def test_forecast_cancels_or_triggers_the_cutoff(
     assert outdoor["forecast_hours"] == 3
     assert hass.states.get("sensor.bedroom_decision").state != "outdoor_cutoff"
 
-    # Measured cold, forecast warm: the heating stops earlier (a forecast value
-    # of the next hours reaches the threshold).
+    # Measured cold: one warm forecast hour (30 °C) does not turn the heating
+    # off, only the mean counts. With r hours (0 < r <= 1) of the measured
+    # 10 °C until the next forecast hour, then 1 h of 30 °C and 2 - r hours of
+    # 12 °C, the 3 h mean is (10 r + 30 + 12 (2 - r)) / 3 = (54 - 2 r) / 3,
+    # below the 18 °C cutoff.
     hass.states.async_set("weather.home", "cloudy", {"temperature": 10.0, "temperature_unit": "°C"})
     await _tick(hass, freezer, 2 * 3600)
+    now = dt_util.utcnow()
+    hours = [start + timedelta(hours=h) for h in range(48)]
+    forecast(12.0, warm_hour=next(t for t in hours if t > now))
+    await house._async_refresh_forecast(dt_util.utcnow())
+    await _tick(hass, freezer, 15)
+    assert house.forecast_mean < 18
+    assert house.cutoff_reason is None
+    assert hass.states.get("binary_sensor.home_outdoor_cutoff").state == "off"
+
+    # Measured cold, forecast mean warm: the heating is turned off earlier (the
+    # mean of the next 3 h reaches the cutoff: measured 10 °C for at most 1 h,
+    # then 24 °C, so at least (10 + 2 * 24) / 3 = 19.3 °C).
     forecast(24.0)
     await house._async_refresh_forecast(dt_util.utcnow())
     await _tick(hass, freezer, 15)
     assert not house.outdoor.cutoff_active
     assert house.cutoff_reason == "forecast_warm"
+    assert house.forecast_mean >= 18
     assert hass.states.get("binary_sensor.home_outdoor_cutoff").state == "on"
     assert hass.states.get("sensor.bedroom_decision").state == "outdoor_cutoff"
 

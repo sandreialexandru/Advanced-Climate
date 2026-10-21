@@ -43,18 +43,25 @@ interfața în engleză; cu Home Assistant în română ele apar traduse.
   când senzorul sau meteo e indisponibil; după el temperatura de afară e
   necunoscută), sezon de încălzire (date sau automat), compensare după
   temperatura de afară, prognoză, câștig solar pe cameră (are nevoie de
-  entitatea meteo a casei; setarea apare doar atunci). Cu *Folosește prognoza*,
-  prognoza pe următoarele *Ore de prognoză* corectează pragul în ambele
-  sensuri: când o valoare din prognoză (inclusiv ora în curs) atinge pragul, încălzirea se oprește mai
-  devreme; când media prognozei pe acele ore e la temperatura de repornire
-  (prag − histerezis) sau sub ea, oprirea dată de media măsurată se anulează,
-  iar camerele încălzesc din nou la nevoie (o după-amiază caldă nu mai ține
-  încălzirea oprită într-o seară rece). Anularea se termină când acea medie
-  urcă peste temperatura de repornire (oprirea revine) sau când media măsurată
-  coboară la ea (oprirea se încheie). Pragul, histerezisul, *Medie pe* și *Ore
-  de prognoză* vin toate din opțiuni. În medie, fiecare valoare din prognoză
-  e valabilă pentru ora ei; până la următoarea oră din prognoză contează
-  valoarea măsurată. Fără prognoză decide doar media măsurată.
+  entitatea meteo a casei; setarea apare doar atunci). Media măsurată
+  pe ultimele *Medie pe* ore oprește încălzirea când atinge pragul; încălzirea
+  poate porni din nou când acea medie scade la temperatura de repornire
+  (prag − histerezis). Cu *Folosește prognoza* contează și media prognozei pe
+  următoarele *Ore de prognoză* (niciodată o singură oră din prognoză):
+  - încălzire oprită de media măsurată, media prognozei la temperatura de
+    repornire sau sub ea: încălzirea poate porni (o după-amiază caldă nu mai
+    ține încălzirea oprită într-o seară rece); media prognozei peste
+    temperatura de repornire: încălzirea rămâne oprită;
+  - încălzire pornită, media prognozei la prag sau peste: încălzirea se
+    oprește mai devreme și rămâne oprită cât acea medie e la prag sau peste;
+    sub prag încălzirea merge. Cu cât perioada caldă intră mai devreme în
+    fereastră, cu atât încălzirea se oprește mai devreme: mai multe *Ore de
+    prognoză* o opresc mai devreme.
+
+  În medie, fiecare valoare din prognoză e valabilă pentru ora ei; până la
+  următoarea oră din prognoză contează valoarea măsurată. Pragul, histerezisul,
+  *Medie pe* și *Ore de prognoză* vin toate din opțiuni. Fără prognoză decide
+  doar media măsurată.
 - **Schimbări manuale**: detectate automat și păstrate o durată fixă sau până
   la următoarea reevaluare (schimbare de program, prezență, fereastră sau mod).
   Un dispozitiv care doar raportează mai târziu valorile trimise de integrare
@@ -417,10 +424,10 @@ oprit; zilele se aleg în editor) și *Detalii*.
   termostatului sau în histerezis, timp minim pornit / oprit, așteaptă alte
   camere sau camera de referință, sursa de căldură oprită sau necunoscută,
   termostatul oprit). Senzorul *Decision* îl are ca `no_heat_reason`.
-- **Cald afară**: cât pragul e activ, casa îl arată cu limita lui, de exemplu
-  *Cald afară: pornit • încălzirea e oprită până media scade la 16°*, *pornit
-  (prognoză) • încălzirea e oprită, prognoza ajunge curând la 18°*, sau cât
-  prognoza îl anulează *anulat (prognoză) • vine frigul: media prognozei pe 3 h
+- **Cald afară**: cât încălzirea e oprită pentru că e cald, casa arată de ce,
+  de exemplu *Cald afară: pornit • încălzirea e oprită până media scade la
+  16°*, *pornit (prognoză) • încălzirea e oprită: media prognozei pe 3 h este
+  19.2°*, sau cât prognoza lasă încălzirea să pornească *anulat (prognoză) • vine frigul: media prognozei pe 3 h
   este 12.4°, camerele încălzesc la nevoie*; senzorul *Outdoor average* are
   `cutoff_reason` (`measured`, `forecast_warm`, `forecast_cold`) și
   `forecast_mean`. Nu apare unde pragul nu are efect: modul Off sau

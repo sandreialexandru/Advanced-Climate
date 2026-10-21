@@ -806,45 +806,29 @@ class House:
         return mean if source == "forecast" else None
 
     @property
-    def forecast_max(self) -> float | None:
-        """Warmest forecast value in the next forecast hours (None without one).
-
-        The hour that holds now counts too: the stop holds through a warm
-        hour, not only until it begins.
-        """
-        opts = self.options
-        if not (opts.get(CONF_WEATHER) and opts[CONF_FORECAST_ENABLED] and self.hourly_forecast):
-            return None
-        now = dt_util.utcnow()
-        horizon = now + timedelta(hours=float(opts[CONF_FORECAST_HOURS]))
-        temps = [
-            v for t, v in self.hourly_forecast if t + timedelta(hours=1) > now and t <= horizon
-        ]
-        return max(temps) if temps else None
-
-    @property
     def cutoff_reason(self) -> str | None:
-        """Why the cutoff is on, or that the forecast cancels it.
+        """Why the heating is off because it is warm outside, or why it may run.
 
-        ``measured``: the measured average is warm; ``forecast_warm``: the
-        forecast reaches the threshold in the next forecast hours (heating
-        stops earlier);
-        ``forecast_cold``: the measured average would stop the heating but the
-        forecast mean is at or below the resume temperature, so the stop is
-        cancelled (rooms heat when they need it). None: no cutoff.
+        Only means are used, no single forecast hour.
+        ``measured``: the measured average reached the threshold (heating off
+        until it falls to threshold − hysteresis);
+        ``forecast_warm``: the measured average is below the threshold but the
+        forecast mean of the next forecast hours reaches it (heating off
+        earlier, while that mean stays at the threshold or above);
+        ``forecast_cold``: the measured average keeps the heating off but the
+        forecast mean is at or below threshold − hysteresis (heating may run);
+        None: heating may run.
         """
         opts = self.options
         if not opts[CONF_CUTOFF_ENABLED]:
             return None
         threshold = float(opts[CONF_CUTOFF_TEMP])
         resume = threshold - float(opts[CONF_CUTOFF_HYSTERESIS])
+        mean = self.forecast_mean
         # An unknown outdoor temperature does not cut the heating off.
-        measured = self.outdoor_average is not None and self.outdoor.cutoff_active
-        if measured:
-            mean = self.forecast_mean
+        if self.outdoor_average is not None and self.outdoor.cutoff_active:
             return "forecast_cold" if mean is not None and mean <= resume else "measured"
-        warmest = self.forecast_max
-        if warmest is not None and warmest >= threshold:
+        if mean is not None and mean >= threshold:
             return "forecast_warm"
         return None
 
@@ -855,7 +839,7 @@ class House:
 
     @property
     def forecast_cutoff(self) -> bool:
-        """The heating stops earlier because the forecast is warm."""
+        """The heating is off earlier because the forecast mean is warm."""
         return self.cutoff_reason == "forecast_warm"
 
     @property

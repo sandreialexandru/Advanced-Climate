@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.3.1";
+const CARD_VERSION = "2.3.2";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -238,7 +238,7 @@ const TEXT = {
     zoom_6h: "Last 6 hours",
     nav_help: "Drag the window (or tap a place) to move the zoomed chart.",
     cutoff_on: "on • heating is off until the average falls to {temp}",
-    cutoff_forecast: "on (forecast) • heating is off, the forecast reaches {temp} soon",
+    cutoff_forecast: "on (forecast) • heating is off: the forecast mean for {h} h is {temp}",
     cutoff_cancelled: "cancelled (forecast) • it gets cold: the forecast mean for {h} h is {temp}, rooms heat when they need it",
     no_heat: "Not heating",
     nh_tolerance: "the room is within the thermostat tolerance",
@@ -452,7 +452,7 @@ const TEXT = {
     zoom_6h: "Ultimele 6 ore",
     nav_help: "Trage fereastra (sau atinge un loc) ca să muți graficul mărit.",
     cutoff_on: "pornit • încălzirea e oprită până media scade la {temp}",
-    cutoff_forecast: "pornit (prognoză) • încălzirea e oprită, prognoza ajunge curând la {temp}",
+    cutoff_forecast: "pornit (prognoză) • încălzirea e oprită: media prognozei pe {h} h este {temp}",
     cutoff_cancelled: "anulat (prognoză) • vine frigul: media prognozei pe {h} h este {temp}, camerele încălzesc la nevoie",
     no_heat: "Nu încălzește",
     nh_tolerance: "camera e în toleranța termostatului",
@@ -1064,14 +1064,14 @@ class AdvancedClimateCard extends HTMLElement {
       </section>`;
   }
 
-  /** "Warm outside: off • heating stops when the average reaches 18°". */
+  /** "Warm outside: on • heating is off until the average falls to 17°", or why the forecast changes it. */
   _cutoffHtml(outdoor, cutoff, entityId, mode, season, pause) {
     const a = outdoor?.attributes || {};
     if (!cutoff || a.cutoff_enabled === false) return "";
     // Only where the cutoff can act: not in mode Off / Summer, outside the
     // heating season or in a pause (vacation keeps it: away still heats).
     if (["off", "summer"].includes(mode?.state) || season?.state === "off" || pause?.state === "on") return "";
-    // Shown only while the cutoff is active, or while the forecast cancels it.
+    // Shown while the heating is off because it is warm, or while the forecast lets it run.
     const reason = a.cutoff_reason ?? (cutoff.state === "on" ? (a.forecast_cutoff ? "forecast_warm" : "measured") : null);
     if (!reason) return "";
     const hours = String(num(a.forecast_hours) ?? "");
@@ -1079,7 +1079,7 @@ class AdvancedClimateCard extends HTMLElement {
     if (reason === "forecast_cold") {
       text = this._t("cutoff_cancelled").replace("{h}", hours).replace("{temp}", this._temp(a.forecast_mean));
     } else if (reason === "forecast_warm") {
-      text = this._t("cutoff_forecast").replace("{temp}", this._temp(a.cutoff_temperature));
+      text = this._t("cutoff_forecast").replace("{h}", hours).replace("{temp}", this._temp(a.forecast_mean));
     } else {
       text = this._t("cutoff_on").replace("{temp}", this._temp(a.cutoff_resume_temperature));
     }

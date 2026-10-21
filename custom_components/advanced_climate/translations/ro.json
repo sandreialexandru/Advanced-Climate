@@ -161,7 +161,7 @@
           "outdoor_sensor": "Temperatura exterioară pentru prag, sezon și compensare. Dacă e gol, se folosește temperatura din entitatea meteo.",
           "weather": "Folosită pentru prognoză, câștigul solar și ca temperatură exterioară când nu ai senzor.",
           "cutoff_enabled": "Oprește încălzirea când media exterioară atinge pragul. Are nevoie de senzor exterior sau entitate meteo.",
-          "forecast_enabled": "Oprește încălzirea mai devreme când o valoare din prognoza următoarelor ore (inclusiv ora în curs) atinge pragul. Anulează oprirea dată de media de afară când media prognozei pe acele ore e la prag minus histerezis sau sub; oprirea revine când acea medie urcă peste. Are nevoie de o entitate meteo cu prognoză orară.",
+          "forecast_enabled": "Folosește media prognozei pe următoarele Ore de prognoză, niciodată o singură oră. Încălzire oprită de media de afară: poate porni din nou când acea medie e la prag minus histerezis sau sub. Încălzire pornită: se oprește mai devreme când acea medie atinge pragul. Are nevoie de o entitate meteo cu prognoză orară.",
           "season_mode": "„Mereu” dacă schimbi sezonul cu modul Vară. „Între date” sau „Automat” ca încălzirea să se oprească singură în afara sezonului.",
           "compensation_enabled": "Crește puțin ținta când e foarte frig afară (pereții sunt mai reci). Lasă oprit dacă încăperile țin bine temperatura.",
           "window_ignore_above": "Ferestrele deschise nu mai coboară încălzirea când afară e atât de cald. Gol = reacționează mereu."
@@ -306,9 +306,9 @@
         },
         "data_description": {
           "cutoff_temp": "La această medie a temperaturii exterioare sau peste, încălzirea se oprește.",
-          "cutoff_hysteresis": "Încălzirea repornește doar la prag minus această valoare sau sub, ca să nu pornească și oprească des în jurul pragului. Prognoza folosește aceeași valoare pentru anularea opririi.",
+          "cutoff_hysteresis": "Încălzirea repornește doar la prag minus această valoare sau sub, ca să nu pornească și oprească des în jurul pragului. Media prognozei folosește aceeași limită.",
           "cutoff_avg_hours": "Pragul folosește media ultimelor ore, ca o după-amiază însorită să nu oprească încălzirea.",
-          "forecast_hours": "Câte ore de prognoză sunt verificate: valoarea cea mai caldă poate opri încălzirea mai devreme, media lor (fiecare valoare pentru ora ei, valoarea măsurată până la următoarea oră din prognoză) poate anula oprirea.",
+          "forecast_hours": "Câte ore de prognoză intră în medie (fiecare valoare pentru ora ei, valoarea măsurată până la următoarea oră din prognoză). Mai multe ore opresc încălzirea mai devreme înaintea unei perioade calde.",
           "season_start": "Prima zi a sezonului: luna și ziua, de ex. 10-15.",
           "season_end": "Ultima zi a sezonului: luna și ziua, de ex. 04-15.",
           "season_days": "Zile la rând sub (sau peste) prag până începe (sau se termină) sezonul.",
