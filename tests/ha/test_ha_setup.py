@@ -1204,20 +1204,21 @@ async def test_pause_sends_nothing_for_a_manual_relay(
     )
     await hass.async_block_till_done()
     assert hass.states.get("sensor.bedroom_decision").state == "pause"
-    hass.states.async_set("sensor.room_temp", "25.0", {"unit_of_measurement": "°C"})
+    # Below the maximum (25 °C): nothing is sent (at the maximum it is turned off).
+    hass.states.async_set("sensor.room_temp", "24.0", {"unit_of_measurement": "°C"})
     await _tick(hass, freezer, 5)
     assert hass.states.get("input_boolean.heater").state == "on"
 
     # A manual change in a pause is kept, but sent only after the pause.
     await hass.services.async_call(
-        DOMAIN, "set_override", {"room": "Bedroom", "temperature": 26, "duration_hours": 2},
+        DOMAIN, "set_override", {"room": "Bedroom", "temperature": 22, "duration_hours": 2},
         blocking=True,
     )
     await hass.async_block_till_done()
     assert hass.states.get("input_boolean.heater").state == "on"
     override = hass.states.get("sensor.bedroom_decision").attributes["override"]
     assert override["applied"] is False  # the card shows: applies after the pause
-    hass.states.async_set("sensor.room_temp", "27.0", {"unit_of_measurement": "°C"})
+    hass.states.async_set("sensor.room_temp", "24.5", {"unit_of_measurement": "°C"})
     await _tick(hass, freezer, 5)
     assert hass.states.get("input_boolean.heater").state == "on"
 
