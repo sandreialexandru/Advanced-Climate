@@ -253,6 +253,27 @@ async def test_card_resource(hass: HomeAssistant) -> None:
     assert not [i for i in resources.async_items() if i["url"].startswith(CARD_URL)]
 
 
+async def test_card_resource_moved_after_the_rename(hass: HomeAssistant) -> None:
+    """The resource of the card before the rename is moved to the new URL."""
+    from custom_components.advanced_climate.const import CARD_URL, LEGACY_CARD_URL
+    from custom_components.advanced_climate.frontend import (
+        async_ensure_lovelace_resource,
+        async_remove_lovelace_resource,
+        lovelace_resources,
+    )
+
+    assert await async_setup_component(hass, "lovelace", {})
+    resources = lovelace_resources(hass)
+    await resources.async_load()
+    resources.loaded = True
+    await resources.async_create_item({"res_type": "module", "url": f"{LEGACY_CARD_URL}?v=2.3.4"})
+    assert await async_ensure_lovelace_resource(hass, f"{CARD_URL}?v=2.3.5")
+    urls = [i["url"] for i in resources.async_items()]
+    assert urls == [f"{CARD_URL}?v=2.3.5"]
+    await async_remove_lovelace_resource(hass)
+    assert not list(resources.async_items())
+
+
 async def test_fahrenheit_house(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
     """A house in °F: sensors, levels, card attributes and services use °F; values kept in °C."""
     await hass.config.async_set_time_zone("Europe/Bucharest")

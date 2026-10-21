@@ -12,10 +12,10 @@ Programe de încălzire pentru Home Assistant care țin cont de **prezență, zo
 ferestre, vreme și schimbări manuale**, cu o singură decizie clară pentru
 fiecare cameră și motivul ei.
 
-> Fostă **Advanced Climate**. S-a schimbat doar numele: domeniul
-> `advanced_climate`, entitățile, serviciile și tipul de card
-> `custom:advanced-climate-card` rămân la fel, deci nu trebuie configurat nimic
-> din nou.
+> Fostă **Advanced Climate**. Domeniul `advanced_climate`, entitățile și
+> serviciile rămân la fel, deci nu trebuie configurat nimic din nou. Tipul de
+> card este acum `custom:smart-heating-control-card`; dashboardurile cu vechiul
+> `custom:advanced-climate-card` merg în continuare.
 
 Smart Heating Control este construită în jurul **Generic Thermostat**: folosește
 aceleași nume de preseturi (`home`, `sleep`, `eco`, `away`, `comfort`,
@@ -394,14 +394,14 @@ cameră își schimbă decizia (`room`, `old_rule`, `rule`, `old_target`, `targe
 ## Cardul Lovelace
 
 Integrarea adaugă automat cardul la resursele dashboard-urilor
-(`/advanced_climate/advanced-climate-card.js?v=<versiune>`, actualizat la
+(`/advanced_climate/smart-heating-control-card.js?v=<versiune>`, actualizat la
 fiecare versiune, ca browserele și aplicația companion să încarce noua
 versiune). Cu dashboard-uri în mod YAML, adaugă singur acest URL ca resursă de
 tip `module`. Cardul are editor vizual. Fără opțiuni arată toate casele și
 camerele, cu toate comenzile:
 
 ```yaml
-type: custom:advanced-climate-card
+type: custom:smart-heating-control-card
 ```
 
 | Opțiune | Implicit | Arată |

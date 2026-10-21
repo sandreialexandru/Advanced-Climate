@@ -21,11 +21,12 @@ from typing import Any
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import CoreState, Event, HomeAssistant
 
-from .const import CARD_URL, DOMAIN
+from .const import CARD_URL, DOMAIN, LEGACY_CARD_URL
 
 _LOGGER = logging.getLogger(__name__)
 
-CARD_FILE = Path(__file__).parent / "www" / "advanced-climate-card.js"
+CARD_FILE = Path(__file__).parent / "www" / "smart-heating-control-card.js"
+CARD_URLS = (CARD_URL, LEGACY_CARD_URL)
 MANIFEST = Path(__file__).parent / "manifest.json"
 
 
@@ -37,7 +38,7 @@ async def async_register_card(hass: HomeAssistant) -> None:
         from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
 
         await hass.http.async_register_static_paths(
-            [StaticPathConfig(CARD_URL, str(CARD_FILE), False)]
+            [StaticPathConfig(path, str(CARD_FILE), False) for path in CARD_URLS]
         )
     except RuntimeError:
         pass  # already registered (integration reloaded)
@@ -102,7 +103,7 @@ async def async_ensure_lovelace_resource(hass: HomeAssistant, url: str) -> bool:
     mine = [
         item
         for item in resources.async_items()
-        if str(item.get("url", "")).split("?")[0] == CARD_URL
+        if str(item.get("url", "")).split("?")[0] in CARD_URLS
     ]
     if mine:
         first, *duplicates = mine
@@ -125,5 +126,5 @@ async def async_remove_lovelace_resource(hass: HomeAssistant) -> None:
         await resources.async_load()
         resources.loaded = True
     for item in list(resources.async_items()):
-        if str(item.get("url", "")).split("?")[0] == CARD_URL:
+        if str(item.get("url", "")).split("?")[0] in CARD_URLS:
             await resources.async_delete_item(item["id"])

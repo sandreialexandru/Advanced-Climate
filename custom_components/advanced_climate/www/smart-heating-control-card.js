@@ -1,7 +1,7 @@
 /*
  * Smart Heating Control card – every option of the integration in one card.
  *
- *   type: custom:advanced-climate-card
+ *   type: custom:smart-heating-control-card
  *   title: Heating               # optional
  *   rooms:                       # optional: decision sensors to show (default: all)
  *     - sensor.living_decision
@@ -564,7 +564,7 @@ const toLocalInput = (iso) => {
 /** <input type="datetime-local"> value -> "YYYY-MM-DD HH:MM:SS" in local time. */
 const fromLocalInput = (value) => (value ? `${value.replace("T", " ")}:00` : null);
 
-class AdvancedClimateCard extends HTMLElement {
+class SmartHeatingControlCard extends HTMLElement {
   /** Event listeners are set once on the shadow root; the content is redrawn by _render. */
   constructor() {
     super();
@@ -3311,28 +3311,29 @@ const EDITOR_LABELS = {
 // (scoped custom element registry). Anything defined before the swap is not
 // visible to the new registry and Lovelace reports that the card does not
 // exist, so the card is defined again for a few seconds if needed.
-const CARD_TAG = "advanced-climate-card";
-const registerCard = () => {
+const CARD_TAG = "smart-heating-control-card";
+// The type before the rename (Advanced Climate): dashboards that still use
+// custom:advanced-climate-card keep working.
+const LEGACY_CARD_TAG = "advanced-climate-card";
+// A class can be defined only once, so every tag gets its own subclass.
+const defineTag = (tag) => {
   try {
-    if (!window.customElements.get(CARD_TAG)) {
-      window.customElements.define(CARD_TAG, AdvancedClimateCard);
-      return true;
+    if (!window.customElements.get(tag)) {
+      window.customElements.define(tag, class extends SmartHeatingControlCard {});
     }
+    return true;
   } catch (err) {
-    if (!window.customElements.get(CARD_TAG)) {
-      try {
-        window.customElements.define(CARD_TAG, class extends AdvancedClimateCard {});
-        return true;
-      } catch (err2) {
-        console.warn("advanced-climate-card: could not register on the current registry", err2);
-      }
-    }
+    console.warn(`${tag}: could not register on the current registry`, err);
+    return false;
   }
-  return false;
+};
+const registerCard = () => {
+  const ok = defineTag(CARD_TAG);
+  return defineTag(LEGACY_CARD_TAG) && ok;
 };
 
-if (!window.__advancedClimateCardLoaded) {
-  window.__advancedClimateCardLoaded = CARD_VERSION;
+if (!window.__smartHeatingControlCardLoaded) {
+  window.__smartHeatingControlCardLoaded = CARD_VERSION;
   registerCard();
   window.customCards = window.customCards || [];
   if (!window.customCards.some((c) => c.type === CARD_TAG)) {

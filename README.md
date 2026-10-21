@@ -12,9 +12,10 @@ Heating schedules for Home Assistant that follow **presence, zones, windows,
 weather and manual changes** – with one clear decision per room and the reason
 for it.
 
-> Formerly **Advanced Climate**. Only the name changed: the `advanced_climate`
-> domain, the entities, the services and the `custom:advanced-climate-card`
-> card type stay the same, so nothing has to be set up again.
+> Formerly **Advanced Climate**. The `advanced_climate` domain, the entities
+> and the services stay the same, so nothing has to be set up again. The card
+> type is now `custom:smart-heating-control-card`; dashboards with the old
+> `custom:advanced-climate-card` keep working.
 
 Smart Heating Control is built around **Generic Thermostat**: it uses the same preset
 names (`home`, `sleep`, `eco`, `away`, `comfort`, `activity`) and only selects
@@ -374,13 +375,13 @@ its decision (`room`, `old_rule`, `rule`, `old_target`, `target`, `reason`).
 ## Lovelace card
 
 The integration adds the card to the dashboard resources automatically
-(`/advanced_climate/advanced-climate-card.js?v=<version>`, updated on every
+(`/advanced_climate/smart-heating-control-card.js?v=<version>`, updated on every
 release, so browsers and the companion app load the new version). With
 YAML-mode dashboards add that URL as a `module` resource yourself. The card has
 a visual editor. With no options it shows every house and room with every control:
 
 ```yaml
-type: custom:advanced-climate-card
+type: custom:smart-heating-control-card
 ```
 
 | Option | Default | Shows |
