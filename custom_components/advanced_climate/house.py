@@ -807,13 +807,19 @@ class House:
 
     @property
     def forecast_max(self) -> float | None:
-        """Warmest forecast value in the next forecast hours (None without one)."""
+        """Warmest forecast value in the next forecast hours (None without one).
+
+        The hour that holds now counts too: the stop holds through a warm
+        hour, not only until it begins.
+        """
         opts = self.options
         if not (opts.get(CONF_WEATHER) and opts[CONF_FORECAST_ENABLED] and self.hourly_forecast):
             return None
         now = dt_util.utcnow()
         horizon = now + timedelta(hours=float(opts[CONF_FORECAST_HOURS]))
-        temps = [v for t, v in self.hourly_forecast if now <= t <= horizon]
+        temps = [
+            v for t, v in self.hourly_forecast if t + timedelta(hours=1) > now and t <= horizon
+        ]
         return max(temps) if temps else None
 
     @property

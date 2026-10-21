@@ -45,7 +45,7 @@ interfața în engleză; cu Home Assistant în română ele apar traduse.
   temperatura de afară, prognoză, câștig solar pe cameră (are nevoie de
   entitatea meteo a casei; setarea apare doar atunci). Cu *Folosește prognoza*,
   prognoza pe următoarele *Ore de prognoză* corectează pragul în ambele
-  sensuri: când o valoare din prognoză atinge pragul, încălzirea se oprește mai
+  sensuri: când o valoare din prognoză (inclusiv ora în curs) atinge pragul, încălzirea se oprește mai
   devreme; când media prognozei pe acele ore e la temperatura de repornire
   (prag − histerezis) sau sub ea, oprirea dată de media măsurată se anulează,
   iar camerele încălzesc din nou la nevoie (o după-amiază caldă nu mai ține

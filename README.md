@@ -38,7 +38,7 @@ other thermostats or plain relays are supported as well.
   (dates or automatic), outdoor compensation, forecast, solar gain per room (needs the weather
   entity of the house; the setting is shown only when one is set). With *Use
   the forecast* the forecast of the next *Forecast hours* corrects the cutoff
-  both ways: when a forecast value reaches the threshold the heating stops
+  both ways: when a forecast value (the current hour included) reaches the threshold the heating stops
   earlier; when the mean forecast of those hours is at or below the resume
   temperature (threshold − hysteresis) a stop of the measured average is
   cancelled, so rooms heat again when they need it (a warm afternoon does not
