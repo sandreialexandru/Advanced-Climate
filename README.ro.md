@@ -12,13 +12,6 @@ Programe de încălzire pentru Home Assistant care țin cont de **prezență, zo
 ferestre, vreme și schimbări manuale**, cu o singură decizie clară pentru
 fiecare cameră și motivul ei.
 
-> Fostă **Advanced Climate**. Domeniul `advanced_climate`, entitățile și
-> serviciile rămân la fel, deci nu trebuie configurat nimic din nou. Tipul de
-> card este acum `custom:smart-heating-control-card`; dashboardurile cu vechiul
-> `custom:advanced-climate-card` merg în continuare. Repository-ul s-a mutat la
-> `sandreialexandru/Smart-Heating-Control`; GitHub redirecționează adresa
-> veche, dar în HACS e mai sigur să adaugi din nou repository-ul cu cea nouă.
-
 Smart Heating Control este construită în jurul **Generic Thermostat**: folosește
 aceleași nume de preseturi (`home`, `sleep`, `eco`, `away`, `comfort`,
 `activity`) și doar îl alege pe cel potrivit; termostatul funcționează exact ca

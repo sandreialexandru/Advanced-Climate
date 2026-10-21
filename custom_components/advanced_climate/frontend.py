@@ -26,6 +26,7 @@ from .const import CARD_URL, DOMAIN, LEGACY_CARD_URL
 _LOGGER = logging.getLogger(__name__)
 
 CARD_FILE = Path(__file__).parent / "www" / "smart-heating-control-card.js"
+# The resources of the card, the one before the rename included (moved / removed).
 CARD_URLS = (CARD_URL, LEGACY_CARD_URL)
 MANIFEST = Path(__file__).parent / "manifest.json"
 
@@ -38,7 +39,7 @@ async def async_register_card(hass: HomeAssistant) -> None:
         from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
 
         await hass.http.async_register_static_paths(
-            [StaticPathConfig(path, str(CARD_FILE), False) for path in CARD_URLS]
+            [StaticPathConfig(CARD_URL, str(CARD_FILE), False)]
         )
     except RuntimeError:
         pass  # already registered (integration reloaded)

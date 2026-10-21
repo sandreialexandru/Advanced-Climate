@@ -12,7 +12,7 @@ SIGNAL_UPDATE: Final = f"{DOMAIN}_update_{{}}"
 EVENT_DECISION_CHANGED: Final = f"{DOMAIN}_decision_changed"
 
 CARD_URL: Final = f"/{DOMAIN}/smart-heating-control-card.js"
-# The card URL before the rename: still served, and its dashboard resource is
+# The card URL before the rename: not served; a dashboard resource with it is
 # moved to CARD_URL.
 LEGACY_CARD_URL: Final = f"/{DOMAIN}/advanced-climate-card.js"
 

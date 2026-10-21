@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.3.5";
+const CARD_VERSION = "2.3.6";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -3312,10 +3312,7 @@ const EDITOR_LABELS = {
 // visible to the new registry and Lovelace reports that the card does not
 // exist, so the card is defined again for a few seconds if needed.
 const CARD_TAG = "smart-heating-control-card";
-// The type before the rename (Advanced Climate): dashboards that still use
-// custom:advanced-climate-card keep working.
-const LEGACY_CARD_TAG = "advanced-climate-card";
-// A class can be defined only once, so every tag gets its own subclass.
+// A class can be defined only once, so the tag gets its own subclass.
 const defineTag = (tag) => {
   try {
     if (!window.customElements.get(tag)) {
@@ -3327,10 +3324,7 @@ const defineTag = (tag) => {
     return false;
   }
 };
-const registerCard = () => {
-  const ok = defineTag(CARD_TAG);
-  return defineTag(LEGACY_CARD_TAG) && ok;
-};
+const registerCard = () => defineTag(CARD_TAG);
 
 if (!window.__smartHeatingControlCardLoaded) {
   window.__smartHeatingControlCardLoaded = CARD_VERSION;
