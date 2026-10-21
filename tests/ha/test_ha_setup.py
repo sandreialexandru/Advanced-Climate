@@ -814,6 +814,93 @@ async def test_forecast_cancels_or_triggers_the_cutoff(
     await hass.async_block_till_done()
 
 
+async def test_arriving_ends_the_automatic_vacation(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """On the way home the automatic vacation ends, so the house preheats."""
+    hass.states.async_set("sensor.distance", "50", {"unit_of_measurement": "km"})
+    entry = await _setup(
+        hass,
+        freezer,
+        house_options={"auto_vacation_hours": 1.0, "proximity_distance": "sensor.distance"},
+    )
+    house = entry.runtime_data
+    await _tick(hass, freezer, 15)
+    hass.states.async_set("person.andrei", "not_home")
+    await _tick(hass, freezer, 11 * 60)
+    assert hass.states.get("sensor.home_presence").state == "far"
+    await _tick(hass, freezer, 3600)
+    assert house.auto_vacation
+    assert hass.states.get("sensor.bedroom_decision").state == "vacation"
+
+    # 5 km away, below the 10 km arrival distance (default): arriving.
+    hass.states.async_set("sensor.distance", "5", {"unit_of_measurement": "km"})
+    await _tick(hass, freezer, 15)
+    assert house.arriving
+    assert not house.auto_vacation
+    assert hass.states.get("sensor.bedroom_decision").state != "vacation"
+
+    # Turned back: far again, the automatic vacation waits another hour.
+    hass.states.async_set("sensor.distance", "50", {"unit_of_measurement": "km"})
+    await _tick(hass, freezer, 30 * 60)
+    assert not house.arriving
+    assert not house.auto_vacation
+    await _tick(hass, freezer, 31 * 60)
+    assert house.auto_vacation
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_calendar_profile_of_tomorrow(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """An event of tomorrow titled with a profile name selects it for tomorrow."""
+    hass.states.async_set("calendar.home", "off", {})
+    tomorrow = (dt_util.parse_datetime("2026-10-12T12:00:00+03:00") + timedelta(days=1)).date()
+    events = []
+    async_mock_service(
+        hass,
+        "calendar",
+        "get_events",
+        response={"calendar.home": {"events": events}},
+        supports_response=SupportsResponse.ONLY,
+    )
+    entry = await _setup(hass, freezer, house_options={"calendar": "calendar.home"})
+    house = entry.runtime_data
+    room = next(iter(house.rooms.values()))
+    name = sorted(room.schedule.profiles)[0]
+    # An all-day event (dates only), read again when the calendar is refreshed.
+    events.append(
+        {
+            "start": tomorrow.isoformat(),
+            "end": (tomorrow + timedelta(days=1)).isoformat(),
+            "summary": name.upper(),
+        }
+    )
+    await house._async_refresh_calendar()  # noqa: SLF001
+    assert room._day_info(tomorrow)[1] == name  # noqa: SLF001
+    # Not today: today uses only the event active now.
+    assert room._day_info(tomorrow - timedelta(days=1))[1] is None  # noqa: SLF001
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_climate_heat_source_without_heat_mode(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A climate heat source without "heat" is started with "auto", never "off"."""
+    calls = async_mock_service(hass, "climate", "set_hvac_mode")
+    hass.states.async_set("climate.boiler", "off", {"hvac_modes": ["off", "auto"]})
+    cold = {"hvac_modes": ["heat", "off"], "current_temperature": 18.0, "temperature": 21.0}
+    hass.states.async_set("climate.trv", "heat", {**cold, "hvac_action": "heating"})
+    entry = await _trv_house(hass, freezer, boiler_entity="climate.boiler")
+    await _tick(hass, freezer, 15)
+    modes = [c.data["hvac_mode"] for c in calls if c.data.get("entity_id") == "climate.boiler"]
+    assert modes and modes[-1] == "auto"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
 async def test_optimal_stop_and_start_with_the_forecast(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:
@@ -860,6 +947,9 @@ async def test_optimal_stop_and_start_with_the_forecast(
     assert dt_util.parse_datetime(estimate["starts_at"]) == dt_util.parse_datetime(
         "2026-10-12T18:30:00+00:00"
     )
+    # The house wakes up at the moment the stop is expected to begin.
+    room = next(iter(entry.runtime_data.rooms.values()))
+    assert room.next_wakeup == dt_util.parse_datetime("2026-10-12T18:30:00+00:00")
 
     # At 18:31 UTC the stop runs. Until the next forecast hour (19:00) the
     # measured temperature stands; what it started with is kept.
@@ -981,6 +1071,29 @@ async def test_card_manual_change_set_again_after_a_window(
     assert hass.states.get("sensor.office_decision").state == "manual_override"
     assert calls[-1].data["temperature"] == 23.0
 
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_card_manual_change_is_verified(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A temperature set by the card is checked on the device: sent again once, then an alert."""
+    entry, calls, _trv = await _window_trv_house(hass, freezer)
+    house = entry.runtime_data
+    room = next(iter(house.rooms.values()))
+    await hass.services.async_call(
+        DOMAIN, "set_override", {"room": "Office", "temperature": 23, "duration_hours": 2},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    sent = len([c for c in calls if c.data["temperature"] == 23.0])
+    # The thermostat keeps 17 °C (the mocked service changes nothing).
+    await _tick(hass, freezer, 121)  # VERIFY_DELAY is 120 s
+    assert len([c for c in calls if c.data["temperature"] == 23.0]) == sent + 1
+    assert f"verify_{room.id}" not in house._alerts  # noqa: SLF001
+    await _tick(hass, freezer, 121)
+    assert f"verify_{room.id}" in house._alerts  # noqa: SLF001
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
 

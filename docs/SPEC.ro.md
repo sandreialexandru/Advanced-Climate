@@ -102,7 +102,7 @@ home_office: 00:00 sleep, 07:00 comfort, 23:00 sleep
 | Profiluri | workday + weekend | Orice nume; fiecare cu zilele lui (toate, zile lucrătoare, weekend și sărbători sau zile anume) și pornit / oprit, setate din card. Profilurile active nu se suprapun (zilele anume doar între ele) |
 | Alegerea profilului | auto | Eveniment de calendar → profilul activ al zilei → profilul activ al zilelor lucrătoare / weekendului → profilul activ pentru toate zilele → niciunul: protecție la îngheț, cu alertă |
 | Zile lucrătoare | integrarea Workday | Sărbătorile vin din integrarea Workday (inclusiv zilele viitoare) |
-| Calendar | niciunul | Un eveniment cu numele unui profil alege acel profil; numele unui preset alege acel nivel |
+| Calendar | niciunul | Un eveniment cu numele unui profil alege acel profil (azi: evenimentul activ acum; următoarele 7 zile: un eveniment care acoperă o parte din zi, citit în fiecare oră și când calendarul se schimbă); numele unui preset alege acel nivel cât durează evenimentul |
 | Sursa programului | intern | Program intern sau un **Schedule helper** existent în HA |
 | Pornire anticipată | oprită | Începe încălzirea mai devreme, ca nivelul următor să fie atins la timp |
 | Încălzirea învățată | activă cu pornirea anticipată | Minute pe cameră = parte fixă + grade × (minute pe grad la 0 °C + schimbarea pe grad de afară × temperatura de afară), calculate prin metoda celor mai mici pătrate din ultimele 25 de episoade mici (< 1 °C) și 25 mari (≥ 1 °C), fiecare cu gradele, minutele și temperatura medie de afară. Partea fixă cere episoade care diferă ca mărime cu cel puțin 1 °C, termenul de afară episoade la temperaturi de afară care diferă cu cel puțin 1 °C; termenii imposibili (parte fixă sau minute negative) se pun pe zero și restul se recalculează; temperaturile de afară neîntâlnite prelungesc linia (anticiparea maximă o limitează în continuare). Un episod începe de la cel puțin toleranța termostatului sub țintă și se folosește când cererea de căldură a durat cel puțin 10 minute și temperatura a crescut, oricât de puțin; episoadele cu un senzor de fereastră deschis nu se folosesc. Până la primul episod 60 de minute pe grad. Învățarea salvată înainte de 2.0 (o viteză pe episod) se renunță. Încălzirea și răcirea se învață doar în sezonul rece (nu în modurile Oprit sau Vară și nici în afara sezonului) |
@@ -163,7 +163,7 @@ ce cere programul.
 | Prag de oprire | 18 °C | Încălzire oprită când media e la prag sau peste; repornește la prag − histerezis sau sub (histerezis 1 °C) |
 | Medie pe | 6 h (cel puțin 1 h) | Media, nu valoarea instantanee. Este și cât rămâne valabilă o valoare de afară: fără o valoare nouă în acest timp, temperatura de afară e necunoscută (fără prag de oprire, compensare sau ferestre ignorate, fără episoade de învățare, fără oprire anticipată) până când senzorul sau meteo raportează din nou |
 | Sezon de încălzire | mereu | Mereu, între date (de exemplu 10-15 → 04-15) sau automat |
-| Sezon automat | 3 zile / 15 °C | Începe / se termină după X zile consecutive sub / peste prag |
+| Sezon automat | 3 zile / 15 °C | Începe / se termină după X zile consecutive sub / peste prag (cele X zile dinaintea zilei de azi; fiecare zi cu media ponderată în timp a timpului acoperit; o zi fără nicio valoare întrerupe șirul) |
 | Compensare după temperatura de afară | oprită | Ajustare mică, de exemplu +0,5 °C sub −5 °C |
 | Prognoză | oprită | Doar media prognozei pe următoarele ore de prognoză (fiecare valoare pentru ora ei, valoarea măsurată până la următoarea oră din prognoză), niciodată o singură oră. Încălzire oprită de media măsurată și acea medie la temperatura de repornire sau sub ea: încălzirea poate porni (camerele încălzesc la nevoie); peste ea: încălzirea rămâne oprită. Încălzire pornită și acea medie la prag sau peste: încălzirea se oprește mai devreme și rămâne oprită până când media scade la temperatura de repornire (același histerezis ca la media măsurată; starea se salvează) |
 | Câștig solar pe cameră | oprit | Ajustare negativă cât e soare (are nevoie de entitatea meteo) |
@@ -191,7 +191,7 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | Mod | Ce face | Opțiuni |
 | --- | --- | --- |
 | Auto | Program + prezență + toate regulile | – |
-| Vacanță | `away` în toate camerele | Date de început și sfârșit (doar sfârșit: de acum), preîncălzire cu X ore înainte de sfârșit (implicit 4 h; programul se aplică chiar dacă toată lumea e departe), vacanță automată după Y ore departe (preîncălzirea dinaintea sfârșitului unei vacanțe planificate are prioritate) |
+| Vacanță | `away` în toate camerele | Date de început și sfârșit (doar sfârșit: de acum), preîncălzire cu X ore înainte de sfârșit (implicit 4 h; programul se aplică chiar dacă toată lumea e departe), vacanță automată după Y ore departe (preîncălzirea dinaintea sfârșitului unei vacanțe planificate are prioritate; se termină când cineva e pe drum spre casă și revine doar după alte Y ore departe) |
 | Oprit | Doar antiîngheț (`min_temp` al GT) | – |
 | Vară | Încălzire oprită | Comutare automată cu sezonul (secțiunea 6) |
 

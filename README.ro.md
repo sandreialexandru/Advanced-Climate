@@ -73,6 +73,9 @@ interfața în engleză; cu Home Assistant în română ele apar traduse.
   întoarcere și vacanță automată), Oprit (antiîngheț) și Vară. În orele de
   preîncălzire dinaintea sfârșitului vacanței se aplică programul chiar dacă
   toată lumea e încă departe. Doar cu data de sfârșit: vacanța începe acum.
+  Vacanța automată se termină când cineva e pe drum spre casă (*arriving*),
+  ca să se preîncălzească; revine doar când toți sunt din nou departe cât e
+  setat la *Vacanță automată după departe timp de*.
 - **Energie**: tarif dinamic, surplus fotovoltaic, comanda sursei de
   căldură (centralei) după cererea de căldură a camerelor, statistici ale
   timpului de încălzire.
@@ -163,7 +166,9 @@ weekend: 00:00 sleep, 08:00 home, 23:00 sleep
 Fiecare profil are **zilele lui** și este **pornit sau oprit** (se setează în
 card, *Program*): toate zilele, zile lucrătoare, weekend și sărbători, sau zile
 anume. O zi folosește, în această ordine: un eveniment de calendar cu numele
-unui profil (și un profil oprit) → profilul activ al acelei zile (de exemplu un
+unui profil (și un profil oprit; azi evenimentul activ acum, în zilele
+următoare un eveniment care acoperă o parte din zi, ca planul și pornirea
+anticipată de mâine să-l folosească) → profilul activ al acelei zile (de exemplu un
 profil pentru miercuri are prioritate față de cel de zile lucrătoare doar
 miercurea) → profilul activ al zilelor lucrătoare sau al weekendului → profilul
 activ pentru toate zilele. Pornirea unui profil le oprește pe cele active cu care

@@ -76,10 +76,14 @@ cererea de căldură. Se **folosește** doar dacă:
 | minute | 125 | cât a durat |
 | la | 2026-10-20T07:00 | când s-a terminat |
 
-Minutele sunt timpul **total**, de la prima cerere de căldură până la sfârșit.
-Toate întârzierile sunt incluse: pornirea centralei, timpii minimi de
-pornire / oprire, așteptarea altor camere, încălzirea apei și a
-caloriferelor. Niciuna nu trebuie cunoscută sau configurată.
+Minutele se numără din momentul în care camera **chiar încălzește** (cere
+căldură și sursa ei de căldură funcționează) până la sfârșit. Sunt incluse:
+încălzirea centralei, a apei și a caloriferelor. **Nu** sunt incluse:
+timpul de dinaintea pornirii sursei — timpii minimi pornit / oprit ai unui
+releu sau ai sursei de căldură a casei și așteptarea altor camere (*Camere
+necesare pentru pornirea sursei* sau camera de referință). Niciunul nu trebuie cunoscut sau
+configurat, dar pornirea anticipată poate începe cu acea așteptare mai
+târziu, pentru că ea nu se învață.
 
 ---
 

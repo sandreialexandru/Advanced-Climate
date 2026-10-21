@@ -73,10 +73,13 @@ stops. It is **used** only when:
 | minutes | 125 | how long it took |
 | at | 2026-10-20T07:00 | when it ended |
 
-The minutes are the **total** time, from the first request for heat to the
-end. Every delay is inside it: the boiler starting, the minimum on / off
-times, waiting for other rooms, the water and the radiators warming up. None
-of them has to be known or configured.
+The minutes are counted from the moment the room **really heats** (it asks
+for heat and its heat source runs) to the end. Inside them: the boiler
+warming up, the water and the radiators warming up. **Not** inside them: the
+time before the heat source starts — the minimum on / off times of a relay or
+of the house heat source, and the wait for other rooms (*Rooms needed to start the heat source* or
+the reference room). None of them has to be known or configured, but an
+optimal start can begin later by that wait, because it is not learned.
 
 ---
 

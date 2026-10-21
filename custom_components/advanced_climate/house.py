@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
-from datetime import date, datetime, timedelta
+from collections.abc import Callable, Iterable
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from homeassistant.components import persistent_notification
@@ -119,11 +119,13 @@ from .util import (
     CELSIUS,
     FAHRENHEIT,
     as_list,
+    calendar_moment,
     delta_from_celsius,
     distance_km,
     float_attr,
     float_state,
     from_iso,
+    heat_mode,
     is_fahrenheit,
     iso,
     minutes_value,
@@ -135,6 +137,9 @@ from .util import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Days of calendar events read ahead: today and the next 7, like the Workday days.
+CALENDAR_DAYS = 8
 
 
 class House:
@@ -161,6 +166,8 @@ class House:
         self.vacation_start: datetime | None = None
         self.vacation_end: datetime | None = None
         self.auto_vacation = False
+        # Last time an arrival ended the automatic vacation (far time counts from it).
+        self.auto_vacation_reset: datetime | None = None
         self.presence = PresenceDebouncer()
         self.outdoor = OutdoorTracker()
         self.boiler_runtime_s = 0.0
@@ -174,6 +181,8 @@ class House:
         # Hourly forecast (UTC moment, °C), for the optimal start / stop.
         self.hourly_forecast: list[tuple[datetime, float]] = []
         self.calendar_message: str | None = None
+        # Events of the next days (start, end, summary): profiles of the coming days.
+        self.calendar_events: list[tuple[datetime, datetime, str]] = []
         self.heat_demand = False
         self.boiler_on: bool | None = None
         self.boiler_changed: datetime | None = None
@@ -209,6 +218,7 @@ class House:
         self.vacation_start = from_iso(house.get("vacation_start"))
         self.vacation_end = from_iso(house.get("vacation_end"))
         self.auto_vacation = bool(house.get("auto_vacation", False))
+        self.auto_vacation_reset = from_iso(house.get("auto_vacation_reset"))
         self.presence = PresenceDebouncer.from_dict(house.get("presence"))
         self.outdoor = OutdoorTracker.from_dict(house.get("outdoor"))
         if not self.outdoor_configured:
@@ -271,6 +281,7 @@ class House:
             )
             await self._async_refresh_forecast()
         await self._async_refresh_workdays()
+        await self._async_refresh_calendar()
         await self.async_evaluate()
 
     async def async_unload(self) -> None:
@@ -332,6 +343,8 @@ class House:
             self._sample_outdoor()
         if entity_id == self.options.get(CONF_WORKDAY_SENSOR) and valid(new):
             self.hass.async_create_task(self._async_refresh_workdays())
+        if entity_id == self.options.get(CONF_CALENDAR):
+            self.hass.async_create_task(self._async_refresh_calendar())
         self.async_request_evaluate()
 
     @callback
@@ -357,6 +370,7 @@ class House:
                 "vacation_start": iso(self.vacation_start),
                 "vacation_end": iso(self.vacation_end),
                 "auto_vacation": self.auto_vacation,
+                "auto_vacation_reset": iso(self.auto_vacation_reset),
                 "presence": self.presence.as_dict(),
                 "outdoor": self.outdoor.as_dict(),
                 "boiler_runtime_s": round(self.boiler_runtime_s, 1),
@@ -398,10 +412,11 @@ class House:
         await self.async_evaluate()
 
     async def _async_hourly(self, _now: datetime) -> None:
-        """Hourly checks: batteries and the Workday calendar."""
+        """Hourly checks: batteries, the Workday calendar and the calendar events."""
         for room in self.rooms.values():
             room.check_batteries()
         await self._async_refresh_workdays()
+        await self._async_refresh_calendar()
 
     async def async_evaluate(self) -> None:
         """Evaluate the house and all rooms, then send commands."""
@@ -557,8 +572,18 @@ class House:
         hours = float(opts[CONF_AUTO_VACATION_HOURS] or 0)
         if self.presence.current != PRESENCE_FAR:
             self.auto_vacation = False
-        elif hours > 0 and self.presence.far_for(now) >= timedelta(hours=hours):
-            self.auto_vacation = True
+            self.auto_vacation_reset = None
+        elif self.arriving:
+            # On the way home: the automatic vacation ends (the house preheats)
+            # and the time far away counts again from now.
+            self.auto_vacation = False
+            self.auto_vacation_reset = now
+        elif hours > 0:
+            far = self.presence.far_for(now)
+            if self.auto_vacation_reset is not None:
+                far = min(far, now - self.auto_vacation_reset)
+            if far >= timedelta(hours=hours):
+                self.auto_vacation = True
 
     @property
     def presence_state(self) -> str | None:
@@ -679,6 +704,52 @@ class House:
             self.calendar_message = str(message).strip() if message else None
             self.calendar_end = from_iso(state.attributes.get("end_time"))
 
+    async def _async_refresh_calendar(self) -> None:
+        """Read the calendar events of the next days (the profiles of those days).
+
+        Today keeps using the event that is active now; the plan and the
+        optimal start of the coming days use these events.
+        """
+        calendar = self.options.get(CONF_CALENDAR)
+        if not calendar or not self.hass.services.has_service("calendar", "get_events"):
+            self.calendar_events = []
+            return
+        now = dt_util.now()
+        try:
+            response = await self.hass.services.async_call(
+                "calendar",
+                "get_events",
+                {
+                    "start_date_time": now.isoformat(),
+                    "end_date_time": (now + timedelta(days=CALENDAR_DAYS)).isoformat(),
+                },
+                target={"entity_id": calendar},
+                blocking=True,
+                return_response=True,
+            )
+        except (HomeAssistantError, ValueError) as err:
+            _LOGGER.debug("calendar.get_events failed: %s", err)
+            return
+        events: list[tuple[datetime, datetime, str]] = []
+        for item in ((response or {}).get(calendar) or {}).get("events") or []:
+            start, end = calendar_moment(item.get("start")), calendar_moment(item.get("end"))
+            summary = str(item.get("summary") or "").strip()
+            if start is not None and end is not None and summary:
+                events.append((start, end, summary))
+        self.calendar_events = sorted(events)
+
+    def calendar_profile(self, day: date, profiles: Iterable[str]) -> str | None:
+        """Profile named by a calendar event that covers part of a coming schedule day."""
+        names = {name.lower() for name in profiles}
+        boundary = timedelta(minutes=self.day_boundary_minutes)
+        zone = dt_util.get_default_time_zone()
+        start = datetime.combine(day, time(0), tzinfo=zone) + boundary
+        end = datetime.combine(day + timedelta(days=1), time(0), tzinfo=zone) + boundary
+        for event_start, event_end, summary in self.calendar_events:
+            if summary.lower() in names and event_start < end and event_end > start:
+                return summary.lower()
+        return None
+
     def is_workday(self, day: date) -> bool:
         """Return whether a day is a workday."""
         today = dt_util.now().date()  # local calendar day
@@ -698,7 +769,7 @@ class House:
         if not sensor or not self.hass.services.has_service("workday", "check_date"):
             return
         today = dt_util.now().date()  # local calendar day
-        for offset in range(8):
+        for offset in range(CALENDAR_DAYS):
             day = today + timedelta(days=offset)
             key = day.isoformat()
             if key in self.workday_cache:
@@ -1045,8 +1116,7 @@ class House:
         domain = boiler.split(".", 1)[0]
         try:
             if domain == "climate":
-                modes = state.attributes.get("hvac_modes") or []  # type: ignore[union-attr]
-                on_mode = "heat" if "heat" in modes else (modes[0] if modes else "heat")
+                on_mode = heat_mode(state.attributes.get("hvac_modes"))  # type: ignore[union-attr]
                 await self.hass.services.async_call(
                     "climate",
                     "set_hvac_mode",

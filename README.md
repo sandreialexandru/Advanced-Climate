@@ -64,7 +64,10 @@ other thermostats or plain relays are supported as well.
 - **Global modes**: Auto, Vacation (with dates, preheating before the return and
   automatic vacation), Off (frost protection) and Summer. During the preheating
   hours before the end of a vacation the schedule applies even while everyone
-  is still far away. Only an end date: the vacation starts now.
+  is still far away. Only an end date: the vacation starts now. The automatic
+  vacation ends when someone is on the way home (*arriving*), so the house
+  preheats; it comes back only when everyone has been far away again for the
+  time set in *Automatic vacation after far away for*.
 - **Energy**: dynamic tariff, PV surplus, control of the heat source (boiler)
   from the heat demand of the rooms, heating time statistics.
 - **Safety**: frost protection always (once it starts heating it continues
@@ -151,7 +154,8 @@ weekend: 00:00 sleep, 08:00 home, 23:00 sleep
 Each profile has its **days** and is **on or off** (set in the card, *Schedule*):
 all days, workdays, weekend days and holidays, or chosen weekdays. A day uses,
 in this order: a calendar event titled with a profile name (also a profile that
-is off) → the active profile of that weekday (e.g. a profile for Wednesday is
+is off; today the event active now, the coming days an event that covers part
+of the day, so the plan and the optimal start of tomorrow use it) → the active profile of that weekday (e.g. a profile for Wednesday is
 above the workday profile on Wednesdays only) → the active profile of workdays
 or of weekend days → the active profile of all days. Turning a profile on turns
 off the active ones it overlaps (all days overlaps workdays and weekend days;

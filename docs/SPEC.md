@@ -98,7 +98,7 @@ home_office: 00:00 sleep, 07:00 comfort, 23:00 sleep
 | Profiles | workday + weekend | Any names; each with its days (all, workdays, weekend days and holidays, or chosen weekdays) and on / off, set in the card. Active profiles do not overlap (chosen weekdays only among themselves) |
 | Profile selection | auto | Calendar event → active profile of the weekday → active profile of workdays / weekend days → active profile of all days → none: frost protection, with an alert |
 | Workdays | Workday integration | Holidays come from the Workday integration (including future days) |
-| Calendar | none | An event titled with a profile name selects that profile; a preset name selects that level |
+| Calendar | none | An event titled with a profile name selects that profile (today: the event active now; the next 7 days: an event covering part of the day, read every hour and when the calendar changes); a preset name selects that level while the event runs |
 | Schedule source | internal | Internal schedule or an existing HA **Schedule helper** |
 | Optimal start | off | Start heating early so the next level is reached on time |
 | Learned heating | on with optimal start | Minutes per room = fixed part + degrees × (minutes per degree at 0 °C + change per degree outdoors × outdoor), the least squares fit of the last 25 small (< 1 °C) and 25 large (≥ 1 °C) heating episodes, each with its degrees, minutes and mean outdoor temperature. The fixed part needs episodes at least 1 °C apart in size, the outdoor term episodes at least 1 °C apart outdoors; impossible terms (negative fixed part or minutes) are set to zero and the rest is fitted again; unseen outdoor temperatures extend the line (the maximum early start still limits it). An episode starts at least the thermostat tolerance below the target and is used when the heat demand lasted at least 10 minutes and the temperature rose, however little; episodes with an open window sensor are not used. Until the first episode 60 minutes per degree. Learning saved before 2.0 (a rate per episode) is discarded. Heating and cooling are learned in the cold season only (not in mode Off or Summer, nor outside the season) |
@@ -159,7 +159,7 @@ what the schedule asks.
 | Cutoff | 18 °C | Heating off when the average is at or above it; on again at or below cutoff − hysteresis (hysteresis 1 °C) |
 | Average over | 6 h (at least 1 h) | Average, not the instantaneous value. Also how long an outdoor value stays valid: with no new value for this time the outdoor temperature is unknown (no cutoff, compensation or ignored windows, no learning episodes, no optimal stop) until the sensor or weather reports again |
 | Heating season | always | Always, between dates (e.g. 10-15 → 04-15) or automatic |
-| Automatic season | 3 days / 15 °C | Starts/ends after X consecutive days below/above the threshold |
+| Automatic season | 3 days / 15 °C | Starts/ends after X consecutive days below/above the threshold (the X days before today; each day a time-weighted mean of the time covered; a day without any value breaks the run) |
 | Outdoor compensation | off | Small adjustment, e.g. +0.5 °C below −5 °C |
 | Forecast | off | Only the mean forecast of the next forecast hours (each value for its hour, the measured value until the next forecast hour), never a single hour. Heating off by the measured average and that mean at or below the resume temperature: the heating may run (rooms heat when they need it); above it: the heating stays off. Heating running and that mean at or above the cutoff: the heating is turned off earlier and stays off until the mean falls to the resume temperature (same hysteresis as the measured average; the state is saved) |
 | Solar gain per room | off | Negative offset while the sun shines (needs the weather entity) |
@@ -187,7 +187,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | Mode | What it does | Options |
 | --- | --- | --- |
 | Auto | Schedule + presence + every rule | – |
-| Vacation | `away` in every room | Start and end dates (only an end: from now), preheat X hours before the end (default 4 h; the schedule applies even while everyone is far), automatic vacation after Y hours far away (the preheating before the end of a planned vacation wins over it) |
+| Vacation | `away` in every room | Start and end dates (only an end: from now), preheat X hours before the end (default 4 h; the schedule applies even while everyone is far), automatic vacation after Y hours far away (the preheating before the end of a planned vacation wins over it; it ends when someone is arriving and comes back only after another Y hours far away) |
 | Off | Frost protection only (`min_temp` of GT) | – |
 | Summer | Heating off | Automatic switch with the season (section 6) |
 

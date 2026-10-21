@@ -153,6 +153,7 @@ from .util import (
     float_attr,
     from_celsius,
     from_iso,
+    heat_mode,
     iso,
     parse_clock,
     system_unit,
@@ -275,7 +276,8 @@ class Room:
         self._started_at = dt_util.utcnow()
         self._exercise_until: datetime | None = None
         self._relay_on: bool | None = None
-        self._relay_changed: datetime | None = None
+        # Kept over a restart: the minimum on / off time of the relay holds.
+        self._relay_changed: datetime | None = from_iso(stored.get("relay_changed"))
         self._heating_since: datetime | None = None
         self._unsubs: list[Callable[[], None]] = []
         self._verify_unsub: Callable[[], None] | None = None
@@ -378,6 +380,7 @@ class Room:
             "observed_temps": self.observed_temps,
             "decisions": list(self.decisions),
             "last_exercise": self.last_exercise,
+            "relay_changed": iso(self._relay_changed),
         }
 
     # ------------------------------------------------------------------
@@ -1031,13 +1034,20 @@ class Room:
         return now - since >= timedelta(minutes=float(self.config[CONF_OCCUPANCY_MINUTES]))
 
     def _day_info(self, day: date) -> tuple[bool, str | None]:
-        """Whether a day is a workday, and a profile forced for today (calendar)."""
+        """Whether a day is a workday, and a profile forced by the calendar.
+
+        Today: the event active now. The coming days: an event that covers part
+        of the day (read ahead every hour and when the calendar changes).
+        """
         forced = None
         today = self.schedule.schedule_day(dt_util.now())  # local
-        if day == today and self.house.calendar_message:
-            message = self.house.calendar_message.lower()
-            if message in self.schedule.profiles:
-                forced = message
+        if day == today:
+            if self.house.calendar_message:
+                message = self.house.calendar_message.lower()
+                if message in self.schedule.profiles:
+                    forced = message
+        elif day > today:
+            forced = self.house.calendar_profile(day, self.schedule.profiles)
         return self.house.is_workday(day), forced
 
     def _schedule_lookup(self, now: datetime) -> ScheduleState | None:
@@ -1300,6 +1310,13 @@ class Room:
             wakeups.append(self.override["until"])
         if self._exercise_until:
             wakeups.append(self._exercise_until)
+        # The moment the next optimal start / stop is expected to begin (worked
+        # out again at every evaluation, so the wakeup moves with it).
+        estimate = self.next_estimate
+        if estimate and estimate.get("started_at") is None and estimate.get("minutes"):
+            begin = estimate["change"] - timedelta(minutes=float(estimate["minutes"]))
+            if begin > now:
+                wakeups.append(begin)
         self.next_wakeup = min(wakeups) if wakeups else None
 
     def _device_setpoint(self) -> float | None:
@@ -1585,7 +1602,8 @@ class Room:
             return False
         self._sent[entity_id] = {}
         modes = list(state.attributes.get("hvac_modes") or [])
-        heat_mode = "heat" if "heat" in modes else ("auto" if "auto" in modes else None)
+        # Turned on only with a mode that heats (no guess when there is none).
+        on_mode = heat_mode(modes) if {"heat", "auto"} & set(modes) else None
 
         if target.kind == KIND_OFF:
             if STATE_OFF in modes:
@@ -1597,8 +1615,8 @@ class Room:
                 return False
             return await self._send(entity_id, "set_temperature", ATTR_TEMPERATURE, minimum)
 
-        if state.state == STATE_OFF and heat_mode:
-            await self._send(entity_id, "set_hvac_mode", "hvac_mode", heat_mode, "state")
+        if state.state == STATE_OFF and on_mode:
+            await self._send(entity_id, "set_hvac_mode", "hvac_mode", on_mode, "state")
 
         if target.kind == KIND_PRESET and self.command_mode == COMMAND_PRESET:
             available = list(state.attributes.get("preset_modes") or [])
@@ -1698,8 +1716,7 @@ class Room:
         else:
             for entity_id in self.climates:
                 state = self.hass.states.get(entity_id)
-                modes = list(state.attributes.get("hvac_modes") or []) if valid(state) else []  # type: ignore[union-attr]
-                on_mode = "heat" if "heat" in modes else ("auto" if "auto" in modes else "heat")
+                on_mode = heat_mode(state.attributes.get("hvac_modes") if valid(state) else None)  # type: ignore[union-attr]
                 self._sent[entity_id] = {}
                 ok &= await self._send(
                     entity_id, "set_hvac_mode", "hvac_mode", on_mode if want else STATE_OFF, "state"
@@ -1727,7 +1744,14 @@ class Room:
         async def _verify(_now: datetime) -> None:
             """Compare the devices with the command sent."""
             self._verify_unsub = None
-            if self.decision is None or self.decision.target != expected:
+            # A manual change set by the card or a service has no target in the
+            # decision (it is "respected"); its stored target is checked instead.
+            current = (
+                self._override_target()
+                if self.decision is not None and self.decision.rule == RULE_OVERRIDE
+                else self.decision.target if self.decision is not None else None
+            )
+            if current != expected:
                 self._verify_attempts = 0
                 return
             if self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC:

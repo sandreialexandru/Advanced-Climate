@@ -41,6 +41,50 @@ class OutdoorTest(unittest.TestCase):
         tracker.add(t0 + timedelta(hours=7), 12.0)
         self.assertEqual(tracker.latest(t0 + timedelta(hours=8)), 12.0)
 
+    def test_daily_mean_weighted_by_time(self) -> None:
+        # 10 °C from 00:00 to 06:00, then 20 °C to midnight: (6 * 10 + 18 * 20) / 24
+        # = 17.5 °C (the mean of the samples would give more weight to 10 °C).
+        tracker = outdoor.OutdoorTracker(max_age=timedelta(hours=6))
+        t0 = datetime(2026, 10, 12, 0, tzinfo=TZ)
+        for hour in range(6):
+            tracker.add(t0 + timedelta(hours=hour), 10.0)
+        for hour in range(6, 24, 5):
+            tracker.add(t0 + timedelta(hours=hour), 20.0)
+        # The next day: yesterday is worked out again until midnight.
+        tracker.add(t0 + timedelta(days=1, minutes=5), 20.0)
+        self.assertEqual(tracker.daily_means["2026-10-12"], 17.5)
+
+    def test_daily_mean_uses_the_covered_time(self) -> None:
+        # Values hold at most the averaging window (6 h): 10 °C 00-06, 20 °C
+        # 07-13 (Home Assistant off 13-20), 10 °C 20-24: (60 + 120 + 40) / 16 = 13.75.
+        tracker = outdoor.OutdoorTracker(max_age=timedelta(hours=6))
+        t0 = datetime(2026, 10, 12, 0, tzinfo=TZ)
+        tracker.add(t0, 10.0)
+        tracker.add(t0 + timedelta(hours=7), 20.0)
+        tracker.add(t0 + timedelta(hours=20), 10.0)
+        tracker.add(t0 + timedelta(days=1, minutes=1), 10.0)
+        self.assertEqual(tracker.daily_means["2026-10-12"], 13.75)
+
+    def test_auto_season_needs_days_in_a_row(self) -> None:
+        tracker = outdoor.OutdoorTracker()
+        today = date(2026, 10, 12)
+        # 10 October missing: the 3 days before today are not complete.
+        tracker.daily_means = {"2026-10-08": 20.0, "2026-10-09": 20.0, "2026-10-11": 20.0}
+        self.assertTrue(tracker.update_season(today, const.SEASON_AUTO, "", "", 3, 15.0))
+        tracker.daily_means["2026-10-10"] = 20.0
+        self.assertFalse(tracker.update_season(today, const.SEASON_AUTO, "", "", 3, 15.0))
+
+    def test_saved_samples_cover_the_averaging_window(self) -> None:
+        # One value a minute for 48 h, averaging window 24 h: the last 24 h are
+        # saved (and the value valid at its start), not only the last 600 values.
+        tracker = outdoor.OutdoorTracker(max_age=timedelta(hours=24))
+        t0 = datetime(2026, 10, 12, 0, tzinfo=TZ)
+        tracker.samples = [(t0 + timedelta(minutes=m), float(m % 7)) for m in range(48 * 60)]
+        now = tracker.samples[-1][0]
+        restored = outdoor.OutdoorTracker.from_dict(tracker.as_dict())
+        self.assertLessEqual(restored.samples[0][0], now - timedelta(hours=24))
+        self.assertEqual(restored.average(now, 24), tracker.average(now, 24))
+
     def test_cutoff_hysteresis(self) -> None:
         tracker = outdoor.OutdoorTracker()
         self.assertFalse(tracker.update_cutoff(17.5, 18, 1))

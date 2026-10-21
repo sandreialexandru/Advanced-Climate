@@ -121,6 +121,14 @@ def aggregate(values: list[float], method: str) -> float | None:
     return round(sum(values) / len(values), 2)
 
 
+def heat_mode(modes: list[str] | None) -> str:
+    """The HVAC mode that turns a device on to heat: heat, else auto, else heat."""
+    modes = list(modes or [])
+    if "heat" in modes:
+        return "heat"
+    return "auto" if "auto" in modes else "heat"
+
+
 def parse_clock(value: Any, default: time = time(0, 0)) -> time:
     """Parse HH:MM[:SS] into a time."""
     if isinstance(value, time):
@@ -158,6 +166,24 @@ def from_iso(value: Any) -> datetime | None:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=dt_util.get_default_time_zone())
     return parsed
+
+
+def calendar_moment(value: Any) -> datetime | None:
+    """Start / end of a calendar event: a datetime, or a date (local midnight)."""
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return dt_util.as_utc(value) if value.tzinfo else value.replace(tzinfo=dt_util.get_default_time_zone())
+    text = str(value)
+    parsed = dt_util.parse_datetime(text)
+    if parsed is not None:
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt_util.get_default_time_zone())
+        return parsed
+    day = dt_util.parse_date(text)
+    if day is None:
+        return None
+    return datetime.combine(day, time(0), tzinfo=dt_util.get_default_time_zone())
 
 
 def distance_km(state: State | None) -> float | None:

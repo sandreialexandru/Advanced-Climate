@@ -6,7 +6,7 @@ Pure Python, no Home Assistant imports, so it can be unit tested.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, tzinfo
+from datetime import date, datetime, time, timedelta, tzinfo
 from itertools import pairwise
 
 from .const import SEASON_ALWAYS, SEASON_AUTO, SEASON_DATES
@@ -104,14 +104,58 @@ class OutdoorTracker:
         return (moment.astimezone(self.tz) if self.tz else moment).date()
 
     def _update_daily(self, now: datetime) -> None:
-        """Update the mean of today (used by the automatic season)."""
-        day = self._day(now)
-        values = [v for t, v in self.samples if self._day(t) == day]
-        if values:
-            self.daily_means[day.isoformat()] = round(sum(values) / len(values), 2)
+        """Update the means of yesterday and today (used by the automatic season).
+
+        Yesterday is worked out again so its last value counts until midnight.
+        """
+        today = self._day(now)
+        for day in (today - timedelta(days=1), today):
+            mean = self.day_mean(day, now)
+            if mean is not None:
+                self.daily_means[day.isoformat()] = mean
         if len(self.daily_means) > MAX_DAILY_MEANS:
             for key in sorted(self.daily_means)[: len(self.daily_means) - MAX_DAILY_MEANS]:
                 del self.daily_means[key]
+
+    def day_mean(self, day: date, now: datetime) -> float | None:
+        """Time-weighted mean of a calendar day (until now for today).
+
+        Each value holds until the next one, at most ``max_age`` (after that the
+        outdoor temperature is unknown and the time does not count), so a day
+        with Home Assistant stopped part of the time uses only the covered time.
+        With values but no time covered yet (the first value is from now) the
+        latest value is the mean. None when the day has no value at all.
+        """
+        if not self.samples:
+            return None
+        zone = self.tz or self.samples[0][0].tzinfo
+        start = datetime.combine(day, time(0), tzinfo=zone)
+        end = min(datetime.combine(day + timedelta(days=1), time(0), tzinfo=zone), now)
+        if end < start:
+            return None
+        # (from, value, valid until) for every value that counts in the day.
+        spans: list[tuple[datetime, float, datetime | None]] = []
+        before = [(t, v) for t, v in self.samples if t < start]
+        if before:
+            t, v = before[-1]
+            spans.append((start, v, t + self.max_age if self.max_age is not None else None))
+        for t, v in self.samples:
+            if start <= t <= end:
+                spans.append((t, v, t + self.max_age if self.max_age is not None else None))
+        total = 0.0
+        weight = 0.0
+        for index, (moment, value, valid_until) in enumerate(spans):
+            until = spans[index + 1][0] if index + 1 < len(spans) else end
+            if valid_until is not None:
+                until = min(until, valid_until)
+            seconds = (until - moment).total_seconds()
+            if seconds > 0:
+                total += value * seconds
+                weight += seconds
+        if weight > 0:
+            return round(total / weight, 2)
+        own = [v for t, v in self.samples if start <= t <= end]
+        return own[-1] if own else None
 
     def latest(self, now: datetime | None = None) -> float | None:
         """Return the latest value, None when it is older than ``max_age``."""
@@ -197,23 +241,32 @@ class OutdoorTracker:
             except ValueError:
                 self.season_active = True
         elif mode == SEASON_AUTO:
-            # Only complete days count.
-            complete = [
-                v
-                for k, v in sorted(self.daily_means.items())
-                if k < today.isoformat()
-            ][-days:]
-            if len(complete) >= days:
+            # Only complete days count, the ``days`` days before today in a row:
+            # a missing day (no value all day) breaks the run.
+            wanted = [(today - timedelta(days=n)).isoformat() for n in range(days, 0, -1)]
+            complete = [self.daily_means[k] for k in wanted if k in self.daily_means]
+            if days > 0 and len(complete) == days:
                 if all(v < threshold for v in complete):
                     self.season_active = True
                 elif all(v >= threshold for v in complete):
                     self.season_active = False
         return self.season_active
 
+    def _samples_to_save(self) -> list[tuple[datetime, float]]:
+        """The samples of the averaging window (all of them without one)."""
+        if self.max_age is None or not self.samples:
+            return list(self.samples)
+        limit = self.samples[-1][0] - self.max_age
+        keep = [i for i, (t, _v) in enumerate(self.samples) if t >= limit]
+        first = max((keep[0] if keep else len(self.samples)) - 1, 0)
+        return self.samples[first:]
+
     def as_dict(self) -> dict:
         """Serialize."""
         return {
-            "samples": [(t.isoformat(), v) for t, v in self.samples[-600:]],
+            # Every value the averaging window may still use (and the one valid
+            # at its start), so a long average survives a restart.
+            "samples": [(t.isoformat(), v) for t, v in self._samples_to_save()],
             "daily_means": self.daily_means,
             "cutoff_active": self.cutoff_active,
             "forecast_cutoff_active": self.forecast_cutoff_active,
