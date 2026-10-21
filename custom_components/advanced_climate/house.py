@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
-import logging
 from typing import Any
 
 from homeassistant.components import persistent_notification
@@ -86,9 +86,9 @@ from .const import (
     CONF_SEASON_MODE,
     CONF_SEASON_START,
     CONF_SEASON_TEMP,
+    CONF_TEMP_UNIT,
     CONF_TRAVEL_TIME,
     CONF_VACATION_PREHEAT,
-    CONF_TEMP_UNIT,
     CONF_WEATHER,
     CONF_WINDOW_IGNORE_ABOVE,
     CONF_WORKDAY_SENSOR,
@@ -123,14 +123,14 @@ from .util import (
     distance_km,
     float_attr,
     float_state,
-    is_fahrenheit,
-    system_unit,
-    temp_state,
-    to_celsius,
     from_iso,
+    is_fahrenheit,
     iso,
     minutes_value,
     parse_clock,
+    system_unit,
+    temp_state,
+    to_celsius,
     valid,
 )
 
@@ -222,6 +222,8 @@ class House:
         # temperature is unknown.
         self.outdoor.max_age = timedelta(hours=self.average_hours)
         self.boiler_runtime_s = float(house.get("boiler_runtime_s", 0.0))
+        self._frost_started = bool(house.get("frost_started", False))
+        self.boiler_changed = from_iso(house.get("boiler_changed"))
         self.workday_cache = dict(house.get("workday_cache", {}))
 
         room_data = data.get("rooms", {})
@@ -358,6 +360,10 @@ class House:
                 "presence": self.presence.as_dict(),
                 "outdoor": self.outdoor.as_dict(),
                 "boiler_runtime_s": round(self.boiler_runtime_s, 1),
+                # Kept over a restart: a heat source started for frost protection
+                # in a pause is stopped again, and the minimum on / off time holds.
+                "frost_started": self._frost_started,
+                "boiler_changed": iso(self.boiler_changed),
                 "workday_cache": dict(list(self.workday_cache.items())[-20:]),
             },
             "rooms": {room_id: room.as_dict() for room_id, room in self.rooms.items()},
@@ -418,7 +424,7 @@ class House:
         for room in list(self.rooms.values()):
             try:
                 await room.async_evaluate(now)
-            except Exception:  # noqa: BLE001 - one room must not break the others
+            except Exception:
                 _LOGGER.exception("Error evaluating room %s", room.name)
 
         await self._async_control_boiler(now)
@@ -692,7 +698,7 @@ class House:
         if not sensor or not self.hass.services.has_service("workday", "check_date"):
             return
         today = dt_util.now().date()  # local calendar day
-        for offset in range(0, 8):
+        for offset in range(8):
             day = today + timedelta(days=offset)
             key = day.isoformat()
             if key in self.workday_cache:
@@ -932,9 +938,12 @@ class House:
         opts = self.options
         offsets: list[tuple[str, float]] = []
         outdoor = self.outdoor_now
-        if opts[CONF_COMP_ENABLED] and outdoor is not None:
-            if outdoor < float(opts[CONF_COMP_BELOW]):
-                offsets.append(("compensation", float(opts[CONF_COMP_OFFSET])))
+        if (
+            opts[CONF_COMP_ENABLED]
+            and outdoor is not None
+            and outdoor < float(opts[CONF_COMP_BELOW])
+        ):
+            offsets.append(("compensation", float(opts[CONF_COMP_OFFSET])))
         price = float_state(self.hass, opts.get(CONF_PRICE_SENSOR))
         if price is not None:
             high = opts.get(CONF_PRICE_HIGH)
@@ -1007,7 +1016,10 @@ class House:
         if not boiler:
             return
         want = demand
-        if self.paused:
+        if not self.paused:
+            # Frost protection of a pause is over once the pause ends.
+            self._frost_started = False
+        else:
             # Paused: only frost protection; a heat source started for it is
             # stopped again when it is no longer needed.
             if frost:
@@ -1020,7 +1032,6 @@ class House:
         if not valid(state):
             return
         is_on = state.state not in ("off",)  # type: ignore[union-attr]
-        self.source_waiting = None
         if is_on == want:
             return
         if self.boiler_changed is not None:

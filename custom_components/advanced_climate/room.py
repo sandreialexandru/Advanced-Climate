@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections import deque
+import logging
 import math
+from collections import deque
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
-import logging
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.config_entries import ConfigSubentry
@@ -22,7 +22,11 @@ from homeassistant.core import Event, EventStateChangedData, State, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import (
     area_registry as ar,
+)
+from homeassistant.helpers import (
     device_registry as dr,
+)
+from homeassistant.helpers import (
     entity_registry as er,
 )
 from homeassistant.helpers.event import async_call_later, async_track_state_change_event
@@ -63,8 +67,8 @@ from .const import (
     CONF_OVERRIDE_MODE,
     CONF_PRESET_MAP,
     CONF_PRESET_NAMES,
-    CONF_REFERENCE_ROOM,
     CONF_PROFILE_DAYS,
+    CONF_REFERENCE_ROOM,
     CONF_SCHEDULE,
     CONF_SCHEDULE_HELPER,
     CONF_SCHEDULE_SOURCE,
@@ -97,8 +101,8 @@ from .const import (
     OVERRIDE_FIXED,
     OVERRIDE_NEXT,
     PRESET_FROST,
-    PRESETS,
     PRESET_NONE,
+    PRESETS,
     ROOM_DEFAULTS,
     RULE_MAX,
     RULE_OPTIMAL_START,
@@ -1030,11 +1034,10 @@ class Room:
         """Whether a day is a workday, and a profile forced for today (calendar)."""
         forced = None
         today = self.schedule.schedule_day(dt_util.now())  # local
-        if day == today:
-            if self.house.calendar_message:
-                message = self.house.calendar_message.lower()
-                if message in self.schedule.profiles:
-                    forced = message
+        if day == today and self.house.calendar_message:
+            message = self.house.calendar_message.lower()
+            if message in self.schedule.profiles:
+                forced = message
         return self.house.is_workday(day), forced
 
     def _schedule_lookup(self, now: datetime) -> ScheduleState | None:
@@ -1495,15 +1498,18 @@ class Room:
         domain = entity_id.split(".", 1)[0]
         wanted = values.get("state")
         if domain != "climate":
-            if wanted in (STATE_ON, STATE_OFF) and state.state != wanted:
-                if await self._call(
+            if (
+                wanted in (STATE_ON, STATE_OFF)
+                and state.state != wanted
+                and await self._call(
                     domain, SERVICE_TURN_ON if wanted == STATE_ON else SERVICE_TURN_OFF,
                     {ATTR_ENTITY_ID: entity_id},
-                ):
-                    self._sent[entity_id] = {"state": wanted}
-                    if entity_id in self.switches:
-                        self._relay_on = wanted == STATE_ON
-                        self._relay_changed = dt_util.utcnow()
+                )
+            ):
+                self._sent[entity_id] = {"state": wanted}
+                if entity_id in self.switches:
+                    self._relay_on = wanted == STATE_ON
+                    self._relay_changed = dt_util.utcnow()
             return
         if wanted and state.state != wanted:
             await self._send(entity_id, "set_hvac_mode", "hvac_mode", wanted, "state")
@@ -2054,9 +2060,13 @@ class Room:
             if house.source_waiting:
                 return {"code": f"source_{house.source_waiting}"}
             reference = house.options.get(CONF_REFERENCE_ROOM)
-            if reference and reference in house.rooms and reference != self.id:
-                if not house.rooms[reference].heat_demand:
-                    return {"code": "reference_room", "room": house.rooms[reference].name}
+            if (
+                reference
+                and reference in house.rooms
+                and reference != self.id
+                and not house.rooms[reference].heat_demand
+            ):
+                return {"code": "reference_room", "room": house.rooms[reference].name}
             needed = max(1, int(house.options[CONF_BOILER_MIN_ROOMS]))
             count = sum(1 for room in house.rooms.values() if room.heat_demand)
             if not reference and count < needed:

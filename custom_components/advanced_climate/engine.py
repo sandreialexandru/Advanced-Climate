@@ -527,11 +527,17 @@ def optimal_schedule(
     remaining = next_change - now
     if start_enabled and next_temp > now_temp and started:
         return next_preset, RULE_OPTIMAL_START
-    if start_enabled and next_temp > now_temp and current_temp is not None:
-        if current_temp < next_temp and start_needed is not None and start_needed > 0:
-            needed = timedelta(minutes=min(start_needed, start_max_minutes))
-            if remaining <= needed:
-                return next_preset, RULE_OPTIMAL_START
+    if (
+        start_enabled
+        and next_temp > now_temp
+        and current_temp is not None
+        and current_temp < next_temp
+        and start_needed is not None
+        and start_needed > 0
+    ):
+        needed = timedelta(minutes=min(start_needed, start_max_minutes))
+        if remaining <= needed:
+            return next_preset, RULE_OPTIMAL_START
     if stop_enabled and next_temp < now_temp:
         if stop_started:
             return next_preset, RULE_OPTIMAL_STOP

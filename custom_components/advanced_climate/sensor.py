@@ -35,10 +35,9 @@ from .const import (
 from .entity import HOUSE_ENTITY_KEYS, ROOM_ENTITY_KEYS, HouseEntity, RoomEntity, entity_map
 from .house import House
 from .learning import LARGE_EPISODE, start_gap
-from .util import delta_from_celsius, from_celsius
 from .room import Room
 from .schedule import profiles_to_dict
-from .util import iso
+from .util import delta_from_celsius, from_celsius, iso
 
 
 async def async_setup_entry(
@@ -74,7 +73,6 @@ class PresenceSensor(HouseEntity, SensorEntity):
     """House presence: home / nearby / far."""
 
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = list(PRESENCE_STATES)
     _unrecorded_attributes = frozenset(
         {"advanced_climate_house", "entry_id", "house_name", "house_entities"}
     )
@@ -82,6 +80,7 @@ class PresenceSensor(HouseEntity, SensorEntity):
     def __init__(self, house: House) -> None:
         """Initialize."""
         super().__init__(house, "presence")
+        self._attr_options = list(PRESENCE_STATES)
 
     @property
     def native_value(self) -> str | None:
@@ -221,7 +220,6 @@ class DecisionSensor(RoomEntity, SensorEntity):
     """The rule that decides the room right now, with the reason."""
 
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = list(RULES)
     _unrecorded_attributes = frozenset(
         {
             "schedule",
@@ -249,6 +247,7 @@ class DecisionSensor(RoomEntity, SensorEntity):
     def __init__(self, room: Room) -> None:
         """Initialize."""
         super().__init__(room, "decision")
+        self._attr_options = list(RULES)
 
     @property
     def native_value(self) -> str:

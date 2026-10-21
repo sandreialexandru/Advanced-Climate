@@ -32,8 +32,8 @@ used.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import math
+from dataclasses import dataclass, field
 from datetime import datetime
 
 # An episode (with heat demand for heating, without it for cooling) is used

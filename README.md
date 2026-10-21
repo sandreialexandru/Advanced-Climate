@@ -92,7 +92,7 @@ The full specification is in [docs/SPEC.md](docs/SPEC.md) ([Română](docs/SPEC.
 Copy `custom_components/advanced_climate` into your `config/custom_components`
 folder and restart Home Assistant.
 
-Requires Home Assistant **2025.7** or newer.
+Requires Home Assistant **2026.10.2** or newer (the version the tests run on).
 
 ## Configuration
 

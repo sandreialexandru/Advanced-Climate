@@ -1,1 +1,2 @@
-pytest-homeassistant-custom-component
+# Pinned: Home Assistant 2026.10.2, the minimum in hacs.json is the tested version.
+pytest-homeassistant-custom-component==0.13.373

@@ -28,10 +28,10 @@ night shift can keep one profile from e.g. 04:00 to 04:00 the next day.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
-import re
 
 from .const import DAYS_ALL, DAYS_WEEKEND, DAYS_WORKDAY, PRESET_FROST, WEEKDAYS
 

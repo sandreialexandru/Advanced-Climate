@@ -588,6 +588,41 @@ async def test_frost_protection_starts_the_heat_source(
     await hass.async_block_till_done()
 
 
+async def test_frost_start_in_a_pause_survives_a_restart(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A heat source started for frost protection in a pause is stopped after a restart.
+
+    The minimum on time (5 min by default) also holds across the restart.
+    """
+    cold = {"hvac_modes": ["heat", "off"], "current_temperature": 5.0, "temperature": 7.0}
+    hass.states.async_set("climate.trv", "heat", {**cold, "hvac_action": "heating"})
+    entry = await _trv_house(hass, freezer)
+    await hass.services.async_call("switch", "turn_on", {"entity_id": "switch.home_pause"}, blocking=True)
+    await _tick(hass, freezer, 15)
+    assert hass.states.get("input_boolean.boiler").state == "on"
+
+    # Restart of the integration; meanwhile the room is warm again.
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    hass.states.async_set(
+        "climate.trv", "heat", {**cold, "current_temperature": 8.0, "hvac_action": "idle"}
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    house = entry.runtime_data
+    assert house.paused
+    await _tick(hass, freezer, 15)
+    # Started 15 s ago (less than the 5 min minimum on time): it waits.
+    assert hass.states.get("input_boolean.boiler").state == "on"
+    assert house.source_waiting == "min_on"
+    # After the minimum on time it is stopped: it was started for frost protection.
+    await _tick(hass, freezer, 600)
+    assert hass.states.get("input_boolean.boiler").state == "off"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
 async def test_durations_across_the_dst_change(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:

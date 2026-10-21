@@ -36,7 +36,7 @@ async def async_register_card(hass: HomeAssistant) -> None:
     if hass.data.get(f"{DOMAIN}_card_registered"):
         return
     try:
-        from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
+        from homeassistant.components.http import StaticPathConfig
 
         await hass.http.async_register_static_paths(
             [StaticPathConfig(CARD_URL, str(CARD_FILE), False)]
@@ -54,7 +54,7 @@ async def async_register_card(hass: HomeAssistant) -> None:
     def _extra_module() -> None:
         """Load the card on every page (when it cannot be a dashboard resource)."""
         try:
-            from homeassistant.components.frontend import add_extra_js_url  # noqa: PLC0415
+            from homeassistant.components.frontend import add_extra_js_url
 
             add_extra_js_url(hass, url)
         except (ImportError, KeyError):

@@ -8,9 +8,9 @@ separate arrival and departure delays.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-import math
 
 from .const import (
     HOME_RULE_ALL,
@@ -79,16 +79,21 @@ def classify_person(
             return PRESENCE_NEARBY
     if geometric:
         # Coordinates of the person (the most precise source).
-        if person.latitude is not None and person.longitude is not None:
-            if any(z.contains(person.latitude, person.longitude) for z in nearby_zones):
-                return PRESENCE_NEARBY
+        if (
+            person.latitude is not None
+            and person.longitude is not None
+            and any(z.contains(person.latitude, person.longitude) for z in nearby_zones)
+        ):
+            return PRESENCE_NEARBY
         # A zone (e.g. "Office") whose centre lies inside a nearby zone.
         for zone in all_zones:
-            if state_l in (zone.name.lower(), zone.entity_id.split(".", 1)[-1].lower()):
-                if zone.latitude is not None and zone.longitude is not None and any(
-                    nz.contains(zone.latitude, zone.longitude) for nz in nearby_zones
-                ):
-                    return PRESENCE_NEARBY
+            if (
+                state_l in (zone.name.lower(), zone.entity_id.split(".", 1)[-1].lower())
+                and zone.latitude is not None
+                and zone.longitude is not None
+                and any(nz.contains(zone.latitude, zone.longitude) for nz in nearby_zones)
+            ):
+                return PRESENCE_NEARBY
     return PRESENCE_FAR
 
 

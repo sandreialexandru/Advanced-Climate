@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import math
-
 from types import MappingProxyType
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
@@ -66,7 +64,7 @@ from .const import (
     CONF_HOME_RULE,
     CONF_HYSTERESIS,
     CONF_LEARN_TOLERANCE,
-    CONF_STOP_TOLERANCE,
+    CONF_LEVELS,
     CONF_LINKED_WINDOW_SENSORS,
     CONF_MAX_TEMP,
     CONF_MIN_OFF,
@@ -88,8 +86,6 @@ from .const import (
     CONF_OVERRIDE_SCOPE,
     CONF_PERSONS,
     CONF_PRESENCE_SENSORS,
-    CONF_LEVELS,
-    DEFAULT_LEVEL_TEMPS,
     CONF_PRESET_MAP,
     CONF_PRESET_NAMES,
     CONF_PRICE_HIGH,
@@ -115,10 +111,11 @@ from .const import (
     CONF_SEASON_TEMP,
     CONF_SOLAR_OFFSET,
     CONF_SOURCE,
+    CONF_STOP_TOLERANCE,
     CONF_SWITCHES,
-    CONF_TEMP_UNIT,
     CONF_TEMP_AGGREGATION,
     CONF_TEMP_SENSORS,
+    CONF_TEMP_UNIT,
     CONF_TRAVEL_TIME,
     CONF_VACATION_PREHEAT,
     CONF_VALVE_DAY,
@@ -135,6 +132,7 @@ from .const import (
     CONF_WINDOW_OPEN_DELAY,
     CONF_WINDOW_SENSORS,
     CONF_WORKDAY_SENSOR,
+    DEFAULT_LEVEL_TEMPS,
     DOMAIN,
     GT_DOMAIN,
     HOME_RULE_ALL,

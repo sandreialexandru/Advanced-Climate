@@ -6,11 +6,11 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
-
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import config_validation as cv, entity_registry as er
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -22,7 +22,6 @@ from .const import (
     SCHEDULE_INTERNAL,
 )
 from .engine import KIND_PRESET, KIND_TEMPERATURE, Target
-from .util import to_celsius
 from .schedule import (
     ScheduleError,
     format_schedule,
@@ -31,6 +30,7 @@ from .schedule import (
     profiles_from_dict,
     validate_profile_days,
 )
+from .util import to_celsius
 
 if TYPE_CHECKING:
     from .house import House
@@ -142,9 +142,10 @@ def _rooms(hass: HomeAssistant, call: ServiceCall, *, required: bool) -> list[Ro
                 continue
             for house in houses:
                 for room in house.rooms.values():
-                    if entry.config_subentry_id == room.id or entity_id in room.climates:
-                        if room not in rooms:
-                            rooms.append(room)
+                    if (
+                        entry.config_subentry_id == room.id or entity_id in room.climates
+                    ) and room not in rooms:
+                        rooms.append(room)
     if required and not rooms:
         raise ServiceValidationError(translation_domain=DOMAIN, translation_key="room_not_found")
     if not wanted and not entity_ids and not required:

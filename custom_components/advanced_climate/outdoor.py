@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, tzinfo
+from itertools import pairwise
 
 from .const import SEASON_ALWAYS, SEASON_AUTO, SEASON_DATES
 
@@ -137,7 +138,7 @@ class OutdoorTracker:
             return points[0][1]
         total = 0.0
         weight = 0.0
-        for (t1, v1), (t2, _v2) in zip(points, points[1:], strict=False):
+        for (t1, v1), (t2, _v2) in pairwise(points):
             seconds = (t2 - t1).total_seconds()
             total += v1 * seconds
             weight += seconds

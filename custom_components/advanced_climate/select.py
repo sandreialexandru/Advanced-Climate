@@ -25,11 +25,10 @@ async def async_setup_entry(
 class ModeSelect(HouseEntity, SelectEntity):
     """Global mode: auto / vacation / off / summer."""
 
-    _attr_options = list(MODES)
-
     def __init__(self, house: House) -> None:
         """Initialize."""
         super().__init__(house, "mode")
+        self._attr_options = list(MODES)
 
     @property
     def current_option(self) -> str:
