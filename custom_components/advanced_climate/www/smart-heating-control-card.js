@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.3.8";
+const CARD_VERSION = "2.3.9";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -304,6 +304,7 @@ const TEXT = {
     r_max_level: "Maximum temperature ({preset} is above {max})",
     r_frost_level: "Frost protection ({preset} is below {frost})",
     r_max_device: "Maximum temperature: {value} is above {max}",
+    r_max_room: "Maximum temperature: the room is {current}, at {max} or above",
     r_frost_below: "Frost protection: {current} is below {frost}",
     r_frost_holding: "Frost protection: heating up to {frost}",
     rs_arriving: "someone is on the way home",
@@ -518,6 +519,7 @@ const TEXT = {
     r_max_level: "Temperatura maximă ({preset} e peste {max})",
     r_frost_level: "Antiîngheț ({preset} e sub {frost})",
     r_max_device: "Temperatura maximă: {value} e peste {max}",
+    r_max_room: "Temperatura maximă: camera are {current}, la {max} sau peste",
     r_frost_below: "Antiîngheț: {current} e sub {frost}",
     r_frost_holding: "Antiîngheț: încălzește până la {frost}",
     rs_arriving: "cineva e pe drum spre casă",

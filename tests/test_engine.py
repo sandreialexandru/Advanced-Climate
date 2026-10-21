@@ -248,6 +248,23 @@ class NoProfileTest(unittest.TestCase):
         )
 
 
+class MaxRoomTest(unittest.TestCase):
+    def test_relay_off_at_the_maximum_in_a_pause_or_manual_change(self) -> None:
+        maximum = inputs().max_temp
+        for extra in ({"paused": True}, {"override_active": True}):
+            hot = engine.decide(inputs(on_off=True, current_temp=maximum + 5, **extra))
+            self.assertEqual((hot.rule, hot.key), (const.RULE_MAX, "max_room"))
+            self.assertEqual(hot.target.kind, engine.KIND_OFF)
+            # At the maximum too; below it nothing is sent (it stays off).
+            self.assertEqual(engine.decide(inputs(on_off=True, current_temp=maximum, **extra)).key, "max_room")
+            below = engine.decide(inputs(on_off=True, current_temp=maximum - 0.1, **extra))
+            self.assertEqual(below.target.kind, engine.KIND_NONE)
+            # Thermostats with a set point are checked through it, not like this.
+            self.assertNotEqual(
+                engine.decide(inputs(on_off=False, current_temp=maximum + 5, **extra)).key, "max_room"
+            )
+
+
 class OptimalTest(unittest.TestCase):
     def test_start(self) -> None:
         change = NOW + timedelta(minutes=50)

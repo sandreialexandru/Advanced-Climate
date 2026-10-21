@@ -166,9 +166,9 @@ weekend: 00:00 sleep, 08:00 home, 23:00 sleep
 Fiecare profil are **zilele lui** și este **pornit sau oprit** (se setează în
 card, *Program*): toate zilele, zile lucrătoare, weekend și sărbători, sau zile
 anume. O zi folosește, în această ordine: un eveniment de calendar cu numele
-unui profil (și un profil oprit; azi evenimentul activ acum, în zilele
-următoare un eveniment care acoperă o parte din zi, ca planul și pornirea
-anticipată de mâine să-l folosească) → profilul activ al acelei zile (de exemplu un
+unui profil (și un profil oprit; un eveniment care acoperă o parte din zi îl
+alege pentru toată ziua, azi la fel ca în zilele următoare, ca planul și
+pornirea anticipată de mâine să corespundă cu ce se întâmplă mâine) → profilul activ al acelei zile (de exemplu un
 profil pentru miercuri are prioritate față de cel de zile lucrătoare doar
 miercurea) → profilul activ al zilelor lucrătoare sau al weekendului → profilul
 activ pentru toate zilele. Pornirea unui profil le oprește pe cele active cu care

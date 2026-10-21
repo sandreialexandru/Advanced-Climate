@@ -142,6 +142,49 @@ async def test_relay_room(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -
     await hass.async_block_till_done()
 
 
+async def test_relay_off_at_the_maximum_in_a_pause(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A relay left on by a pause is turned off at the maximum (25 °C by default)."""
+    entry = await _setup(hass, freezer)
+    await _tick(hass, freezer, 15)
+    assert hass.states.get("input_boolean.heater").state == "on"  # 18 °C, home 21 °C
+    await hass.services.async_call("switch", "turn_on", {"entity_id": "switch.home_pause"}, blocking=True)
+    await hass.async_block_till_done()
+    assert hass.states.get("input_boolean.heater").state == "on"  # the pause sends nothing
+    hass.states.async_set("sensor.room_temp", "30.0", {"unit_of_measurement": "°C"})
+    await _tick(hass, freezer, 15)
+    assert hass.states.get("sensor.bedroom_decision").state == "maximum_temperature"
+    assert hass.states.get("input_boolean.heater").state == "off"
+    # Below the maximum: the pause again, the relay is not turned on to heat back up.
+    hass.states.async_set("sensor.room_temp", "24.0", {"unit_of_measurement": "°C"})
+    await _tick(hass, freezer, 15)
+    assert hass.states.get("sensor.bedroom_decision").state == "pause"
+    assert hass.states.get("input_boolean.heater").state == "off"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_relay_switches_when_the_minimum_time_ends(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """The relay is evaluated again when its minimum on time ends, not at the next periodic check."""
+    entry = await _setup(
+        hass, freezer, house_options={"reevaluation_minutes": 60}, min_on_minutes=10
+    )
+    await _tick(hass, freezer, 15)
+    assert hass.states.get("input_boolean.heater").state == "on"
+    # Warm right away: it has to stay on for the 10 minutes.
+    hass.states.async_set("sensor.room_temp", "23.0", {"unit_of_measurement": "°C"})
+    await _tick(hass, freezer, 15)
+    assert hass.states.get("input_boolean.heater").state == "on"
+    # 10 minutes after it was turned on (well before the 60 min periodic check).
+    await _tick(hass, freezer, 10 * 60 - 15 + 2)
+    assert hass.states.get("input_boolean.heater").state == "off"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
 async def test_levels_from_room_settings(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:
@@ -879,8 +922,19 @@ async def test_calendar_profile_of_tomorrow(
     )
     await house._async_refresh_calendar()  # noqa: SLF001
     assert room._day_info(tomorrow)[1] == name  # noqa: SLF001
-    # Not today: today uses only the event active now.
-    assert room._day_info(tomorrow - timedelta(days=1))[1] is None  # noqa: SLF001
+    today = tomorrow - timedelta(days=1)
+    assert room._day_info(today)[1] is None  # noqa: SLF001
+    # An event of today that already ended (09:00-10:00, now 12:00) selects the
+    # profile for the whole day, as a coming day would use it.
+    events.append(
+        {
+            "start": "2026-10-12T09:00:00+03:00",
+            "end": "2026-10-12T10:00:00+03:00",
+            "summary": name,
+        }
+    )
+    await house._async_refresh_calendar()  # noqa: SLF001
+    assert room._day_info(today)[1] == name  # noqa: SLF001
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
 

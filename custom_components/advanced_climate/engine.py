@@ -133,6 +133,9 @@ class RoomInputs:
     exercise_temp: float | None = None
     # Highest temperature set on the thermostats now (a manual change keeps it).
     device_setpoint: float | None = None
+    # Relays and thermostats commanded with hvac_mode: no set temperature to read,
+    # the room temperature is checked against the maximum instead.
+    on_off: bool = False
     unit: str = "°C"  # only for the texts; every value is in °C
     # The last hours of a vacation: the schedule applies, so the house is warm on return.
     vacation_preheat: bool = False
@@ -420,6 +423,23 @@ def apply_safety(decision: Decision, inputs: RoomInputs) -> Decision:
             f"{fmt_temp(maximum, inputs.unit)}",
             key="max_device",
             params={"value": inputs.device_setpoint, "max": maximum},
+        )
+    # No command for a relay / hvac_mode room (manual change, pause): it is turned
+    # off while the room is at the maximum or above. Below it nothing is sent
+    # again, so it stays off (it does not heat back up to the maximum).
+    if (
+        target.kind == KIND_NONE
+        and inputs.on_off
+        and inputs.current_temp is not None
+        and inputs.current_temp >= maximum
+    ):
+        return Decision(
+            RULE_MAX,
+            _off(inputs),
+            f"Maximum temperature: the room is {fmt_temp(inputs.current_temp, inputs.unit)}, "
+            f"at or above {fmt_temp(maximum, inputs.unit)}",
+            key="max_room",
+            params={"current": inputs.current_temp, "max": maximum},
         )
     # Off or no command: protect against frost. Once started it continues while the
     # device still heats, so it does not switch on and off around the limit.

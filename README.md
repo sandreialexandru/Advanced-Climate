@@ -154,8 +154,9 @@ weekend: 00:00 sleep, 08:00 home, 23:00 sleep
 Each profile has its **days** and is **on or off** (set in the card, *Schedule*):
 all days, workdays, weekend days and holidays, or chosen weekdays. A day uses,
 in this order: a calendar event titled with a profile name (also a profile that
-is off; today the event active now, the coming days an event that covers part
-of the day, so the plan and the optimal start of tomorrow use it) → the active profile of that weekday (e.g. a profile for Wednesday is
+is off; an event that covers part of the day selects it for the whole day,
+today and the coming days alike, so the plan and the optimal start of tomorrow
+match what happens tomorrow) → the active profile of that weekday (e.g. a profile for Wednesday is
 above the workday profile on Wednesdays only) → the active profile of workdays
 or of weekend days → the active profile of all days. Turning a profile on turns
 off the active ones it overlaps (all days overlaps workdays and weekend days;

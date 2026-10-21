@@ -188,6 +188,7 @@ class House:
         self.boiler_changed: datetime | None = None
         self._source_running_since: datetime | None = None
         self._frost_started = False  # heat source started for frost protection while paused
+        self._source_wait_until: datetime | None = None
         self._source_unavailable_since: datetime | None = None
         self._alerts: dict[str, datetime] = {}
         # Alerts that still apply (for the card): code, values, room, text.
@@ -460,6 +461,9 @@ class House:
             candidates.append(self._presence_due)
         if self.guest_until:
             candidates.append(self.guest_until)
+        # The end of the minimum on / off time the heat source waits for.
+        if self.source_waiting and self._source_wait_until is not None:
+            candidates.append(self._source_wait_until)
         for moment in (self.vacation_start, self._vacation_resume(), self.vacation_end):
             if moment and moment > now:
                 candidates.append(moment)
@@ -705,23 +709,27 @@ class House:
             self.calendar_end = from_iso(state.attributes.get("end_time"))
 
     async def _async_refresh_calendar(self) -> None:
-        """Read the calendar events of the next days (the profiles of those days).
+        """Read the calendar events from the start of today to the next days.
 
-        Today keeps using the event that is active now; the plan and the
-        optimal start of the coming days use these events.
+        An event titled with a profile name selects it for the whole schedule
+        day it covers part of, today and the coming days alike, so the plan
+        and the optimal start match what happens on that day.
         """
         calendar = self.options.get(CONF_CALENDAR)
         if not calendar or not self.hass.services.has_service("calendar", "get_events"):
             self.calendar_events = []
             return
         now = dt_util.now()
+        boundary = timedelta(minutes=self.day_boundary_minutes)
+        # The start of the schedule day of now (an event that ended today counts).
+        day_start = datetime.combine((now - boundary).date(), time(0), tzinfo=now.tzinfo) + boundary
         try:
             response = await self.hass.services.async_call(
                 "calendar",
                 "get_events",
                 {
-                    "start_date_time": now.isoformat(),
-                    "end_date_time": (now + timedelta(days=CALENDAR_DAYS)).isoformat(),
+                    "start_date_time": day_start.isoformat(),
+                    "end_date_time": (day_start + timedelta(days=CALENDAR_DAYS)).isoformat(),
                 },
                 target={"entity_id": calendar},
                 blocking=True,
@@ -739,7 +747,7 @@ class House:
         self.calendar_events = sorted(events)
 
     def calendar_profile(self, day: date, profiles: Iterable[str]) -> str | None:
-        """Profile named by a calendar event that covers part of a coming schedule day."""
+        """Profile named by a calendar event that covers part of a schedule day."""
         names = {name.lower() for name in profiles}
         boundary = timedelta(minutes=self.day_boundary_minutes)
         zone = dt_util.get_default_time_zone()
@@ -1083,6 +1091,7 @@ class House:
             self._source_running_since = now
 
         self.source_waiting = None
+        self._source_wait_until = None
         boiler = opts.get(CONF_BOILER_ENTITY)
         if not boiler:
             return
@@ -1111,6 +1120,7 @@ class House:
             )
             if now - self.boiler_changed < minimum:
                 self.source_waiting = "min_on" if is_on else "min_off"
+                self._source_wait_until = self.boiler_changed + minimum
                 return
         context = self.new_context()
         domain = boiler.split(".", 1)[0]

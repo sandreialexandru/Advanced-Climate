@@ -65,6 +65,25 @@ class OutdoorTest(unittest.TestCase):
         tracker.add(t0 + timedelta(days=1, minutes=1), 10.0)
         self.assertEqual(tracker.daily_means["2026-10-12"], 13.75)
 
+    def test_daily_mean_survives_a_restart(self) -> None:
+        # Nights (18:00-06:00) at 5 °C, days at 15 °C: the real mean is 10 °C.
+        # A restart at 04:00 or at 18:00 must not change it (only the averaging
+        # window of samples is saved, the day sums are saved too).
+        from zoneinfo import ZoneInfo
+
+        zone = ZoneInfo("Europe/Bucharest")
+        for restart_hour in (None, 4, 18):
+            tracker = outdoor.OutdoorTracker(max_age=timedelta(hours=6), tz=zone)
+            moment = datetime(2026, 10, 12, 0, tzinfo=zone)
+            while moment < datetime(2026, 10, 14, 0, 10, tzinfo=zone):
+                if moment.day == 13 and moment.hour == restart_hour and moment.minute == 0:
+                    tracker = outdoor.OutdoorTracker.from_dict(tracker.as_dict())
+                    tracker.max_age, tracker.tz = timedelta(hours=6), zone
+                tracker.add(moment, 15.0 if 6 <= moment.hour < 18 else 5.0)
+                moment += timedelta(minutes=10)
+            self.assertEqual(tracker.daily_means["2026-10-12"], 10.0, restart_hour)
+            self.assertEqual(tracker.daily_means["2026-10-13"], 10.0, restart_hour)
+
     def test_auto_season_needs_days_in_a_row(self) -> None:
         tracker = outdoor.OutdoorTracker()
         today = date(2026, 10, 12)

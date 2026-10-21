@@ -297,6 +297,8 @@ class Room:
         self.next_estimate: dict[str, Any] | None = None
         # A relay that should switch but waits for its minimum on / off time.
         self.relay_waiting: str | None = None
+        # When the minimum on / off time of the relay ends (while it waits).
+        self._relay_wait_until: datetime | None = None
         # Values of the last commands, per device: a device that reports them
         # later (e.g. a sleepy Zigbee TRV) is not a manual change.
         self._sent: dict[str, dict[str, Any]] = {}
@@ -1036,18 +1038,19 @@ class Room:
     def _day_info(self, day: date) -> tuple[bool, str | None]:
         """Whether a day is a workday, and a profile forced by the calendar.
 
-        Today: the event active now. The coming days: an event that covers part
-        of the day (read ahead every hour and when the calendar changes).
+        An event titled with a profile name selects it for the whole schedule
+        day it covers part of (read from the start of today for the next days,
+        every hour and when the calendar changes). Today the active event also
+        counts, in case the events cannot be read.
         """
         forced = None
         today = self.schedule.schedule_day(dt_util.now())  # local
-        if day == today:
-            if self.house.calendar_message:
-                message = self.house.calendar_message.lower()
-                if message in self.schedule.profiles:
-                    forced = message
-        elif day > today:
+        if day >= today:
             forced = self.house.calendar_profile(day, self.schedule.profiles)
+        if forced is None and day == today and self.house.calendar_message:
+            message = self.house.calendar_message.lower()
+            if message in self.schedule.profiles:
+                forced = message
         return self.house.is_workday(day), forced
 
     def _schedule_lookup(self, now: datetime) -> ScheduleState | None:
@@ -1260,6 +1263,7 @@ class Room:
             vacation_preheat=preheat,
             frost_holding=self._frost_holding(),
             device_setpoint=self._device_setpoint(),
+            on_off=self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC,
         )
         decision = decide(inputs)
         if self.override is not None and decision.rule == RULE_OVERRIDE:
@@ -1310,6 +1314,9 @@ class Room:
             wakeups.append(self.override["until"])
         if self._exercise_until:
             wakeups.append(self._exercise_until)
+        # The end of the minimum on / off time the relay waits for.
+        if self.relay_waiting and self._relay_wait_until is not None:
+            wakeups.append(self._relay_wait_until)
         # The moment the next optimal start / stop is expected to begin (worked
         # out again at every evaluation, so the wakeup moves with it).
         estimate = self.next_estimate
@@ -1689,6 +1696,7 @@ class Room:
                 else:
                     want = bool(self._relay_on)
         self.relay_waiting = None
+        self._relay_wait_until = None
         actual = self._relay_actual()
         if actual is None:
             return False
@@ -1701,6 +1709,7 @@ class Room:
             )
             if now - self._relay_changed < minimum:
                 self.relay_waiting = "min_on" if actual else "min_off"
+                self._relay_wait_until = self._relay_changed + minimum
                 return False
         ok = True
         if self.source == SOURCE_SWITCH:

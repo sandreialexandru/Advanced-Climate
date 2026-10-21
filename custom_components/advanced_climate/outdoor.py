@@ -78,6 +78,11 @@ class OutdoorTracker:
 
     samples: list[tuple[datetime, float]] = field(default_factory=list)
     daily_means: dict[str, float] = field(default_factory=dict)
+    # Per calendar day: [sum of value × seconds, seconds covered]. Built as the
+    # values come and saved, so a restart does not change the mean of a day.
+    daily_sums: dict[str, list[float]] = field(default_factory=dict)
+    # Days with a mean saved before daily_sums existed: kept as they are.
+    legacy_days: set[str] = field(default_factory=set)
     cutoff_active: bool = False
     # Heating off earlier by the forecast mean (with the same hysteresis).
     forecast_cutoff_active: bool = False
@@ -90,6 +95,9 @@ class OutdoorTracker:
 
     def add(self, now: datetime, value: float) -> None:
         """Add a sample and drop old ones."""
+        if self.samples:
+            # The previous value held until now (at most max_age).
+            self._accumulate(*self.samples[-1], now)
         if self.samples and (now - self.samples[-1][0]) < timedelta(minutes=1):
             self.samples[-1] = (now, value)
         else:
@@ -103,59 +111,44 @@ class OutdoorTracker:
         """Calendar day of a moment in the time zone of the house."""
         return (moment.astimezone(self.tz) if self.tz else moment).date()
 
-    def _update_daily(self, now: datetime) -> None:
-        """Update the means of yesterday and today (used by the automatic season).
-
-        Yesterday is worked out again so its last value counts until midnight.
-        """
-        today = self._day(now)
-        for day in (today - timedelta(days=1), today):
-            mean = self.day_mean(day, now)
-            if mean is not None:
-                self.daily_means[day.isoformat()] = mean
-        if len(self.daily_means) > MAX_DAILY_MEANS:
-            for key in sorted(self.daily_means)[: len(self.daily_means) - MAX_DAILY_MEANS]:
-                del self.daily_means[key]
-
-    def day_mean(self, day: date, now: datetime) -> float | None:
-        """Time-weighted mean of a calendar day (until now for today).
-
-        Each value holds until the next one, at most ``max_age`` (after that the
-        outdoor temperature is unknown and the time does not count), so a day
-        with Home Assistant stopped part of the time uses only the covered time.
-        With values but no time covered yet (the first value is from now) the
-        latest value is the mean. None when the day has no value at all.
-        """
-        if not self.samples:
-            return None
-        zone = self.tz or self.samples[0][0].tzinfo
-        start = datetime.combine(day, time(0), tzinfo=zone)
-        end = min(datetime.combine(day + timedelta(days=1), time(0), tzinfo=zone), now)
-        if end < start:
-            return None
-        # (from, value, valid until) for every value that counts in the day.
-        spans: list[tuple[datetime, float, datetime | None]] = []
-        before = [(t, v) for t, v in self.samples if t < start]
-        if before:
-            t, v = before[-1]
-            spans.append((start, v, t + self.max_age if self.max_age is not None else None))
-        for t, v in self.samples:
-            if start <= t <= end:
-                spans.append((t, v, t + self.max_age if self.max_age is not None else None))
-        total = 0.0
-        weight = 0.0
-        for index, (moment, value, valid_until) in enumerate(spans):
-            until = spans[index + 1][0] if index + 1 < len(spans) else end
-            if valid_until is not None:
-                until = min(until, valid_until)
+    def _accumulate(self, start: datetime, value: float, end: datetime) -> None:
+        """Add ``value`` held from ``start`` to ``end`` to the days it covers."""
+        if self.max_age is not None:
+            end = min(end, start + self.max_age)
+        zone = self.tz or start.tzinfo
+        moment = start
+        while moment < end:
+            day = self._day(moment)
+            midnight = datetime.combine(day + timedelta(days=1), time(0), tzinfo=zone)
+            until = min(end, midnight)
             seconds = (until - moment).total_seconds()
+            key = day.isoformat()
+            if seconds > 0 and key not in self.legacy_days:
+                acc = self.daily_sums.setdefault(key, [0.0, 0.0])
+                acc[0] += value * seconds
+                acc[1] += seconds
+            if until <= moment:
+                break
+            moment = until
+
+    def _update_daily(self, now: datetime) -> None:
+        """Update the daily means (used by the automatic season).
+
+        Each value counts for the time it held (at most ``max_age``; after that
+        the outdoor temperature is unknown and the time does not count), so a
+        day with Home Assistant stopped part of the time uses only the covered
+        time. The first value of a day is its mean until time has passed.
+        """
+        today = self._day(now).isoformat()
+        for key, (total, seconds) in self.daily_sums.items():
             if seconds > 0:
-                total += value * seconds
-                weight += seconds
-        if weight > 0:
-            return round(total / weight, 2)
-        own = [v for t, v in self.samples if start <= t <= end]
-        return own[-1] if own else None
+                self.daily_means[key] = round(total / seconds, 2)
+        if today not in self.daily_sums and today not in self.legacy_days and self.samples:
+            self.daily_means[today] = self.samples[-1][1]
+        for store in (self.daily_means, self.daily_sums):
+            for key in sorted(store)[: max(len(store) - MAX_DAILY_MEANS, 0)]:
+                del store[key]
+        self.legacy_days &= set(self.daily_means)
 
     def latest(self, now: datetime | None = None) -> float | None:
         """Return the latest value, None when it is older than ``max_age``."""
@@ -268,6 +261,7 @@ class OutdoorTracker:
             # at its start), so a long average survives a restart.
             "samples": [(t.isoformat(), v) for t, v in self._samples_to_save()],
             "daily_means": self.daily_means,
+            "daily_sums": self.daily_sums,
             "cutoff_active": self.cutoff_active,
             "forecast_cutoff_active": self.forecast_cutoff_active,
             "season_active": self.season_active,
@@ -287,6 +281,16 @@ class OutdoorTracker:
         obj.daily_means = {
             str(k): float(v) for k, v in (data.get("daily_means") or {}).items()
         }
+        sums = data.get("daily_sums")
+        if isinstance(sums, dict):
+            for key, pair in sums.items():
+                try:
+                    obj.daily_sums[str(key)] = [float(pair[0]), float(pair[1])]
+                except (TypeError, ValueError, IndexError):
+                    continue
+        else:
+            # Saved before 2.3.9: the means stay, new time is not added to them.
+            obj.legacy_days = set(obj.daily_means)
         obj.cutoff_active = bool(data.get("cutoff_active", False))
         obj.forecast_cutoff_active = bool(data.get("forecast_cutoff_active", False))
         obj.season_active = bool(data.get("season_active", True))
