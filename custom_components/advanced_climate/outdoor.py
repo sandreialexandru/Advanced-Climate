@@ -78,6 +78,8 @@ class OutdoorTracker:
     samples: list[tuple[datetime, float]] = field(default_factory=list)
     daily_means: dict[str, float] = field(default_factory=dict)
     cutoff_active: bool = False
+    # Heating off earlier by the forecast mean (with the same hysteresis).
+    forecast_cutoff_active: bool = False
     season_active: bool = True
     # How long a value stays valid without a new one (the averaging window of
     # the cutoff); None = always.
@@ -160,6 +162,22 @@ class OutdoorTracker:
             self.cutoff_active = True
         return self.cutoff_active
 
+    def update_forecast_cutoff(
+        self, mean: float | None, threshold: float, hysteresis: float
+    ) -> bool:
+        """Update the forecast cutoff: on at the threshold, off at threshold − hysteresis.
+
+        Without a forecast mean it is off.
+        """
+        if mean is None:
+            self.forecast_cutoff_active = False
+        elif self.forecast_cutoff_active:
+            if mean <= threshold - hysteresis:
+                self.forecast_cutoff_active = False
+        elif mean >= threshold:
+            self.forecast_cutoff_active = True
+        return self.forecast_cutoff_active
+
     def update_season(
         self,
         today: date,
@@ -197,6 +215,7 @@ class OutdoorTracker:
             "samples": [(t.isoformat(), v) for t, v in self.samples[-600:]],
             "daily_means": self.daily_means,
             "cutoff_active": self.cutoff_active,
+            "forecast_cutoff_active": self.forecast_cutoff_active,
             "season_active": self.season_active,
         }
 
@@ -215,5 +234,6 @@ class OutdoorTracker:
             str(k): float(v) for k, v in (data.get("daily_means") or {}).items()
         }
         obj.cutoff_active = bool(data.get("cutoff_active", False))
+        obj.forecast_cutoff_active = bool(data.get("forecast_cutoff_active", False))
         obj.season_active = bool(data.get("season_active", True))
         return obj

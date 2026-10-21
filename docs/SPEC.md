@@ -161,7 +161,7 @@ what the schedule asks.
 | Heating season | always | Always, between dates (e.g. 10-15 → 04-15) or automatic |
 | Automatic season | 3 days / 15 °C | Starts/ends after X consecutive days below/above the threshold |
 | Outdoor compensation | off | Small adjustment, e.g. +0.5 °C below −5 °C |
-| Forecast | off | Only the mean forecast of the next forecast hours (each value for its hour, the measured value until the next forecast hour), never a single hour. Heating off by the measured average and that mean at or below the resume temperature: the heating may run (rooms heat when they need it); above it: the heating stays off. Heating running and that mean at or above the cutoff: the heating is turned off earlier, while the mean stays there; below the cutoff it keeps running |
+| Forecast | off | Only the mean forecast of the next forecast hours (each value for its hour, the measured value until the next forecast hour), never a single hour. Heating off by the measured average and that mean at or below the resume temperature: the heating may run (rooms heat when they need it); above it: the heating stays off. Heating running and that mean at or above the cutoff: the heating is turned off earlier and stays off until the mean falls to the resume temperature (same hysteresis as the measured average; the state is saved) |
 | Solar gain per room | off | Negative offset while the sun shines (needs the weather entity) |
 
 ## 7. Manual changes

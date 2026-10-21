@@ -48,6 +48,23 @@ class OutdoorTest(unittest.TestCase):
         self.assertTrue(tracker.update_cutoff(17.5, 18, 1))
         self.assertFalse(tracker.update_cutoff(17.0, 18, 1))
 
+    def test_forecast_cutoff_hysteresis(self) -> None:
+        # Cutoff 18, hysteresis 1: on at a forecast mean of 18, off at 17.
+        tracker = outdoor.OutdoorTracker()
+        self.assertFalse(tracker.update_forecast_cutoff(17.5, 18, 1))
+        self.assertTrue(tracker.update_forecast_cutoff(18.0, 18, 1))
+        self.assertTrue(tracker.update_forecast_cutoff(17.5, 18, 1))
+        self.assertFalse(tracker.update_forecast_cutoff(17.0, 18, 1))
+        self.assertTrue(tracker.update_forecast_cutoff(19.0, 18, 1))
+        # Without a forecast mean it is off.
+        self.assertFalse(tracker.update_forecast_cutoff(None, 18, 1))
+        restored = outdoor.OutdoorTracker.from_dict(
+            {**tracker.as_dict(), "forecast_cutoff_active": True}
+        )
+        self.assertTrue(restored.forecast_cutoff_active)
+        # Data saved before 2.3.3 has no forecast state: off.
+        self.assertFalse(outdoor.OutdoorTracker.from_dict({"cutoff_active": True}).forecast_cutoff_active)
+
     def test_date_season(self) -> None:
         self.assertTrue(outdoor.in_date_season(date(2026, 12, 1), "10-15", "04-15"))
         self.assertTrue(outdoor.in_date_season(date(2026, 4, 15), "10-15", "04-15"))

@@ -737,7 +737,19 @@ async def test_forecast_cancels_or_triggers_the_cutoff(
     assert hass.states.get("binary_sensor.home_outdoor_cutoff").state == "on"
     assert hass.states.get("sensor.bedroom_decision").state == "outdoor_cutoff"
 
-    # Cold measured and cold forecast: no cutoff.
+    # Measured and forecast 17.5 °C, between the resume temperature (18 - 1 =
+    # 17 °C) and the cutoff: the heating stays off (hysteresis).
+    hass.states.async_set("weather.home", "cloudy", {"temperature": 17.5, "temperature_unit": "°C"})
+    forecast(17.5)
+    await house._async_refresh_forecast(dt_util.utcnow())
+    await _tick(hass, freezer, 15)
+    assert 17 < house.forecast_mean < 18
+    assert not house.outdoor.cutoff_active
+    assert house.cutoff_reason == "forecast_warm"
+    assert hass.states.get("binary_sensor.home_outdoor_cutoff").state == "on"
+
+    # Forecast 12 °C: the 3 h mean is at most (17.5 + 2 * 12) / 3 = 13.8 °C
+    # (measured 17.5 °C for at most 1 h), at or below 17 °C: heating may run.
     forecast(12.0)
     await house._async_refresh_forecast(dt_util.utcnow())
     await _tick(hass, freezer, 15)

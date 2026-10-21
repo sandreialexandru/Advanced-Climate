@@ -771,6 +771,11 @@ class House:
         self.outdoor.update_cutoff(
             average, float(opts[CONF_CUTOFF_TEMP]), float(opts[CONF_CUTOFF_HYSTERESIS])
         )
+        self.outdoor.update_forecast_cutoff(
+            self.forecast_mean if opts[CONF_CUTOFF_ENABLED] else None,
+            float(opts[CONF_CUTOFF_TEMP]),
+            float(opts[CONF_CUTOFF_HYSTERESIS]),
+        )
         self.outdoor.update_season(
             dt_util.as_local(now).date(),
             opts[CONF_SEASON_MODE],
@@ -813,8 +818,8 @@ class House:
         ``measured``: the measured average reached the threshold (heating off
         until it falls to threshold − hysteresis);
         ``forecast_warm``: the measured average is below the threshold but the
-        forecast mean of the next forecast hours reaches it (heating off
-        earlier, while that mean stays at the threshold or above);
+        forecast mean of the next forecast hours reached it (heating off
+        earlier, until that mean falls to threshold − hysteresis);
         ``forecast_cold``: the measured average keeps the heating off but the
         forecast mean is at or below threshold − hysteresis (heating may run);
         None: heating may run.
@@ -828,7 +833,7 @@ class House:
         # An unknown outdoor temperature does not cut the heating off.
         if self.outdoor_average is not None and self.outdoor.cutoff_active:
             return "forecast_cold" if mean is not None and mean <= resume else "measured"
-        if mean is not None and mean >= threshold:
+        if mean is not None and self.outdoor.forecast_cutoff_active:
             return "forecast_warm"
         return None
 

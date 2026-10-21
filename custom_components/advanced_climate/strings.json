@@ -161,7 +161,7 @@
           "outdoor_sensor": "Outdoor temperature for the cutoff, season and compensation. If empty, the weather entity temperature is used.",
           "weather": "Used for the forecast, for the solar gain and as outdoor temperature when there is no sensor.",
           "cutoff_enabled": "Stops heating when the outdoor average reaches the cutoff temperature. Needs an outdoor sensor or a weather entity.",
-          "forecast_enabled": "Uses the mean forecast of the next Forecast hours, never a single hour. Heating off by the outdoor average: it may run again when that mean is at or below cutoff minus hysteresis. Heating running: it is turned off earlier when that mean reaches the cutoff. Needs a weather entity with an hourly forecast.",
+          "forecast_enabled": "Uses the mean forecast of the next Forecast hours, never a single hour. Heating off by the outdoor average: it may run again when that mean is at or below cutoff minus hysteresis. Heating running: it is turned off earlier when that mean reaches the cutoff, and stays off until the mean falls to cutoff minus hysteresis. Needs a weather entity with an hourly forecast.",
           "season_mode": "'Always' if you switch the season with the Summer mode. 'Between dates' or 'Automatic' to stop heating outside the season by itself.",
           "compensation_enabled": "Raises the target a little when it is very cold outside (walls are colder). Leave off if the rooms keep the temperature well.",
           "window_ignore_above": "Open windows do not lower the heating when it is this warm outside. Leave empty to always react."

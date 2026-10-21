@@ -53,10 +53,10 @@ interfața în engleză; cu Home Assistant în română ele apar traduse.
     ține încălzirea oprită într-o seară rece); media prognozei peste
     temperatura de repornire: încălzirea rămâne oprită;
   - încălzire pornită, media prognozei la prag sau peste: încălzirea se
-    oprește mai devreme și rămâne oprită cât acea medie e la prag sau peste;
-    sub prag încălzirea merge. Cu cât perioada caldă intră mai devreme în
-    fereastră, cu atât încălzirea se oprește mai devreme: mai multe *Ore de
-    prognoză* o opresc mai devreme.
+    oprește mai devreme și rămâne oprită până când acea medie scade la
+    temperatura de repornire (același histerezis ca la media măsurată); o
+    medie sub prag nu o oprește. Mai multe *Ore de prognoză* o opresc mai
+    devreme înaintea unei perioade calde.
 
   În medie, fiecare valoare din prognoză e valabilă pentru ora ei; până la
   următoarea oră din prognoză contează valoarea măsurată. Pragul, histerezisul,

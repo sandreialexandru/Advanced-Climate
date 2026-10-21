@@ -46,9 +46,10 @@ other thermostats or plain relays are supported as well.
     temperature: the heating may run (a warm afternoon does not keep it off in
     a cold evening); forecast mean above the resume temperature: it stays off;
   - heating running, forecast mean at or above the cutoff: the heating is
-    turned off earlier, while that mean stays at the cutoff or above; below the
-    cutoff it keeps running. The earlier the warm period in the window, the
-    earlier it is turned off: more *Forecast hours* turn it off earlier.
+    turned off earlier and stays off until that mean falls to the resume
+    temperature (the same hysteresis as the measured average); a mean below
+    the cutoff does not turn it off. More *Forecast hours* turn it off earlier
+    before a warm period.
 
   In the mean each forecast value holds for its hour; until the next forecast
   hour the measured value counts. Cutoff, hysteresis, *Average over* and
