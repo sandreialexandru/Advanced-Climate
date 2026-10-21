@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.2.2";
+const CARD_VERSION = "2.2.3";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -1903,17 +1903,17 @@ class AdvancedClimateCard extends HTMLElement {
       `<p class="hint">${this._t("quick_hint")}</p>
         <div class="presets">${presets}</div>
         ${e.child_lock ? `<div class="lockrow">${this._toggle(e.child_lock, this._t("child_lock"))}</div>` : ""}
-        <div class="row wrap">
-          <label class="numfield"><span>${this._t("target_tag")}</span><input type="number" step="0.5" min="${
+        <div class="quickset">
+          ${this._btn(this._t("apply"), `data-action="quick-temp" data-room="${esc(a.room_id)}"`, {
+            icon: "thermometer-check",
+            kind: "soft-accent",
+          })}
+          <label class="numfield"><input type="number" step="0.5" min="${
             num(a.min_temperature) ?? (fahrenheit ? 41 : 5)
-          }" max="${num(a.max_temperature) ?? (fahrenheit ? 86 : 30)}"
+          }" max="${num(a.max_temperature) ?? (fahrenheit ? 86 : 30)}" aria-label="${esc(this._t("target_tag"))}"
             data-quick="temp" data-room="${esc(a.room_id)}" value="${target}"><em>${esc(unit)}</em></label>
           <label class="numfield"><span>${this._t("for_hours")}</span><input type="number" step="0.5" min="0.5" max="72"
             data-quick="hours" data-room="${esc(a.room_id)}" placeholder="auto"><em>${this._t("hours")}</em></label>
-          ${this._btn(this._t("apply"), `data-action="quick-temp" data-room="${esc(a.room_id)}"`, {
-            icon: "thermometer-check",
-            kind: "primary",
-          })}
         </div>`
     );
   }
@@ -3018,6 +3018,11 @@ const STYLE = `
   .tval .eta { font-size: 0.68em; color: var(--ac-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .tval .eta.sub { font-size: 0.6em; opacity: 0.85; }
   .toggle.sm { font-size: 0.85em; margin-left: auto; }
+  .quickset { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .quickset .btn { padding: 7px 12px; }
+  .quickset .numfield { gap: 4px; white-space: nowrap; }
+  .quickset .numfield input { width: 4em; }
+  .quickset .numfield input[data-quick="hours"] { width: 4.6em; }
   .lockrow { display: flex; align-items: center; background: var(--ac-surface); border-radius: 10px; padding: 4px 10px; }
   .lockrow .toggle { width: 100%; justify-content: space-between; flex-direction: row-reverse; font-size: 0.9em; }
   .lockrow .toggle .knob { background: var(--ac-line); }
