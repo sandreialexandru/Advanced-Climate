@@ -696,7 +696,7 @@ async def test_forecast_cancels_or_triggers_the_cutoff(
     # It gets cold: the forecast mean (12 °C) is below the resume temperature
     # (17 °C), so the stop is cancelled while the measured average is still warm.
     forecast(12.0)
-    await house._async_refresh_forecast()
+    await house._async_refresh_forecast(dt_util.utcnow())
     await _tick(hass, freezer, 15)
     assert house.outdoor.cutoff_active
     assert house.cutoff_reason == "forecast_cold"
@@ -711,7 +711,7 @@ async def test_forecast_cancels_or_triggers_the_cutoff(
     hass.states.async_set("weather.home", "cloudy", {"temperature": 10.0, "temperature_unit": "°C"})
     await _tick(hass, freezer, 2 * 3600)
     forecast(24.0)
-    await house._async_refresh_forecast()
+    await house._async_refresh_forecast(dt_util.utcnow())
     await _tick(hass, freezer, 15)
     assert not house.outdoor.cutoff_active
     assert house.cutoff_reason == "forecast_warm"
@@ -720,7 +720,7 @@ async def test_forecast_cancels_or_triggers_the_cutoff(
 
     # Cold measured and cold forecast: no cutoff.
     forecast(12.0)
-    await house._async_refresh_forecast()
+    await house._async_refresh_forecast(dt_util.utcnow())
     await _tick(hass, freezer, 15)
     assert house.cutoff_reason is None
     assert await hass.config_entries.async_unload(entry.entry_id)

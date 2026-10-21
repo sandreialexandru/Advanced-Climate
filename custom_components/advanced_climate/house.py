@@ -867,6 +867,13 @@ class House:
         )
 
     async def _async_refresh_forecast(self, _now: datetime | None = None) -> None:
+        """Read the hourly forecast; on the timer, apply it right away."""
+        await self._async_read_forecast()
+        if _now is not None:
+            # The forecast decides the cutoff and the optimal start / stop.
+            await self.async_evaluate()
+
+    async def _async_read_forecast(self) -> None:
         """Read the hourly forecast: for the cutoff and the optimal start / stop."""
         weather = self.options.get(CONF_WEATHER)
         if not weather or not self._forecast_needed():
