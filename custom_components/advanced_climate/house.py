@@ -100,6 +100,7 @@ from .const import (
     OVERRIDE_SCOPE_HOUSE,
     PRESENCE_FAR,
     PRESENCE_HOME,
+    SEASON_AUTO,
     SIGNAL_UPDATE,
     STARTUP_DELAY,
     STORAGE_VERSION,
@@ -190,6 +191,7 @@ class House:
         self._frost_started = False  # heat source started for frost protection while paused
         self._source_wait_until: datetime | None = None
         self._source_unavailable_since: datetime | None = None
+        self._outdoor_unavailable_since: datetime | None = None
         self._alerts: dict[str, datetime] = {}
         # Alerts that still apply (for the card): code, values, room, text.
         self.active_alerts: dict[str, dict[str, Any]] = {}
@@ -445,6 +447,7 @@ class House:
 
         await self._async_control_boiler(now)
         self._check_room_difference()
+        self._check_weather_alerts(now)
         self._schedule_timer(now)
         self.async_save()
         self.async_notify_listeners()
@@ -934,7 +937,13 @@ class House:
 
     @property
     def season_active(self) -> bool:
-        """Return True inside the heating season."""
+        """Return True inside the heating season.
+
+        The automatic season needs an outdoor temperature: without a sensor or
+        a weather entity it counts as always on (it can never stay off).
+        """
+        if self.options[CONF_SEASON_MODE] == SEASON_AUTO and not self.outdoor_configured:
+            return True
         return self.outdoor.season_active
 
     def _forecast_needed(self) -> bool:
@@ -1171,6 +1180,52 @@ class House:
                 "not even for frost protection.",
                 code="source_unavailable",
                 params={"entity": entity_id, "minutes": round(limit.total_seconds() / 60)},
+            )
+
+    def _check_weather_alerts(self, now: datetime) -> None:
+        """Weather functions without an outdoor temperature, and an unavailable outdoor source."""
+        opts = self.options
+        unused: list[str] = []
+        if not self.outdoor_configured:
+            if opts[CONF_CUTOFF_ENABLED]:
+                unused.append("cutoff")
+            if opts[CONF_SEASON_MODE] == SEASON_AUTO:
+                unused.append("season_auto")
+            if opts[CONF_COMP_ENABLED]:
+                unused.append("compensation")
+            if opts.get(CONF_WINDOW_IGNORE_ABOVE) not in (None, ""):
+                unused.append("window_ignore")
+        if opts[CONF_FORECAST_ENABLED] and not (opts.get(CONF_WEATHER) and opts[CONF_CUTOFF_ENABLED]):
+            unused.append("forecast")
+        if unused:
+            self.notify(
+                "weather_without_source",
+                "Weather options are on but cannot work: "
+                f"{', '.join(unused)} (they need an outdoor temperature sensor or a weather "
+                "entity; the forecast needs a weather entity and the cutoff).",
+                code="weather_without_source",
+                params={"features": unused},
+            )
+        else:
+            self.clear_alert("weather_without_source")
+        # The outdoor source (sensor, else weather entity) unavailable too long.
+        source = opts.get(CONF_OUTDOOR_SENSOR) or opts.get(CONF_WEATHER)
+        if not source or valid(self.hass.states.get(source)):
+            if self._outdoor_unavailable_since is not None:
+                self._outdoor_unavailable_since = None
+                self.clear_alert("unavailable_outdoor")
+            return
+        if self._outdoor_unavailable_since is None:
+            self._outdoor_unavailable_since = now
+        limit = timedelta(minutes=self.alert_unavailable_minutes)
+        if now - self._outdoor_unavailable_since >= limit:
+            self.notify(
+                "unavailable_outdoor",
+                f"The outdoor temperature {source} has been unavailable for more than "
+                f"{limit.total_seconds() / 60:.0f} minutes: the cutoff, the automatic season, "
+                "the compensation and the optimal stop cannot use it.",
+                code="outdoor_unavailable",
+                params={"entity": source, "minutes": round(limit.total_seconds() / 60)},
             )
 
     def heat_source_state(self) -> tuple[bool, bool | None]:

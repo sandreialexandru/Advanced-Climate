@@ -161,10 +161,10 @@
           "outdoor_sensor": "Temperatura exterioară pentru prag, sezon și compensare. Dacă e gol, se folosește temperatura din entitatea meteo.",
           "weather": "Folosită pentru prognoză, câștigul solar și ca temperatură exterioară când nu ai senzor.",
           "cutoff_enabled": "Oprește încălzirea când media exterioară atinge pragul. Are nevoie de senzor exterior sau entitate meteo.",
-          "forecast_enabled": "Folosește media prognozei pe următoarele Ore de prognoză, niciodată o singură oră. Încălzire oprită de media de afară: poate porni din nou când acea medie e la prag minus histerezis sau sub. Încălzire pornită: se oprește mai devreme când acea medie atinge pragul și rămâne oprită până când media scade la prag minus histerezis. Are nevoie de o entitate meteo cu prognoză orară.",
-          "season_mode": "„Mereu” dacă schimbi sezonul cu modul Vară. „Între date” sau „Automat” ca încălzirea să se oprească singură în afara sezonului.",
-          "compensation_enabled": "Crește puțin ținta când e foarte frig afară (pereții sunt mai reci). Lasă oprit dacă încăperile țin bine temperatura.",
-          "window_ignore_above": "Ferestrele deschise nu mai coboară încălzirea când afară e atât de cald. Gol = reacționează mereu."
+          "forecast_enabled": "Folosește media prognozei pe următoarele Ore de prognoză, niciodată o singură oră. Încălzire oprită de media de afară: poate porni din nou când acea medie e la prag minus histerezis sau sub. Încălzire pornită: se oprește mai devreme când acea medie atinge pragul și rămâne oprită până când media scade la prag minus histerezis. Are nevoie de o entitate meteo cu prognoză orară și de oprirea când e cald pornită.",
+          "season_mode": "„Mereu” dacă schimbi sezonul cu modul Vară. „Între date” sau „Automat” ca încălzirea să se oprească singură în afara sezonului. „Automat” are nevoie de senzor exterior sau entitate meteo.",
+          "compensation_enabled": "Crește puțin ținta când e foarte frig afară (pereții sunt mai reci). Are nevoie de senzor exterior sau entitate meteo. Lasă oprit dacă încăperile țin bine temperatura.",
+          "window_ignore_above": "Ferestrele deschise nu mai coboară încălzirea când afară e atât de cald. Are nevoie de senzor exterior sau entitate meteo. Gol = reacționează mereu."
         }
       },
       "energy": {
@@ -364,7 +364,10 @@
     "error": {
       "invalid_month_day": "Folosește formatul LL-ZZ, de ex. 10-15.",
       "no_devices": "Alege cel puțin un dispozitiv.",
-      "sensor_required": "Releele au nevoie de un senzor de temperatură al camerei."
+      "sensor_required": "Releele au nevoie de un senzor de temperatură al camerei.",
+      "outdoor_required": "Are nevoie de un senzor de temperatură exterioară sau de o entitate meteo (mai sus).",
+      "weather_required": "Prognoza are nevoie de o entitate meteo (mai sus).",
+      "cutoff_required": "Prognoza lucrează cu oprirea: pornește Oprește încălzirea când e cald afară."
     }
   },
   "config_subentries": {

@@ -8,7 +8,9 @@ schedule asks, except for the compensation of a few tenths of a degree that you
 choose yourself.
 
 Every setting is in the house options, under **Weather and season** (see
-[chapter 2](02-install-and-house.md#weather-and-season)).
+[chapter 2](02-install-and-house.md#weather-and-season)). Without an outdoor
+sensor and a weather entity, the form does not let you turn on the functions
+that need them.
 
 ## The outdoor temperature
 
@@ -24,6 +26,8 @@ nothing for that many hours, the outdoor temperature becomes **unknown**. Then
 the cutoff, the compensation and the ignoring of windows do not apply, no
 episodes are learned and no optimal stop is made, until the sensor reports
 again.
+If the sensor (or the weather entity) is unavailable longer than *Alert when a
+device is unavailable longer than* (15 minutes by default), you get an alert.
 
 ## Turning off when warm outside
 

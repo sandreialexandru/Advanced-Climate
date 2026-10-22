@@ -163,13 +163,13 @@ ce cere programul.
 
 | Opțiune | Implicit | Descriere |
 | --- | --- | --- |
-| Temperatura de afară | `weather` | Senzor local sau entitatea meteo |
+| Temperatura de afară | `weather` | Senzor local sau entitatea meteo. Oprirea când e cald, sezonul automat, compensarea și ignorarea ferestrelor au nevoie de una (altfel formularul de opțiuni le refuză; salvate fără: alertă, iar sezonul automat contează ca mereu pornit); indisponibilă mai mult de timpul de alertă: alertă |
 | Prag de oprire | 18 °C | Încălzire oprită când media e la prag sau peste; repornește la prag − histerezis sau sub (histerezis 1 °C) |
 | Medie pe | 6 h (cel puțin 1 h) | Media, nu valoarea instantanee. Este și cât rămâne valabilă o valoare de afară: fără o valoare nouă în acest timp, temperatura de afară e necunoscută (fără prag de oprire, compensare sau ferestre ignorate, fără episoade de învățare, fără oprire anticipată) până când senzorul sau meteo raportează din nou |
 | Sezon de încălzire | mereu | Mereu, între date (de exemplu 10-15 → 04-15) sau automat |
 | Sezon automat | 3 zile / 15 °C | Începe / se termină după X zile consecutive sub / peste prag (cele X zile dinaintea zilei de azi; fiecare zi cu media ponderată în timp a timpului acoperit, adunată pe măsură ce vin valorile și salvată, deci un restart nu o schimbă; o zi fără nicio valoare întrerupe șirul) |
 | Compensare după temperatura de afară | oprită | Ajustare mică, de exemplu +0,5 °C sub −5 °C |
-| Prognoză | oprită | Doar media prognozei pe următoarele ore de prognoză (fiecare valoare pentru ora ei, valoarea măsurată până la următoarea oră din prognoză), niciodată o singură oră. Încălzire oprită de media măsurată și acea medie la temperatura de repornire sau sub ea: încălzirea poate porni (camerele încălzesc la nevoie); peste ea: încălzirea rămâne oprită. Încălzire pornită și acea medie la prag sau peste: încălzirea se oprește mai devreme și rămâne oprită până când media scade la temperatura de repornire (același histerezis ca la media măsurată; starea se salvează) |
+| Prognoză | oprită | Are nevoie de o entitate meteo și de oprirea când e cald. Doar media prognozei pe următoarele ore de prognoză (fiecare valoare pentru ora ei, valoarea măsurată până la următoarea oră din prognoză), niciodată o singură oră. Încălzire oprită de media măsurată și acea medie la temperatura de repornire sau sub ea: încălzirea poate porni (camerele încălzesc la nevoie); peste ea: încălzirea rămâne oprită. Încălzire pornită și acea medie la prag sau peste: încălzirea se oprește mai devreme și rămâne oprită până când media scade la temperatura de repornire (același histerezis ca la media măsurată; starea se salvează) |
 | Câștig solar pe cameră | oprit | Ajustare negativă cât e soare (are nevoie de entitatea meteo) |
 
 ## 7. Schimbări manuale

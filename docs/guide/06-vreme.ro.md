@@ -8,7 +8,9 @@ ce cere programul, cu excepția compensării de câteva zecimi de grad pe care o
 alegi tu.
 
 Toate setările sunt în opțiunile casei, la **Vreme și sezon** (vezi
-[capitolul 2](02-instalare-si-casa.ro.md#vreme-și-sezon)).
+[capitolul 2](02-instalare-si-casa.ro.md#vreme-și-sezon)). Fără senzor de afară
+și fără entitate meteo, formularul nu te lasă să pornești funcțiile care au
+nevoie de ele.
 
 ## Temperatura de afară
 
@@ -23,6 +25,8 @@ contează cât timp a fost valabilă.
 trimite nimic atâtea ore, temperatura de afară devine **necunoscută**. Atunci nu
 se aplică oprirea când e cald, compensarea și ignorarea ferestrelor, nu se
 învață episoade și nu se face oprire anticipată, până când senzorul revine.
+Dacă senzorul (sau entitatea meteo) e indisponibil mai mult de *Alertă când un
+dispozitiv e indisponibil mai mult de* (implicit 15 minute), primești o alertă.
 
 ## Oprirea când e cald afară
 

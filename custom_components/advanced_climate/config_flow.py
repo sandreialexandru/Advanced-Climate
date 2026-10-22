@@ -443,6 +443,27 @@ def _weather_details(v: dict[str, Any]) -> vol.Schema:
     return vol.Schema(fields)
 
 
+def _weather_choice_errors(user_input: dict[str, Any]) -> dict[str, str]:
+    """Weather functions that need an outdoor temperature or a weather entity."""
+    errors: dict[str, str] = {}
+    outdoor = bool(user_input.get(CONF_OUTDOOR_SENSOR) or user_input.get(CONF_WEATHER))
+    if not outdoor:
+        if user_input.get(CONF_CUTOFF_ENABLED):
+            errors[CONF_CUTOFF_ENABLED] = "outdoor_required"
+        if user_input.get(CONF_SEASON_MODE) == SEASON_AUTO:
+            errors[CONF_SEASON_MODE] = "outdoor_required"
+        if user_input.get(CONF_COMP_ENABLED):
+            errors[CONF_COMP_ENABLED] = "outdoor_required"
+        if user_input.get(CONF_WINDOW_IGNORE_ABOVE) not in (None, ""):
+            errors[CONF_WINDOW_IGNORE_ABOVE] = "outdoor_required"
+    if user_input.get(CONF_FORECAST_ENABLED):
+        if not user_input.get(CONF_WEATHER):
+            errors[CONF_FORECAST_ENABLED] = "weather_required"
+        elif not user_input.get(CONF_CUTOFF_ENABLED):
+            errors[CONF_FORECAST_ENABLED] = "cutoff_required"
+    return errors
+
+
 def _weather_errors(user_input: dict[str, Any]) -> dict[str, str]:
     """Check the heating season dates (MM-DD)."""
     errors: dict[str, str] = {}
@@ -958,10 +979,19 @@ class AdvancedClimateOptionsFlow(_UnitForms, _HouseHeatingSteps, OptionsFlow):
     async def async_step_weather(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Weather and season options."""
         schema = _weather_schema(self._values)
+        errors: dict[str, str] = {}
         if user_input is not None:
-            self._first(schema, user_input)
-            return await self.async_step_weather_details()
-        return self.async_show_form(step_id="weather", data_schema=schema)
+            errors = _weather_choice_errors(user_input)
+            if not errors:
+                self._first(schema, user_input)
+                return await self.async_step_weather_details()
+            # Show the form again with what was entered (an emptied field stays empty).
+            shown = {**self._values, **user_input}
+            for key in (CONF_OUTDOOR_SENSOR, CONF_WEATHER, CONF_WINDOW_IGNORE_ABOVE):
+                if key not in user_input:
+                    shown.pop(key, None)
+            schema = _weather_schema(shown)
+        return self.async_show_form(step_id="weather", data_schema=schema, errors=errors)
 
     async def async_step_weather_details(
         self, user_input: dict[str, Any] | None = None

@@ -163,6 +163,14 @@ Details: [chapter 4](04-schedule.md).
 | Outdoor compensation | off | Raises the target a little when it is very cold outside. |
 | Ignore windows above | – | At or above this outdoor temperature, open windows no longer lower the heating. |
 
+**What every option needs.** The cutoff, the *Automatic* season, the compensation
+and *Ignore windows above* need an outdoor temperature sensor or a weather
+entity. *Use the forecast* needs a weather entity and the cutoff turned on.
+Without them the form is not saved and shows the error next to the option. If
+an older setup has them on without a source, the house raises the alert *On but
+not working…*, and the *Automatic* season behaves like *Always* (it cannot stay
+off).
+
 The second form, **Weather and season values**, shows only what you turned on:
 
 | Setting | Default | Range |

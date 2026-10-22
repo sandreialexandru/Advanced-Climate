@@ -182,6 +182,8 @@ repeated often.
 | A window has been open for more than … min | the window open longer than the alert threshold, while heat is needed |
 | … has been unavailable for more than … min | a thermostat or sensor unavailable longer than the alert threshold |
 | The heat source … has been unavailable | then nothing heats, not even frost protection |
+| The outdoor temperature … has been unavailable | the outdoor sensor or weather entity unavailable longer than the alert threshold |
+| On but not working without an outdoor temperature sensor or a weather entity | weather functions on without the source they need |
 | The temperature sensors are unavailable | the device sensor or `eco` is used |
 | Low battery on … | below *Low battery below* (20 % by default) |
 | … did not accept … | the command check failed twice |

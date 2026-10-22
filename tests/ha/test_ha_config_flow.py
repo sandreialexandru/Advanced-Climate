@@ -164,6 +164,69 @@ async def test_weather_validation(hass: HomeAssistant) -> None:
     assert entry.options["season_start"] == "10-15"
 
 
+async def test_weather_needs_an_outdoor_source(hass: HomeAssistant) -> None:
+    """Weather functions are refused without an outdoor sensor or a weather entity."""
+    entry = MockConfigEntry(domain=DOMAIN, title="Home", options={})
+    entry.add_to_hass(hass)
+    flow = hass.config_entries.options
+    result = await flow.async_init(entry.entry_id)
+    result = await flow.async_configure(result["flow_id"], {"next_step_id": "weather"})
+    result = await flow.async_configure(
+        result["flow_id"],
+        {
+            "cutoff_enabled": True,
+            "forecast_enabled": True,
+            "season_mode": "auto",
+            "compensation_enabled": True,
+            "window_ignore_above": 15,
+        },
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "weather"
+    assert result["errors"] == {
+        "cutoff_enabled": "outdoor_required",
+        "season_mode": "outdoor_required",
+        "compensation_enabled": "outdoor_required",
+        "window_ignore_above": "outdoor_required",
+        "forecast_enabled": "weather_required",
+    }
+    # An outdoor sensor is enough for everything but the forecast.
+    result = await flow.async_configure(
+        result["flow_id"],
+        {
+            "outdoor_sensor": "sensor.outdoor",
+            "cutoff_enabled": True,
+            "forecast_enabled": True,
+            "season_mode": "auto",
+            "compensation_enabled": True,
+        },
+    )
+    assert result["errors"] == {"forecast_enabled": "weather_required"}
+    # The forecast needs the cutoff too.
+    result = await flow.async_configure(
+        result["flow_id"],
+        {
+            "weather": "weather.home",
+            "cutoff_enabled": False,
+            "forecast_enabled": True,
+            "season_mode": "always",
+            "compensation_enabled": False,
+        },
+    )
+    assert result["errors"] == {"forecast_enabled": "cutoff_required"}
+    result = await flow.async_configure(
+        result["flow_id"],
+        {
+            "weather": "weather.home",
+            "cutoff_enabled": True,
+            "forecast_enabled": True,
+            "season_mode": "always",
+            "compensation_enabled": False,
+        },
+    )
+    assert result["step_id"] == "weather_details"
+
+
 async def test_room_subentry_flow(hass: HomeAssistant) -> None:
     """A relay room is added and then reconfigured."""
     # An outdoor sensor (the optimal stop needs it), no weather (no solar gain).

@@ -163,6 +163,14 @@ Detalii: [capitolul 4](04-program.ro.md).
 | Compensare exterioară | oprit | Ridică puțin ținta când e foarte frig afară. |
 | Ignoră ferestrele peste | – | Peste această temperatură de afară, ferestrele deschise nu mai reduc încălzirea. |
 
+**Ce cere fiecare opțiune.** Oprirea când e cald, sezonul *Automat*, compensarea
+și *Ignoră ferestrele peste* au nevoie de un senzor de temperatură exterioară sau
+de o entitate meteo. *Folosește prognoza* are nevoie de o entitate meteo și de
+oprirea când e cald pornită. Fără ele formularul nu se salvează și arată eroarea
+lângă opțiune. Dacă o configurare mai veche le are pornite fără sursă, casa dă
+alerta *Pornite, dar nu funcționează…*, iar sezonul *Automat* se comportă ca
+*Mereu* (nu rămâne blocat oprit).
+
 Al doilea formular, **Valori pentru vreme și sezon**, arată doar ce ai pornit:
 
 | Setare | Implicit | Interval |

@@ -207,6 +207,45 @@ async def test_relay_switches_when_the_minimum_time_ends(
     await hass.async_block_till_done()
 
 
+async def test_weather_options_without_an_outdoor_source(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Saved weather options without a source: the automatic season stays on, with an alert."""
+    entry = await _setup(
+        hass, freezer, house_options={"season_mode": "auto", "cutoff_enabled": True}
+    )
+    house = entry.runtime_data
+    house.outdoor.season_active = False  # e.g. saved in summer, before the sensor was removed
+    await _tick(hass, freezer, 15)
+    assert house.season_active
+    assert hass.states.get("sensor.bedroom_decision").state == "schedule"
+    alert = house.active_alerts["weather_without_source"]
+    assert alert["code"] == "weather_without_source"
+    assert alert["params"]["features"] == ["cutoff", "season_auto"]
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_outdoor_source_unavailable_alert(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """An outdoor sensor unavailable longer than the alert time raises an alert."""
+    hass.states.async_set("sensor.outdoor", "5.0", {"unit_of_measurement": "°C"})
+    entry = await _setup(hass, freezer, house_options={"outdoor_sensor": "sensor.outdoor"})
+    house = entry.runtime_data
+    await _tick(hass, freezer, 15)
+    hass.states.async_set("sensor.outdoor", "unavailable")
+    await _tick(hass, freezer, 60)
+    assert "unavailable_outdoor" not in house.active_alerts
+    await _tick(hass, freezer, 15 * 60)  # the default alert time is 15 min
+    assert house.active_alerts["unavailable_outdoor"]["code"] == "outdoor_unavailable"
+    hass.states.async_set("sensor.outdoor", "6.0", {"unit_of_measurement": "°C"})
+    await _tick(hass, freezer, 15)
+    assert "unavailable_outdoor" not in house.active_alerts
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
 async def test_levels_from_room_settings(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:

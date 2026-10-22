@@ -159,13 +159,13 @@ what the schedule asks.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| Outdoor temperature | `weather` | Local sensor or the weather entity |
+| Outdoor temperature | `weather` | Local sensor or the weather entity. The cutoff, the automatic season, the compensation and ignoring windows need one (the options form refuses them otherwise; saved without one: alert, and the automatic season counts as always on); unavailable longer than the alert time: alert |
 | Cutoff | 18 °C | Heating off when the average is at or above it; on again at or below cutoff − hysteresis (hysteresis 1 °C) |
 | Average over | 6 h (at least 1 h) | Average, not the instantaneous value. Also how long an outdoor value stays valid: with no new value for this time the outdoor temperature is unknown (no cutoff, compensation or ignored windows, no learning episodes, no optimal stop) until the sensor or weather reports again |
 | Heating season | always | Always, between dates (e.g. 10-15 → 04-15) or automatic |
 | Automatic season | 3 days / 15 °C | Starts/ends after X consecutive days below/above the threshold (the X days before today; each day a time-weighted mean of the time covered, added up as the values come and saved, so a restart does not change it; a day without any value breaks the run) |
 | Outdoor compensation | off | Small adjustment, e.g. +0.5 °C below −5 °C |
-| Forecast | off | Only the mean forecast of the next forecast hours (each value for its hour, the measured value until the next forecast hour), never a single hour. Heating off by the measured average and that mean at or below the resume temperature: the heating may run (rooms heat when they need it); above it: the heating stays off. Heating running and that mean at or above the cutoff: the heating is turned off earlier and stays off until the mean falls to the resume temperature (same hysteresis as the measured average; the state is saved) |
+| Forecast | off | Needs a weather entity and the cutoff. Only the mean forecast of the next forecast hours (each value for its hour, the measured value until the next forecast hour), never a single hour. Heating off by the measured average and that mean at or below the resume temperature: the heating may run (rooms heat when they need it); above it: the heating stays off. Heating running and that mean at or above the cutoff: the heating is turned off earlier and stays off until the mean falls to the resume temperature (same hysteresis as the measured average; the state is saved) |
 | Solar gain per room | off | Negative offset while the sun shines (needs the weather entity) |
 
 ## 7. Manual changes
