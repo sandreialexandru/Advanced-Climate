@@ -229,17 +229,29 @@ async def test_weather_options_without_an_outdoor_source(
 async def test_outdoor_source_unavailable_alert(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:
-    """An outdoor sensor unavailable longer than the alert time raises an alert."""
+    """The alert follows the outdoor temperature itself, not the state of one entity."""
     hass.states.async_set("sensor.outdoor", "5.0", {"unit_of_measurement": "°C"})
-    entry = await _setup(hass, freezer, house_options={"outdoor_sensor": "sensor.outdoor"})
+    hass.states.async_set("weather.home", "cloudy", {"temperature": 6.0, "temperature_unit": "°C"})
+    entry = await _setup(
+        hass, freezer, house_options={"outdoor_sensor": "sensor.outdoor", "weather": "weather.home"}
+    )
     house = entry.runtime_data
     await _tick(hass, freezer, 15)
+    # The sensor fails, the weather entity still gives 6 °C: no alert.
     hass.states.async_set("sensor.outdoor", "unavailable")
+    await _tick(hass, freezer, 16 * 60)  # longer than the default alert time of 15 min
+    assert house.outdoor_temperature() == 6.0
+    assert "unavailable_outdoor" not in house.active_alerts
+    # The weather entity is available but has no temperature: nothing gives one.
+    hass.states.async_set("weather.home", "cloudy", {"temperature_unit": "°C"})
     await _tick(hass, freezer, 60)
     assert "unavailable_outdoor" not in house.active_alerts
-    await _tick(hass, freezer, 15 * 60)  # the default alert time is 15 min
-    assert house.active_alerts["unavailable_outdoor"]["code"] == "outdoor_unavailable"
-    hass.states.async_set("sensor.outdoor", "6.0", {"unit_of_measurement": "°C"})
+    await _tick(hass, freezer, 15 * 60)
+    alert = house.active_alerts["unavailable_outdoor"]
+    assert alert["code"] == "outdoor_unavailable"
+    assert alert["params"]["entities"] == ["sensor.outdoor", "weather.home"]
+    # The sensor reports again: the alert goes.
+    hass.states.async_set("sensor.outdoor", "6.5", {"unit_of_measurement": "°C"})
     await _tick(hass, freezer, 15)
     assert "unavailable_outdoor" not in house.active_alerts
     assert await hass.config_entries.async_unload(entry.entry_id)

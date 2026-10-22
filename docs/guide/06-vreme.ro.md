@@ -25,8 +25,10 @@ contează cât timp a fost valabilă.
 trimite nimic atâtea ore, temperatura de afară devine **necunoscută**. Atunci nu
 se aplică oprirea când e cald, compensarea și ignorarea ferestrelor, nu se
 învață episoade și nu se face oprire anticipată, până când senzorul revine.
-Dacă senzorul (sau entitatea meteo) e indisponibil mai mult de *Alertă când un
-dispozitiv e indisponibil mai mult de* (implicit 15 minute), primești o alertă.
+Dacă nicio sursă configurată nu dă temperatura (senzorul căzut și entitatea meteo
+lipsă, indisponibilă sau fără temperatură) mai mult de *Alertă când un dispozitiv
+e indisponibil mai mult de* (implicit 15 minute), primești o alertă. Cu senzorul
+căzut și meteo bun nu apare nicio alertă: se folosește temperatura din meteo.
 
 ## Oprirea când e cald afară
 

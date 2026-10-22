@@ -163,7 +163,7 @@ ce cere programul.
 
 | Opțiune | Implicit | Descriere |
 | --- | --- | --- |
-| Temperatura de afară | `weather` | Senzor local sau entitatea meteo. Oprirea când e cald, sezonul automat, compensarea și ignorarea ferestrelor au nevoie de una (altfel formularul de opțiuni le refuză; salvate fără: alertă, iar sezonul automat contează ca mereu pornit); indisponibilă mai mult de timpul de alertă: alertă |
+| Temperatura de afară | `weather` | Senzor local sau entitatea meteo. Oprirea când e cald, sezonul automat, compensarea și ignorarea ferestrelor au nevoie de una (altfel formularul de opțiuni le refuză; salvate fără: alertă, iar sezonul automat contează ca mereu pornit); nicio temperatură de la nicio sursă configurată (senzorul, altfel temperatura din meteo) mai mult de timpul de alertă: alertă |
 | Prag de oprire | 18 °C | Încălzire oprită când media e la prag sau peste; repornește la prag − histerezis sau sub (histerezis 1 °C) |
 | Medie pe | 6 h (cel puțin 1 h) | Media, nu valoarea instantanee. Este și cât rămâne valabilă o valoare de afară: fără o valoare nouă în acest timp, temperatura de afară e necunoscută (fără prag de oprire, compensare sau ferestre ignorate, fără episoade de învățare, fără oprire anticipată) până când senzorul sau meteo raportează din nou |
 | Sezon de încălzire | mereu | Mereu, între date (de exemplu 10-15 → 04-15) sau automat |

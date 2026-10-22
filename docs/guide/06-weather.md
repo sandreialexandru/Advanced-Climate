@@ -26,8 +26,11 @@ nothing for that many hours, the outdoor temperature becomes **unknown**. Then
 the cutoff, the compensation and the ignoring of windows do not apply, no
 episodes are learned and no optimal stop is made, until the sensor reports
 again.
-If the sensor (or the weather entity) is unavailable longer than *Alert when a
-device is unavailable longer than* (15 minutes by default), you get an alert.
+If no configured source gives a temperature (the sensor failed and the weather
+entity missing, unavailable or without a temperature) for longer than *Alert when
+a device is unavailable longer than* (15 minutes by default), you get an alert.
+With the sensor failed and the weather entity fine there is no alert: the weather
+temperature is used.
 
 ## Turning off when warm outside
 

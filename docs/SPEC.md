@@ -159,7 +159,7 @@ what the schedule asks.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| Outdoor temperature | `weather` | Local sensor or the weather entity. The cutoff, the automatic season, the compensation and ignoring windows need one (the options form refuses them otherwise; saved without one: alert, and the automatic season counts as always on); unavailable longer than the alert time: alert |
+| Outdoor temperature | `weather` | Local sensor or the weather entity. The cutoff, the automatic season, the compensation and ignoring windows need one (the options form refuses them otherwise; saved without one: alert, and the automatic season counts as always on); no temperature from any configured source (sensor, else the weather temperature) for longer than the alert time: alert |
 | Cutoff | 18 °C | Heating off when the average is at or above it; on again at or below cutoff − hysteresis (hysteresis 1 °C) |
 | Average over | 6 h (at least 1 h) | Average, not the instantaneous value. Also how long an outdoor value stays valid: with no new value for this time the outdoor temperature is unknown (no cutoff, compensation or ignored windows, no learning episodes, no optimal stop) until the sensor or weather reports again |
 | Heating season | always | Always, between dates (e.g. 10-15 → 04-15) or automatic |

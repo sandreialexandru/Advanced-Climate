@@ -1208,9 +1208,10 @@ class House:
             )
         else:
             self.clear_alert("weather_without_source")
-        # The outdoor source (sensor, else weather entity) unavailable too long.
-        source = opts.get(CONF_OUTDOOR_SENSOR) or opts.get(CONF_WEATHER)
-        if not source or valid(self.hass.states.get(source)):
+        # No configured source gives an outdoor temperature (the sensor, else the
+        # temperature of the weather entity) for too long.
+        sources = [s for s in (opts.get(CONF_OUTDOOR_SENSOR), opts.get(CONF_WEATHER)) if s]
+        if not sources or self.outdoor_temperature() is not None:
             if self._outdoor_unavailable_since is not None:
                 self._outdoor_unavailable_since = None
                 self.clear_alert("unavailable_outdoor")
@@ -1219,13 +1220,14 @@ class House:
             self._outdoor_unavailable_since = now
         limit = timedelta(minutes=self.alert_unavailable_minutes)
         if now - self._outdoor_unavailable_since >= limit:
+            names = ", ".join(sources)
             self.notify(
                 "unavailable_outdoor",
-                f"The outdoor temperature {source} has been unavailable for more than "
+                f"No outdoor temperature from {names} for more than "
                 f"{limit.total_seconds() / 60:.0f} minutes: the cutoff, the automatic season, "
                 "the compensation and the optimal stop cannot use it.",
                 code="outdoor_unavailable",
-                params={"entity": source, "minutes": round(limit.total_seconds() / 60)},
+                params={"entity": sources[0], "entities": sources, "minutes": round(limit.total_seconds() / 60)},
             )
 
     def heat_source_state(self) -> tuple[bool, bool | None]:
