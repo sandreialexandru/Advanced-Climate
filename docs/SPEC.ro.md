@@ -222,7 +222,7 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | Baterie descărcată | alertă sub 20 % | TRV-urile și senzorii camerei |
 | Repornire | restaurare | Schimbările manuale, vacanța și datele învățate se păstrează |
 | Reevaluare periodică | 5 min | Pe lângă evenimente |
-| Timp | UTC intern | Duratele (timp de încălzire, învățare, schimbări manuale, întârzieri, preîncălzirea dinaintea sfârșitului vacanței) sunt în timp real, și peste schimbarea orei; programul, zilele lucrătoare și mediile zilnice folosesc ora locală |
+| Timp | UTC intern | Duratele (timp de încălzire, învățare, schimbări manuale, întârzieri, preîncălzirea dinaintea sfârșitului vacanței) sunt în timp real, și peste schimbarea orei; programul, zilele lucrătoare și mediile zilnice folosesc ora locală Un interval din program aflat în ora repetată la sfârșitul orei de vară se aplică o singură dată (la prima apariție); unul din ora sărită primăvara începe când se termină acea oră (de exemplu 03:30 → 04:00). |
 
 ## 11. Vizibilitate
 

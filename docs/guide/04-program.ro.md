@@ -114,6 +114,16 @@ Cu începutul zilei la 05:00, intervalul de vineri 00:00–05:00 aparține înc�
 zilei de joi: se folosește profilul de joi (zi lucrătoare) până la 05:00, nu cel
 de vineri.
 
+## Schimbarea orei
+
+Programul folosește ora locală, dar ține cont de momentul real:
+
+- **toamna**, când ora 03:00–04:00 se repetă, un interval din acea oră (de exemplu
+  `03:30 home`) se aplică **o singură dată**, la prima apariție; a doua oară
+  camera nu se întoarce la nivelul de dinainte;
+- **primăvara**, când ora 03:00–04:00 nu există, un interval din ea (`03:30`)
+  începe la **04:00**, iar pornirea anticipată se calculează pentru 04:00.
+
 ## Schedule helper
 
 În loc de programul intern poți folosi un **Schedule helper** al Home

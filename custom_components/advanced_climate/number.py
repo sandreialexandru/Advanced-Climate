@@ -65,12 +65,14 @@ class LevelNumber(RoomEntity, NumberEntity):
     @property
     def native_min_value(self) -> float:
         """Frost protection temperature (no level can be colder)."""
-        return math.floor(float(from_celsius(self.room.frost_temp(), self.room.house.unit)) * 2) / 2
+        # Rounded up to the step, so the lowest value is not below the frost protection.
+        return math.ceil(float(from_celsius(self.room.frost_temp(), self.room.house.unit)) * 2) / 2
 
     @property
     def native_max_value(self) -> float:
         """Maximum temperature (no level can be warmer)."""
-        return math.ceil(float(from_celsius(self.room.max_temp(), self.room.house.unit)) * 2) / 2
+        # Rounded down to the step, so the highest value is not above the maximum.
+        return math.floor(float(from_celsius(self.room.max_temp(), self.room.house.unit)) * 2) / 2
 
     @property
     def native_value(self) -> float:

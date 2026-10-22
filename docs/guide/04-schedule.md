@@ -111,6 +111,16 @@ changes.
 With the day starting at 05:00, Friday 00:00–05:00 still belongs to Thursday:
 Thursday's profile (a workday) is used until 05:00, not Friday's.
 
+## Change of the clock
+
+The schedule uses the local clock but follows the real time:
+
+- **in autumn**, when the hour 03:00–04:00 repeats, a slot in that hour (e.g.
+  `03:30 home`) applies **once**, at its first occurrence; the second time the
+  room does not go back to the level before;
+- **in spring**, when the hour 03:00–04:00 does not exist, a slot in it
+  (`03:30`) starts at **04:00**, and the optimal start is worked out for 04:00.
+
 ## Schedule helper
 
 Instead of the internal schedule you can use a Home Assistant **Schedule

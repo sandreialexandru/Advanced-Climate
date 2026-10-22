@@ -31,7 +31,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 from .const import DAYS_ALL, DAYS_WEEKEND, DAYS_WORKDAY, PRESET_FROST, WEEKDAYS
 
@@ -300,6 +300,31 @@ DayInfo = Callable[[date], tuple[bool, str | None]]
 """Return (is_workday, forced_profile) for a date."""
 
 
+def resolve_local(wall: datetime, tzinfo) -> datetime:
+    """The real moment of a local clock time (naive ``wall``) in ``tzinfo``.
+
+    A time that occurs twice (the hour repeated at the end of summer time) is
+    the first occurrence; a time that does not exist (the hour skipped in
+    spring) is the moment that hour ends.
+    """
+    first = wall.replace(tzinfo=tzinfo, fold=0)
+    if tzinfo is None:
+        return first
+    second = wall.replace(tzinfo=tzinfo, fold=1)
+    u_first, u_second = first.astimezone(UTC), second.astimezone(UTC)
+    if u_first == u_second or u_first.astimezone(tzinfo).replace(tzinfo=None) == wall:
+        return first
+    # Not a real time: the first minute after the clock jump.
+    low, high = min(u_first, u_second), max(u_first, u_second)
+    offset = low.astimezone(tzinfo).utcoffset()
+    moment = low
+    while moment < high:
+        moment += timedelta(minutes=1)
+        if moment.astimezone(tzinfo).utcoffset() != offset:
+            return moment.astimezone(tzinfo)
+    return high.astimezone(tzinfo)
+
+
 class Schedule:
     """Evaluate a parsed schedule."""
 
@@ -357,12 +382,19 @@ class Schedule:
 
     def day_start(self, day: date, tzinfo) -> datetime:
         """Return the moment a schedule day starts."""
-        start = datetime.combine(day, time(0, 0), tzinfo)
-        return start + timedelta(minutes=self.boundary)
+        start = datetime.combine(day, time(0, 0)) + timedelta(minutes=self.boundary)
+        return resolve_local(start, tzinfo)
 
     def _slot_moment(self, day: date, slot: Slot, tzinfo) -> datetime:
-        """Moment a slot starts on a schedule day."""
-        return self.day_start(day, tzinfo) + timedelta(minutes=self._key(slot.minute))
+        """Real moment a slot starts on a schedule day.
+
+        A clock time of the hour repeated at the end of summer time is its first
+        occurrence; one in the hour skipped in spring starts when that hour ends.
+        """
+        wall = datetime.combine(day, time(0, 0)) + timedelta(
+            minutes=self.boundary + self._key(slot.minute)
+        )
+        return resolve_local(wall, tzinfo)
 
     def lookup(self, moment: datetime, day_info: DayInfo) -> ScheduleState:
         """Return the active preset and the next change for ``moment``."""
@@ -371,12 +403,16 @@ class Schedule:
         is_workday, forced = day_info(day)
         profile = self.profile_for(day, is_workday, forced)
         slots = self._ordered(profile)
-        position = self._key(moment.hour * 60 + moment.minute)
 
+        # Real moments, not clock times: in the repeated autumn hour a slot that
+        # already started is not undone, and a slot in the skipped spring hour
+        # starts when that hour ends.
+        # Compared in UTC: two moments with the same time zone compare by clock time.
+        now_utc = moment.astimezone(UTC)
         current: Slot | None = None
         current_day = day
         for slot in slots:
-            if self._key(slot.minute) <= position:
+            if self._slot_moment(day, slot, tz).astimezone(UTC) <= now_utc:
                 current = slot
         if current is None:
             # Before the first slot: the last slot of the previous day continues.
@@ -385,11 +421,11 @@ class Schedule:
             prev_profile = self.profile_for(prev_day, prev_workday, prev_forced)
             current = self._ordered(prev_profile)[-1]
             current_day = prev_day
-        slot_start = self._slot_moment(current_day, current, tz)
+        # Returned in UTC: an equality test between time zones is always False
+        # for a clock time of the repeated autumn hour.
+        slot_start = self._slot_moment(current_day, current, tz).astimezone(UTC)
 
-        next_change, next_preset = self._next_change(
-            moment, day, slots, position, current.preset, day_info
-        )
+        next_change, next_preset = self._next_change(moment, day, slots, current.preset, day_info)
         return ScheduleState(
             preset=current.preset,
             profile=profile,
@@ -403,14 +439,15 @@ class Schedule:
         moment: datetime,
         day: date,
         slots: list[Slot],
-        position: int,
         preset: str,
         day_info: DayInfo,
     ) -> tuple[datetime | None, str | None]:
         """Find the next moment the preset actually changes (up to 8 days)."""
         tz = moment.tzinfo
         candidates: list[tuple[date, Slot]] = [
-            (day, s) for s in slots if self._key(s.minute) > position
+            (day, s)
+            for s in slots
+            if self._slot_moment(day, s, tz).astimezone(UTC) > moment.astimezone(UTC)
         ]
         for offset in range(1, 9):
             next_day = day + timedelta(days=offset)
@@ -419,7 +456,7 @@ class Schedule:
             candidates.extend((next_day, s) for s in self._ordered(profile))
             for cand_day, slot in candidates:
                 if slot.preset != preset:
-                    return self._slot_moment(cand_day, slot, tz), slot.preset
+                    return self._slot_moment(cand_day, slot, tz).astimezone(UTC), slot.preset
             candidates = []
         return None, None
 
@@ -429,10 +466,12 @@ class Schedule:
         """Return preset changes between ``moment`` and ``moment + horizon``."""
         result: list[tuple[datetime, str]] = []
         cursor = moment
-        end = moment + horizon
+        # In UTC: real time across a change of the clock.
+        end = moment.astimezone(UTC) + horizon
         state = self.lookup(cursor, day_info)
-        while state.next_change is not None and state.next_change <= end:
+        while state.next_change is not None and state.next_change.astimezone(UTC) <= end:
             result.append((state.next_change, state.next_preset or state.preset))
-            cursor = state.next_change
+            # Looked up again in the local time zone (the schedule day is local).
+            cursor = state.next_change.astimezone(moment.tzinfo)
             state = self.lookup(cursor, day_info)
         return result

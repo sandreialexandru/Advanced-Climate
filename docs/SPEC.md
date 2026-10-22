@@ -218,7 +218,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | Low battery | alert below 20 % | TRVs and sensors of the room |
 | Restart | restore | Overrides, vacation and learned data are kept |
 | Periodic reevaluation | 5 min | In addition to events |
-| Time | UTC inside | Durations (heating time, learning, manual changes, delays, vacation preheat) are real time, also across a DST change; the schedule, workdays and daily means use the local time |
+| Time | UTC inside | Durations (heating time, learning, manual changes, delays, vacation preheat) are real time, also across a DST change; the schedule, workdays and daily means use the local time A schedule slot in the hour repeated at the end of summer time applies once (at its first occurrence); one in the hour skipped in spring starts when that hour ends (e.g. 03:30 → 04:00). |
 
 ## 11. Visibility
 
