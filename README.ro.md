@@ -88,6 +88,8 @@ interfața în engleză; cu Home Assistant în română ele apar traduse.
   câștigătoare și motivul, un eveniment la fiecare schimbare, diagnostic cu
   ultimele 100 de decizii și un card Lovelace cu program editabil.
 
+**Ghidul complet**, pas cu pas și pe înțelesul tuturor (fiecare setare, fiecare
+tip de încălzire, exemple): [docs/guide/README.ro.md](docs/guide/README.ro.md).
 Specificația completă este în [docs/SPEC.ro.md](docs/SPEC.ro.md).
 
 ## Instalare

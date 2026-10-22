@@ -79,6 +79,8 @@ other thermostats or plain relays are supported as well.
   reason, an event on every change, diagnostics with the last 100 decisions and
   a Lovelace card with an editable schedule.
 
+**The complete guide**, step by step and in plain words (every setting, every
+kind of heating, examples): [docs/guide/README.md](docs/guide/README.md).
 The full specification is in [docs/SPEC.md](docs/SPEC.md) ([Română](docs/SPEC.ro.md)).
 
 ## Installation

@@ -2,6 +2,8 @@
 
 **English** | [Română](SPEC.ro.md)
 
+*Step-by-step guide for every setting: [guide/README.md](guide/README.md).*
+
 Smart Heating Control computes **one target per room** from the schedule, presence,
 windows, weather and manual changes, and applies it to the heating devices.
 Everything is configured from the UI (config flow, options flow and room

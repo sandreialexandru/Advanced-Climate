@@ -2,6 +2,8 @@
 
 [English](SPEC.md) | **Română**
 
+*Ghidul pas cu pas pentru fiecare setare: [guide/README.ro.md](guide/README.ro.md).*
+
 Smart Heating Control calculează **o țintă pentru fiecare cameră** din program,
 prezență, ferestre, vreme și schimbări manuale, și o aplică dispozitivelor de
 încălzire. Totul se configurează din interfață (config flow, options flow și
