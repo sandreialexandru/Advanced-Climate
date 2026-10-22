@@ -296,6 +296,24 @@ class MaxRoomTest(unittest.TestCase):
             )
 
 
+class OffNotAdjustedTest(unittest.TestCase):
+    def test_summer_and_out_of_season_frost_not_adjusted(self) -> None:
+        # A device without off gets the frost temperature; the PV surplus etc.
+        # must not raise it.
+        offsets = [("pv", 0.5), ("compensation", 1.0)]
+        for extra in ({"mode": const.MODE_SUMMER}, {"season_active": False}):
+            d = engine.decide(inputs(supports_off=False, offsets=offsets, **extra))
+            self.assertEqual(d.target.temperature, inputs().frost_temp, extra)
+
+
+class SensorFallbackTest(unittest.TestCase):
+    def test_eco_never_above_the_schedule(self) -> None:
+        self.assertEqual(engine.decide(inputs(sensor_failed=True)).key, "sensor_fallback")
+        for preset in ("away", "eco"):
+            d = engine.decide(inputs(sensor_failed=True, schedule_preset=preset))
+            self.assertEqual((d.key, d.target.preset), ("sensor_fallback_schedule", preset))
+
+
 class OptimalTest(unittest.TestCase):
     def test_start(self) -> None:
         change = NOW + timedelta(minutes=50)

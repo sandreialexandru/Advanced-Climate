@@ -165,6 +165,28 @@ async def test_relay_off_at_the_maximum_in_a_pause(
     await hass.async_block_till_done()
 
 
+async def test_relay_switched_off_by_hand_in_the_band_stays_off(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Inside the hysteresis band the real relay state is kept (switched off by hand)."""
+    hass.states.async_set("binary_sensor.window", "off")
+    entry = await _setup(hass, freezer, window_sensors=["binary_sensor.window"])
+    await _tick(hass, freezer, 15)
+    assert hass.states.get("input_boolean.heater").state == "on"
+    # Window open: frost protection 7 °C; the room at 7.2 °C is inside the
+    # 0.3 °C band (6.7-7.3 °C), so the relay neither has to start nor stop.
+    hass.states.async_set("sensor.room_temp", "7.2", {"unit_of_measurement": "°C"})
+    await _window(hass, freezer, "on")
+    assert hass.states.get("sensor.bedroom_decision").state == "window_open"
+    await hass.services.async_call(
+        "input_boolean", "turn_off", {"entity_id": "input_boolean.heater"}, blocking=True
+    )
+    await _tick(hass, freezer, 60)
+    assert hass.states.get("input_boolean.heater").state == "off"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
 async def test_relay_switches_when_the_minimum_time_ends(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:

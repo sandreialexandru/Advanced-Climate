@@ -198,7 +198,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | Option | Default | Description |
 | --- | --- | --- |
 | Hysteresis | 0.3 °C | Relays, on / off control and thermostats without `hvac_action` (not with GT, which has its own tolerances) |
-| Minimum on / off time | 5 / 5 min | Relays only (not with GT); the room is evaluated again when it ends (also for the heat source of the house) |
+| Minimum on / off time | 5 / 5 min | Relays only (not with GT); counted from the last switch, also one made by hand; the room is evaluated again when it ends (also for the heat source of the house); inside the hysteresis band the relay keeps its real state; a manual value set again after a window also waits for it |
 | Dynamic tariff | off | Lower by X °C above a price, preheat below a price |
 | PV surplus | off | Raise by X °C with surplus |
 | Statistics | on | Heating hours per room and for the house |
@@ -209,7 +209,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | --- | --- | --- |
 | Frost protection | on | Lower limit, also in Off and Pause (GT: its minimum temperature); once heating, it continues until the device stops asking for heat. A room in frost protection starts the heat source on its own (no rooms needed, no reference room, also while paused) |
 | Maximum temperature | 25 °C | Upper limit of every target: a level above it is sent as the maximum, a set point above it (manual change, pause) is lowered to it, a relay or hvac_mode room is turned off while the room is at it or above (manual change, pause; it is not turned on again to heat back up), the service and the card stay within it, and a thermostat that rounds to its step gets the step just below the maximum. Shown as the rule *Maximum temperature* |
-| Sensor unavailable | device sensor | External sensor down → device sensor → eco, with alert |
+| Sensor unavailable | device sensor | External sensor down → device sensor → eco (never above the schedule: a lower level, e.g. away, stays), with alert |
 | Device unavailable | alert after 15 min | The other rooms keep working; also for the heat source (then not even frost protection can heat) |
 | Command verification | on | Retry once after 2 min, then alert |
 | Valve exercise | off | Weekly full opening of the TRVs, in every mode (also in summer and outside the season); a pause, a manual change or an open window postpones it to later the same day; it does not ask for heat and its period is not learned |
@@ -255,8 +255,9 @@ applies sets the level.
 9. **Schedule** – with optimal start / stop and room occupancy
 
 Final adjustments (outdoor cutoff, compensation, tariff, PV, solar gain) only
-correct a heating target by a few tenths of a degree, and the result always goes
-through the safety limits. The reason shown by the decision sensor is the
+correct a heating target by a few tenths of a degree (never a frost protection:
+mode Off or Summer, outside the season, a window, a day without a profile), and
+the result always goes through the safety limits. The reason shown by the decision sensor is the
 winning rule.
 
 ## 13. Glossary RO → EN

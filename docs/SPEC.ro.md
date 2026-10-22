@@ -202,7 +202,7 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | Opțiune | Implicit | Descriere |
 | --- | --- | --- |
 | Histerezis | 0,3 °C | Relee, control pornit / oprit și termostate fără `hvac_action` (nu cu GT, care are propriile toleranțe) |
-| Timp minim de pornire / oprire | 5 / 5 min | Doar relee (nu cu GT); camera e evaluată din nou când se termină (la fel pentru sursa de căldură a casei) |
+| Timp minim de pornire / oprire | 5 / 5 min | Doar relee (nu cu GT); se numără de la ultima comutare, și una făcută de mână; camera e evaluată din nou când se termină (la fel pentru sursa de căldură a casei); în banda de histerezis releul își păstrează starea reală; o valoare manuală refăcută după o fereastră îl așteaptă și ea |
 | Tarif dinamic | oprit | Coboară cu X °C peste un preț, preîncălzește sub un preț |
 | Surplus fotovoltaic | oprit | Ridică cu X °C când există surplus |
 | Statistici | active | Ore de încălzire pe cameră și pentru casă |
@@ -213,7 +213,7 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | --- | --- | --- |
 | Antiîngheț | activ | Limita de jos, și în modurile Oprit și Pauză (GT: temperatura lui minimă); odată ce încălzește, continuă până când dispozitivul nu mai cere căldură. O cameră în antiîngheț pornește singură sursa de căldură (fără camere necesare, fără camera de referință, și în pauză) |
 | Temperatură maximă | 25 °C | Limita de sus a oricărei ținte: un nivel peste ea se trimite ca maxim, o temperatură setată peste ea (schimbare manuală, pauză) e coborâtă la ea, o cameră cu releu sau comandată cu hvac_mode e oprită cât temperatura camerei e la maxim sau peste (schimbare manuală, pauză; nu e pornită din nou ca să încălzească la loc), serviciul și cardul rămân în limită, iar un termostat care rotunjește la pasul lui primește pasul imediat sub maxim. Apare ca regula *Temperatură maximă* |
-| Senzor indisponibil | senzorul dispozitivului | Senzor extern căzut → senzorul dispozitivului → eco, cu alertă |
+| Senzor indisponibil | senzorul dispozitivului | Senzor extern căzut → senzorul dispozitivului → eco (niciodată peste program: un nivel mai jos, de exemplu away, rămâne), cu alertă |
 | Dispozitiv indisponibil | alertă după 15 min | Celelalte camere funcționează în continuare; și pentru sursa de căldură (atunci nici antiînghețul nu poate încălzi) |
 | Verificarea comenzilor | activă | Reîncearcă o dată după 2 min, apoi alertă |
 | Mișcarea robinetelor | oprită | Deschidere completă săptămânală a TRV-urilor, în orice mod (și vara și în afara sezonului); o pauză, o schimbare manuală sau o fereastră deschisă o amână pentru mai târziu în aceeași zi; nu cere căldură și perioada ei nu se învață |
@@ -260,7 +260,9 @@ aplică stabilește nivelul.
 
 Ajustările finale (prag de temperatură exterioară, compensare, tarif,
 fotovoltaic, câștig solar) corectează o țintă de încălzire doar cu câteva zecimi
-de grad, iar rezultatul trece mereu prin limitele de siguranță. Motivul arătat
+de grad (niciodată un antiîngheț: modul Oprit sau Vară, în afara sezonului,
+fereastră, zi fără profil), iar rezultatul trece mereu prin limitele de
+siguranță. Motivul arătat
 de senzorul de decizie este regula câștigătoare.
 
 ## 13. Glosar RO → EN

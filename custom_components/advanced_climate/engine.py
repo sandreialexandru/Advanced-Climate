@@ -289,11 +289,20 @@ def base_decision(inputs: RoomInputs) -> Decision:
         return _no_profile(inputs)
     preset = inputs.schedule_preset
     if inputs.sensor_failed:
+        # Eco until they recover, but never above the schedule.
+        if _warmer(inputs, preset, PRESET_ECO):
+            return Decision(
+                RULE_SENSOR_FALLBACK,
+                Target(KIND_PRESET, preset=PRESET_ECO),
+                "Temperature sensors unavailable: eco until they recover",
+                key="sensor_fallback",
+            )
         return Decision(
             RULE_SENSOR_FALLBACK,
-            Target(KIND_PRESET, preset=PRESET_ECO),
-            "Temperature sensors unavailable: eco until they recover",
-            key="sensor_fallback",
+            Target(KIND_PRESET, preset=preset),
+            f"Temperature sensors unavailable: the schedule ({preset}), lower than eco",
+            key="sensor_fallback_schedule",
+            params={"preset": preset},
         )
     if inputs.room_unoccupied and _warmer(inputs, preset, PRESET_ECO):
         return Decision(
@@ -364,6 +373,9 @@ def decide(inputs: RoomInputs) -> Decision:
         RULE_VALVE_EXERCISE,
         RULE_WINDOW,
         RULE_OVERRIDE,
+        # Heating off (frost protection on a device that cannot be turned off).
+        RULE_SUMMER,
+        RULE_OUT_OF_SEASON,
     ) and decision.key != "no_profile"
     # Outdoor cutoff: heating is not needed when it is warm outside.
     if adjustable and inputs.cutoff_active and _heating(target):

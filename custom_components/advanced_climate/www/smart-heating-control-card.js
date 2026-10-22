@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.3.10";
+const CARD_VERSION = "2.3.11";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -297,6 +297,7 @@ const TEXT = {
     r_no_schedule: "No schedule available",
     r_no_profile: "No active profile for this day: frost protection",
     r_sensor_fallback: "Temperature sensors unavailable: eco until they recover",
+    r_sensor_fallback_schedule: "Temperature sensors unavailable: the schedule ({preset}), lower than eco",
     r_unoccupied: "Room unoccupied (schedule: {preset})",
     r_schedule: "Schedule: {preset}",
     r_optimal_start: "Optimal start: heating early for {preset}",
@@ -513,6 +514,7 @@ const TEXT = {
     r_no_schedule: "Niciun program disponibil",
     r_no_profile: "Niciun profil activ pentru ziua de azi: protecție la îngheț",
     r_sensor_fallback: "Senzorii de temperatură indisponibili: eco până revin",
+    r_sensor_fallback_schedule: "Senzorii de temperatură indisponibili: programul ({preset}), mai jos decât eco",
     r_unoccupied: "Cameră neocupată (program: {preset})",
     r_schedule: "Program: {preset}",
     r_optimal_start: "Pornire anticipată: încălzește mai devreme pentru {preset}",

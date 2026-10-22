@@ -1493,6 +1493,8 @@ class Room:
         on_off = self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC
         if target.kind == KIND_NONE:
             # Nothing is sent (pause, no schedule) unless a manual change applies.
+            self.relay_waiting = None
+            self._relay_wait_until = None
             if self.decision is None or self.decision.rule != RULE_OVERRIDE or not self.override:
                 return
             stored = self._override_target()
@@ -1501,7 +1503,9 @@ class Room:
                 if self.override.get("interrupted"):
                     self.override["interrupted"] = False
                     for entity_id, values in (self.override.get("devices") or {}).items():
-                        await self._async_restore_device(entity_id, values)
+                        if not await self._async_restore_device(entity_id, values):
+                            # The minimum on / off time runs: set again when it ends.
+                            self.override["interrupted"] = True
                 return
             # Set by the card or a service: kept on the devices (relays regulate around it).
             self.override["interrupted"] = False
@@ -1515,14 +1519,26 @@ class Room:
         if sent and self.house.options[CONF_VERIFY_COMMANDS]:
             self._schedule_verify(target)
 
-    async def _async_restore_device(self, entity_id: str, values: dict[str, Any]) -> None:
-        """Set again what a person set on a device (after an interruption)."""
+    async def _async_restore_device(self, entity_id: str, values: dict[str, Any]) -> bool:
+        """Set again what a person set on a device (after an interruption).
+
+        False while the minimum on / off time of a relay (or on / off thermostat)
+        runs: it is set again when that time ends.
+        """
         state = self.hass.states.get(entity_id)
         if not valid(state) or not values:
-            return
+            return True
         assert state is not None
         domain = entity_id.split(".", 1)[0]
         wanted = values.get("state")
+        on_off = self.source == SOURCE_SWITCH or self.command_mode == COMMAND_HVAC
+        if on_off and wanted and state.state != wanted:
+            actual = self._relay_actual()
+            now = dt_util.utcnow()
+            if actual is not None:
+                self._note_relay_state(actual, now)
+                if (wanted != STATE_OFF) != actual and self._relay_must_wait(actual, now):
+                    return False
         if domain != "climate":
             if (
                 wanted in (STATE_ON, STATE_OFF)
@@ -1536,19 +1552,26 @@ class Room:
                 if entity_id in self.switches:
                     self._relay_on = wanted == STATE_ON
                     self._relay_changed = dt_util.utcnow()
-            return
-        if wanted and state.state != wanted:
-            await self._send(entity_id, "set_hvac_mode", "hvac_mode", wanted, "state")
+            return True
+        if (
+            wanted
+            and state.state != wanted
+            and await self._send(entity_id, "set_hvac_mode", "hvac_mode", wanted, "state")
+            and on_off
+        ):
+            self._relay_on = wanted != STATE_OFF
+            self._relay_changed = dt_util.utcnow()
         if wanted == STATE_OFF:
-            return
+            return True
         preset = values.get("preset_mode")
         if preset not in (None, PRESET_NONE):
             if state.attributes.get("preset_mode") != preset:
                 await self._send(entity_id, "set_preset_mode", "preset_mode", preset)
-            return
+            return True
         temperature = values.get("temperature")
         if temperature is not None and float_attr(state, ATTR_TEMPERATURE) != temperature:
             await self._send(entity_id, "set_temperature", ATTR_TEMPERATURE, temperature)
+        return True
 
     def sends_preset(self, preset: str) -> bool:
         """The level is sent to the device as a preset (else as a temperature)."""
@@ -1683,6 +1706,14 @@ class Room:
     async def _async_apply_relay(self, target: Target) -> bool:
         """On/off control for switches or climates in hvac_mode command mode."""
         now = dt_util.utcnow()
+        self.relay_waiting = None
+        self._relay_wait_until = None
+        # The real state first: inside the hysteresis band it stays as it is
+        # (also when a person switched it by hand).
+        actual = self._relay_actual()
+        if actual is None:
+            return False
+        self._note_relay_state(actual, now)
         if target.kind == KIND_OFF:
             want = False
         else:
@@ -1696,23 +1727,11 @@ class Room:
                 elif self.current_temp >= temperature + hysteresis:
                     want = False
                 else:
-                    want = bool(self._relay_on)
-        self.relay_waiting = None
-        self._relay_wait_until = None
-        actual = self._relay_actual()
-        if actual is None:
-            return False
-        self._relay_on = actual
+                    want = actual
         if want == actual:
             return False
-        if self._relay_changed is not None:
-            minimum = timedelta(
-                minutes=float(self.config[CONF_MIN_ON] if actual else self.config[CONF_MIN_OFF])
-            )
-            if now - self._relay_changed < minimum:
-                self.relay_waiting = "min_on" if actual else "min_off"
-                self._relay_wait_until = self._relay_changed + minimum
-                return False
+        if self._relay_must_wait(actual, now):
+            return False
         ok = True
         if self.source == SOURCE_SWITCH:
             for entity_id in self.switches:
@@ -1736,6 +1755,25 @@ class Room:
             self._relay_on = want
             self._relay_changed = now
         return ok
+
+    def _note_relay_state(self, actual: bool, now: datetime) -> None:
+        """Remember the real relay state; a switch from outside starts the minimum time."""
+        if self._relay_on is not None and actual != self._relay_on:
+            self._relay_changed = now
+        self._relay_on = actual
+
+    def _relay_must_wait(self, actual: bool, now: datetime) -> bool:
+        """True while the minimum on / off time of the relay runs (and note until when)."""
+        if self._relay_changed is None:
+            return False
+        minimum = timedelta(
+            minutes=float(self.config[CONF_MIN_ON] if actual else self.config[CONF_MIN_OFF])
+        )
+        if now - self._relay_changed < minimum:
+            self.relay_waiting = "min_on" if actual else "min_off"
+            self._relay_wait_until = self._relay_changed + minimum
+            return True
+        return False
 
     def _relay_actual(self) -> bool | None:
         """True when a relay (or on / off thermostat) is on now."""
