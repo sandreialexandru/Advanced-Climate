@@ -4,7 +4,7 @@
 
 ## What you need
 
-- Home Assistant **2026.10.2** or newer.
+- Home Assistant **2026.6.0** or newer.
 - Your heating devices in Home Assistant: a Generic Thermostat, TRVs, other
   thermostats or relays.
 - Recommended: the Home Assistant app on the phone of every person (so the

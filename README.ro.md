@@ -106,7 +106,8 @@ Specificația completă este în [docs/SPEC.ro.md](docs/SPEC.ro.md).
 Copiază `custom_components/advanced_climate` în folderul
 `config/custom_components` și repornește Home Assistant.
 
-Necesită Home Assistant **2026.10.2** sau mai nou (versiunea pe care rulează testele).
+Necesită Home Assistant **2026.6.0** sau mai nou (cea mai veche versiune pe care rulează
+testele; rulează și pe cea mai nouă).
 
 ## Configurare
 

@@ -59,6 +59,9 @@ async def _setup(
 
 
 async def _tick(hass: HomeAssistant, freezer: FrozenDateTimeFactory, seconds: float) -> None:
+    # Let the listeners of earlier state changes run first: on older Home Assistant
+    # versions they run only now, and a timer they start must count from before the tick.
+    await hass.async_block_till_done()
     freezer.tick(timedelta(seconds=seconds))
     async_fire_time_changed(hass, dt_util.utcnow())
     await hass.async_block_till_done()

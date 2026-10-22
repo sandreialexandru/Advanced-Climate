@@ -4,7 +4,7 @@
 
 ## Ce îți trebuie
 
-- Home Assistant **2026.10.2** sau mai nou.
+- Home Assistant **2026.6.0** sau mai nou.
 - Dispozitivele de încălzire în Home Assistant: un Generic Thermostat, TRV-uri,
   alte termostate sau relee.
 - Recomandat: aplicația Home Assistant pe telefon pentru fiecare persoană (ca
