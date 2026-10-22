@@ -152,7 +152,8 @@ If the room temperature sensors are unavailable:
 2. if that does not work either, the room goes to `eco`, but never above the
    schedule: if the schedule asks for a lower level (e.g. `away`), that stays.
 
-In both cases you get an alert.
+In both cases you get an alert. A sensor value that is not a number (`nan`,
+`inf`) counts as unavailable.
 
 ## Command checks
 
@@ -191,6 +192,7 @@ repeated often.
 | The level … is not available on … | a preset chosen for a level is missing on the thermostat and its temperature is unknown |
 | The schedule is invalid | the default schedule is used |
 | No active schedule profile: … | days without an active profile (frost protection) |
+| Rooms needed to start the heat source is … | more rooms needed than the house has (rooms were removed): the heat source starts only for frost protection |
 
 ## Restart of Home Assistant
 

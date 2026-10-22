@@ -218,7 +218,10 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | Low battery | alert below 20 % | TRVs and sensors of the room |
 | Restart | restore | Overrides, vacation and learned data are kept |
 | Periodic reevaluation | 5 min | In addition to events |
-| Time | UTC inside | Durations (heating time, learning, manual changes, delays, vacation preheat) are real time, also across a DST change; the schedule, workdays and daily means use the local time A schedule slot in the hour repeated at the end of summer time applies once (at its first occurrence); one in the hour skipped in spring starts when that hour ends (e.g. 03:30 → 04:00). |
+| Invalid values | refused | A sensor value, attribute or saved value that is not a number (`nan`, `inf`) counts as unavailable or is dropped; a temperature sensor without a unit is read in the unit of the house. `set_override` refuses a temperature that is not a number and a duration outside 0.25–72 h (as in the form); the vacation entities refuse an end not after the start; a malformed `set_schedule` profile gives a clear error |
+| One owner per device | form check | A thermostat or relay is controlled by one room only (in every house); the heat source is not a room device; the relay of a Generic Thermostat used by a room is neither a room device nor a heat source; the outdoor sensor is not a room temperature sensor. Sensors may be shared |
+| Rooms needed | ≤ rooms | The form allows at most the number of rooms of the house; an alert when rooms are removed and fewer remain |
+| Time | UTC inside | Durations (heating time, learning, manual changes, delays, vacation preheat) are real time, also across a DST change; the schedule, workdays and daily means use the local time. A schedule slot in the hour repeated at the end of summer time applies once (at its first occurrence); one in the hour skipped in spring starts when that hour ends (e.g. 03:30 → 04:00). |
 
 ## 11. Visibility
 

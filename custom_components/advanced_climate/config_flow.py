@@ -17,6 +17,7 @@ from homeassistant.config_entries import (
     SubentryFlowResult,
 )
 from homeassistant.core import callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 
 from .const import (
@@ -142,6 +143,8 @@ from .const import (
     NEARBY_PRESET,
     NEARBY_TEMPERATURE,
     OVERRIDE_FIXED,
+    OVERRIDE_HOURS_MAX,
+    OVERRIDE_HOURS_MIN,
     OVERRIDE_NEXT,
     OVERRIDE_SCOPE_HOUSE,
     OVERRIDE_SCOPE_ROOM,
@@ -179,7 +182,9 @@ CONF_NAME = "name"
 # ---------------------------------------------------------------------------
 
 
-def _entity(domain: str | list[str], *, multiple: bool = False, **kwargs: Any) -> selector.EntitySelector:
+def _entity(
+    domain: str | list[str], *, multiple: bool = False, **kwargs: Any
+) -> selector.EntitySelector:
     """Entity picker for one or more domains."""
     return selector.EntitySelector(
         selector.EntitySelectorConfig(domain=domain, multiple=multiple, **kwargs)
@@ -227,7 +232,9 @@ def _req(key: str, values: dict[str, Any], defaults: dict[str, Any]) -> vol.Requ
     return vol.Required(key, default=values.get(key, defaults.get(key)))
 
 
-def _merge(current: dict[str, Any], schema: vol.Schema, user_input: dict[str, Any]) -> dict[str, Any]:
+def _merge(
+    current: dict[str, Any], schema: vol.Schema, user_input: dict[str, Any]
+) -> dict[str, Any]:
     """Merge a step into the stored values; cleared optional fields are removed."""
     result = dict(current)
     for marker in schema.schema:
@@ -336,7 +343,9 @@ class _UnitForms:
         """Unit the forms of this flow use."""
         return UNIT_CELSIUS
 
-    def async_show_form(self, *, step_id: str, data_schema: vol.Schema | None = None, **kwargs: Any) -> Any:
+    def async_show_form(
+        self, *, step_id: str, data_schema: vol.Schema | None = None, **kwargs: Any
+    ) -> Any:
         """Show a form with its temperature fields in the unit of the house."""
         if data_schema is not None:
             data_schema = _unitize(data_schema, self._unit())
@@ -517,7 +526,15 @@ def _boiler_details(v: dict[str, Any], rooms: list[selector.SelectOptionDict]) -
     d = HOUSE_DEFAULTS
     fields: dict[Any, Any] = {}
     if v.get(CONF_BOILER_ENTITY):
-        fields[_req(CONF_BOILER_MIN_ROOMS, v, d)] = _number(1, 20, 1)
+        # At most as many rooms as the house has now (at least 1).
+        most = max(1, len(rooms))
+        shown = {
+            **v,
+            CONF_BOILER_MIN_ROOMS: min(
+                int(v.get(CONF_BOILER_MIN_ROOMS, d[CONF_BOILER_MIN_ROOMS])), most
+            ),
+        }
+        fields[_req(CONF_BOILER_MIN_ROOMS, shown, d)] = _number(1, most, 1)
         fields[_req(CONF_BOILER_MIN_ON, v, d)] = _number(0, 60, 1, "min")
         fields[_req(CONF_BOILER_MIN_OFF, v, d)] = _number(0, 60, 1, "min")
         if len(rooms) > 1:
@@ -534,7 +551,9 @@ def _behavior_schema(v: dict[str, Any]) -> vol.Schema:
     d = HOUSE_DEFAULTS
     return vol.Schema(
         {
-            _req(CONF_OVERRIDE_MODE, v, d): _select([OVERRIDE_FIXED, OVERRIDE_NEXT], "override_mode"),
+            _req(CONF_OVERRIDE_MODE, v, d): _select(
+                [OVERRIDE_FIXED, OVERRIDE_NEXT], "override_mode"
+            ),
             _req(CONF_OVERRIDE_SCOPE, v, d): _select(
                 [OVERRIDE_SCOPE_ROOM, OVERRIDE_SCOPE_HOUSE], "override_scope"
             ),
@@ -551,7 +570,13 @@ def _behavior_details(v: dict[str, Any]) -> vol.Schema:
     """Values that apply to the behavior choices."""
     d = HOUSE_DEFAULTS
     if v.get(CONF_OVERRIDE_MODE) == OVERRIDE_FIXED:
-        return vol.Schema({_req(CONF_OVERRIDE_HOURS, v, d): _number(0.25, 72, 0.25, "h")})
+        return vol.Schema(
+            {
+                _req(CONF_OVERRIDE_HOURS, v, d): _number(
+                    OVERRIDE_HOURS_MIN, OVERRIDE_HOURS_MAX, 0.25, "h"
+                )
+            }
+        )
     return vol.Schema({})
 
 
@@ -603,6 +628,85 @@ def _devices_schema(d: dict[str, Any]) -> vol.Schema:
             )
         }
     )
+
+
+Skip = tuple[str | None, str | None]
+
+
+def _gt_heaters(hass: Any) -> dict[str, str]:
+    """Generic Thermostat climate entity -> its heater (from the GT entries)."""
+    heaters: dict[str, str] = {}
+    registry = er.async_get(hass)
+    for gt_entry in hass.config_entries.async_entries(GT_DOMAIN):
+        heater = {**gt_entry.data, **gt_entry.options}.get("heater")
+        if heater:
+            for item in er.async_entries_for_config_entry(registry, gt_entry.entry_id):
+                if item.domain == "climate":
+                    heaters[item.entity_id] = heater
+    return heaters
+
+
+def _entity_owners(hass: Any, skip: Skip = (None, None)) -> dict[str, tuple[str, str]]:
+    """Who controls an entity already, in every house: entity -> (kind, where).
+
+    Kinds: ``room`` (a thermostat or relay of a room), ``source`` (the heat
+    source of a house), ``gt_heater`` (the relay of a Generic Thermostat used by
+    a room). ``skip`` is (entry id, subentry id or "boiler") of what is being
+    edited, so it does not count against itself.
+    """
+    heaters = _gt_heaters(hass)
+    owners: dict[str, tuple[str, str]] = {}
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        boiler = {**entry.data, **entry.options}.get(CONF_BOILER_ENTITY)
+        if boiler and skip != (entry.entry_id, "boiler"):
+            owners[boiler] = ("source", entry.title)
+        for sub in entry.subentries.values():
+            if skip == (entry.entry_id, sub.subentry_id):
+                continue
+            where = f"{entry.title} → {sub.title}"
+            devices = [*(sub.data.get(CONF_CLIMATES) or []), *(sub.data.get(CONF_SWITCHES) or [])]
+            for entity_id in devices:
+                owners[entity_id] = ("room", where)
+                if (heater := heaters.get(entity_id)) is not None:
+                    owners.setdefault(heater, ("gt_heater", where))
+    return owners
+
+
+def _in_use_error(
+    hass: Any, entities: list[str], skip: Skip, placeholders: dict[str, str]
+) -> str | None:
+    """Error key when one of ``entities`` is controlled somewhere else (fills placeholders)."""
+    owners = _entity_owners(hass, skip)
+    heaters = _gt_heaters(hass)
+    # The relay of a chosen Generic Thermostat must not be commanded elsewhere either.
+    checked = [*entities, *(heaters[e] for e in entities if e in heaters)]
+    for entity_id in checked:
+        if entity_id in owners:
+            kind, where = owners[entity_id]
+            placeholders.update({"entity": entity_id, "owner": where})
+            return {"room": "entity_in_room", "source": "entity_is_source"}.get(
+                kind, "entity_is_gt_heater"
+            )
+    return None
+
+
+def _outdoor_error(hass: Any, sensors: list[str], placeholders: dict[str, str]) -> str | None:
+    """Error key when a room temperature sensor is the outdoor sensor of a house."""
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        outdoor = {**entry.data, **entry.options}.get(CONF_OUTDOOR_SENSOR)
+        if outdoor and outdoor in sensors:
+            placeholders.update({"entity": outdoor, "owner": entry.title})
+            return "room_sensor_is_outdoor"
+    return None
+
+
+def _room_sensor_owner(hass: Any, sensor: str) -> str | None:
+    """The room (house → room) that uses ``sensor`` as a temperature sensor."""
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        for sub in entry.subentries.values():
+            if sensor in (sub.data.get(CONF_TEMP_SENSORS) or []):
+                return f"{entry.title} → {sub.title}"
+    return None
 
 
 def _devices_done(d: dict[str, Any], user_input: dict[str, Any]) -> dict[str, str]:
@@ -688,6 +792,10 @@ class _HouseHeatingSteps:
         """Title of the whole-house zone."""
         return HOUSE_ZONE_TITLE
 
+    def _owner_skip(self) -> Skip:
+        """(entry, subentry) of the zone being edited, not counted as another owner."""
+        return (None, None)
+
     async def _async_heating_done(self, data: dict[str, Any] | None) -> Any:
         """Save the zone (None = no heating devices)."""
         raise NotImplementedError
@@ -718,8 +826,19 @@ class _HouseHeatingSteps:
         z = self._zone
         schema = _devices_schema(z)
         errors: dict[str, str] = {}
+        placeholders: dict[str, str] = {"entity": "", "owner": ""}
         if user_input is not None:
             errors = _devices_done(z, user_input)
+            key = CONF_SWITCHES if z[CONF_SOURCE] == SOURCE_SWITCH else CONF_CLIMATES
+            if not errors and (
+                error := _in_use_error(
+                    self.hass,  # type: ignore[attr-defined]
+                    list(user_input.get(key) or []),
+                    self._owner_skip(),
+                    placeholders,
+                )
+            ):
+                errors = {key: error}
             if not errors:
                 if z[CONF_SOURCE] == SOURCE_GT:
                     return await self._async_heating_done(z)
@@ -727,7 +846,10 @@ class _HouseHeatingSteps:
                     return await self.async_step_heating_on_off()
                 return await self.async_step_heating_thermostat()
         return self.async_show_form(  # type: ignore[attr-defined]
-            step_id="heating_devices", data_schema=schema, errors=errors
+            step_id="heating_devices",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders=placeholders,
         )
 
     async def async_step_heating_on_off(self, user_input: dict[str, Any] | None = None) -> Any:
@@ -736,14 +858,24 @@ class _HouseHeatingSteps:
         relay = z[CONF_SOURCE] == SOURCE_SWITCH
         schema = _on_off_schema(_shown(z, self._unit()), relay)  # type: ignore[attr-defined]
         errors: dict[str, str] = {}
+        placeholders: dict[str, str] = {"entity": "", "owner": ""}
         if user_input is not None:
             if relay and not user_input.get(CONF_TEMP_SENSORS):
                 errors[CONF_TEMP_SENSORS] = "sensor_required"
+            elif error := _outdoor_error(
+                self.hass,  # type: ignore[attr-defined]
+                list(user_input.get(CONF_TEMP_SENSORS) or []),
+                placeholders,
+            ):
+                errors[CONF_TEMP_SENSORS] = error
             else:
                 self._zone = _merge(z, schema, _kept(user_input, self._unit()))  # type: ignore[attr-defined]
                 return await self._async_heating_done(self._zone)
         return self.async_show_form(  # type: ignore[attr-defined]
-            step_id="heating_on_off", data_schema=schema, errors=errors
+            step_id="heating_on_off",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders=placeholders,
         )
 
     async def async_step_heating_thermostat(self, user_input: dict[str, Any] | None = None) -> Any:
@@ -885,6 +1017,11 @@ class AdvancedClimateOptionsFlow(_UnitForms, _HouseHeatingSteps, OptionsFlow):
         """Unit the forms of this flow use."""
         return str(self.config_entry.options.get(CONF_TEMP_UNIT, UNIT_CELSIUS))
 
+    def _owner_skip(self) -> Skip:
+        """The whole-house zone being edited does not count against itself."""
+        zone = self._house_zone()
+        return (self.config_entry.entry_id, zone.subentry_id if zone else None)
+
     def _zone_base(self) -> dict[str, Any]:
         """Current data of the whole-house zone (empty for a new one)."""
         zone = self._house_zone()
@@ -955,7 +1092,9 @@ class AdvancedClimateOptionsFlow(_UnitForms, _HouseHeatingSteps, OptionsFlow):
         """Options with the first form applied, as the forms show them."""
         return _shown({**HOUSE_DEFAULTS, **self._pending}, self._unit())
 
-    async def async_step_presence(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_presence(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Presence options."""
         schema = _presence_schema(self._values)
         if user_input is not None:
@@ -969,19 +1108,28 @@ class AdvancedClimateOptionsFlow(_UnitForms, _HouseHeatingSteps, OptionsFlow):
         """Preheat distances of the chosen sensors."""
         return self._second("presence_details", _presence_details(self._pending_values), user_input)
 
-    async def async_step_calendar(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_calendar(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Workday and calendar options."""
         schema = _calendar_schema(self._values)
         if user_input is not None:
             return self._save(schema, user_input)
         return self.async_show_form(step_id="calendar", data_schema=schema)
 
-    async def async_step_weather(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_weather(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Weather and season options."""
         schema = _weather_schema(self._values)
         errors: dict[str, str] = {}
+        placeholders: dict[str, str] = {"entity": "", "owner": ""}
         if user_input is not None:
             errors = _weather_choice_errors(user_input)
+            outdoor = user_input.get(CONF_OUTDOOR_SENSOR)
+            if outdoor and (room := _room_sensor_owner(self.hass, outdoor)):
+                errors[CONF_OUTDOOR_SENSOR] = "outdoor_is_room_sensor"
+                placeholders.update({"entity": outdoor, "owner": room})
             if not errors:
                 self._first(schema, user_input)
                 return await self.async_step_weather_details()
@@ -991,7 +1139,12 @@ class AdvancedClimateOptionsFlow(_UnitForms, _HouseHeatingSteps, OptionsFlow):
                 if key not in user_input:
                     shown.pop(key, None)
             schema = _weather_schema(shown)
-        return self.async_show_form(step_id="weather", data_schema=schema, errors=errors)
+        return self.async_show_form(
+            step_id="weather",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders=placeholders,
+        )
 
     async def async_step_weather_details(
         self, user_input: dict[str, Any] | None = None
@@ -1026,10 +1179,23 @@ class AdvancedClimateOptionsFlow(_UnitForms, _HouseHeatingSteps, OptionsFlow):
     async def async_step_boiler(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Boiler and heat demand options."""
         schema = _boiler_schema(self._values)
+        errors: dict[str, str] = {}
+        placeholders: dict[str, str] = {"entity": "", "owner": ""}
         if user_input is not None:
-            self._first(schema, user_input)
-            return await self.async_step_boiler_details()
-        return self.async_show_form(step_id="boiler", data_schema=schema)
+            boiler = user_input.get(CONF_BOILER_ENTITY)
+            skip = (self.config_entry.entry_id, "boiler")
+            if boiler and (error := _in_use_error(self.hass, [boiler], skip, placeholders)):
+                errors[CONF_BOILER_ENTITY] = error
+            else:
+                self._first(schema, user_input)
+                return await self.async_step_boiler_details()
+            schema = _boiler_schema({**self._values, **user_input})
+        return self.async_show_form(
+            step_id="boiler",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders=placeholders,
+        )
 
     async def async_step_boiler_details(
         self, user_input: dict[str, Any] | None = None
@@ -1038,7 +1204,9 @@ class AdvancedClimateOptionsFlow(_UnitForms, _HouseHeatingSteps, OptionsFlow):
         schema = _boiler_details(self._pending_values, self._room_options())
         return self._second("boiler_details", schema, user_input)
 
-    async def async_step_behavior(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_behavior(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Overrides, vacation and limits."""
         schema = _behavior_schema(self._values)
         if user_input is not None:
@@ -1101,7 +1269,9 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
         self._subentry_id = subentry.subentry_id
         return await self.async_step_basics()
 
-    async def async_step_basics(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+    async def async_step_basics(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Name, area and how the room is heated."""
         schema = vol.Schema(
             {
@@ -1117,20 +1287,36 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
             return await self.async_step_devices()
         return self.async_show_form(step_id="basics", data_schema=schema)
 
-    async def async_step_devices(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+    async def async_step_devices(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """The devices that heat the room (and the command for other thermostats)."""
         d = self._data
         schema = _devices_schema(d)
         errors: dict[str, str] = {}
+        placeholders: dict[str, str] = {"entity": "", "owner": ""}
         if user_input is not None:
             errors = _devices_done(d, user_input)
+            key = CONF_SWITCHES if d[CONF_SOURCE] == SOURCE_SWITCH else CONF_CLIMATES
+            skip = (self._get_entry().entry_id, self._subentry_id)
+            if not errors and (
+                error := _in_use_error(
+                    self.hass, list(user_input.get(key) or []), skip, placeholders
+                )
+            ):
+                errors = {key: error}
             if not errors:
                 if d[CONF_SOURCE] == SOURCE_GT:
                     return await self.async_step_levels()
                 if _is_on_off(d):
                     return await self.async_step_control_on_off()
                 return await self.async_step_control_thermostat()
-        return self.async_show_form(step_id="devices", data_schema=schema, errors=errors)
+        return self.async_show_form(
+            step_id="devices",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders=placeholders,
+        )
 
     def _on_off(self) -> bool:
         """True when the room is controlled on / off (relays or hvac_mode)."""
@@ -1184,7 +1370,9 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
                     found.append(str(name))
         return found
 
-    async def async_step_levels(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+    async def async_step_levels(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Level names or thermostat presets, level temperatures and what 'nearby' means."""
         d = self._shown()
         source = d[CONF_SOURCE]
@@ -1227,7 +1415,9 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
                         else _text()
                     )
                 else:
-                    fields[vol.Optional(f"name_{preset}", default=names.get(preset, preset))] = _text()
+                    fields[vol.Optional(f"name_{preset}", default=names.get(preset, preset))] = (
+                        _text()
+                    )
                 fields[vol.Required(f"temp_{preset}", default=levels[preset])] = _number(
                     low, high, 0.5, "°C"
                 )
@@ -1235,9 +1425,7 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
         placeholders = {"presets": ", ".join(device_presets) or "-"}
         if user_input is not None:
             if uses_presets:
-                chosen = {
-                    p: str(user_input.get(f"device_{p}") or "").strip() for p in PRESETS
-                }
+                chosen = {p: str(user_input.get(f"device_{p}") or "").strip() for p in PRESETS}
                 chosen = {p: v for p, v in chosen.items() if v and v != "none"}
                 values = [v.lower() for v in chosen.values()]
                 new_names: dict[str, str] = {}
@@ -1290,7 +1478,9 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
             return await self.async_step_sensors()
         return self.async_show_form(step_id="levels_nearby", data_schema=schema)
 
-    async def async_step_sensors(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+    async def async_step_sensors(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Temperature, calibration (TRVs only) and occupancy sensors."""
         d = self._shown()
         trv = d[CONF_SOURCE] == SOURCE_CLIMATE
@@ -1309,15 +1499,25 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
         )
         schema = vol.Schema(fields)
         errors: dict[str, str] = {}
+        placeholders: dict[str, str] = {"entity": "", "owner": ""}
         if user_input is not None:
             if relay and not user_input.get(CONF_TEMP_SENSORS):
                 errors[CONF_TEMP_SENSORS] = "sensor_required"
+            elif error := _outdoor_error(
+                self.hass, list(user_input.get(CONF_TEMP_SENSORS) or []), placeholders
+            ):
+                errors[CONF_TEMP_SENSORS] = error
             else:
                 self._data = _merge(self._data, schema, self._kept(user_input))
                 if not trv:
                     self._data[CONF_CALIBRATION_MODE] = CALIBRATION_OFF
                 return await self.async_step_sensors_details()
-        return self.async_show_form(step_id="sensors", data_schema=schema, errors=errors)
+        return self.async_show_form(
+            step_id="sensors",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders=placeholders,
+        )
 
     async def async_step_sensors_details(
         self, user_input: dict[str, Any] | None = None
@@ -1343,7 +1543,9 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
             return await self.async_step_windows()
         return self.async_show_form(step_id="sensors_details", data_schema=schema)
 
-    async def async_step_windows(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+    async def async_step_windows(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Window and door sensors."""
         d = self._shown()
         schema = vol.Schema(
@@ -1387,7 +1589,9 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
             return await self.async_step_schedule()
         return self.async_show_form(step_id="windows_details", data_schema=schema)
 
-    async def async_step_schedule(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+    async def async_step_schedule(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Where the schedule comes from, and optimal start / stop."""
         d = self._shown()
         entry = self._get_entry()
@@ -1488,7 +1692,9 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
             return await self.async_step_extras()
         return self.async_show_form(step_id="schedule_optimal", data_schema=schema)
 
-    async def async_step_extras(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+    async def async_step_extras(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Solar gain and valve exercise (TRVs without on / off only)."""
         d = self._shown()
         valves = d[CONF_SOURCE] == SOURCE_CLIMATE and not self._on_off()

@@ -13,7 +13,7 @@ the house or the room, e.g. `sensor.bedroom_decision`.
 | *Presence* (sensor) | `home`, `nearby`, `far`; attributes: the people, `arriving`, `guest_mode`, `vacation_active`, `vacation_preheating`, `pending`, `pending_since`. |
 | *Pause* (switch) | The pause. |
 | *Guest mode* (switch) | Guest mode (the house stays *home*). |
-| *Vacation start*, *Vacation end* (date and time) | The vacation period. |
+| *Vacation start*, *Vacation end* (date and time) | The vacation period. An end before (or equal to) the start is refused, as with `set_vacation`. |
 | *Heating season* (binary sensor) | Whether it is the heating season. |
 | *Outdoor cutoff* (binary sensor) | Whether the heating is off because it is warm. |
 | *Heat demand* (binary sensor) | Whether heat is asked for now. |
@@ -96,12 +96,14 @@ Sets a level or a temperature as a manual change.
 | Field | What it is |
 | --- | --- |
 | `room` / `entity_id` | The room |
-| `preset` | The level (e.g. `comfort`) |
+| `preset` | The level (e.g. `comfort`); spaces around it and capitals do not matter |
 | `temperature` | The temperature, in the unit of the house |
-| `duration_hours` | Hours; empty = the configured rule for manual changes |
+| `duration_hours` | Hours, between 0.25 and 72 (as in the house options); empty = the configured rule for manual changes |
 
 Give either `preset` or `temperature`. The temperature is limited between the
-frost protection and the maximum.
+frost protection and the maximum. A temperature that is not a number (`nan`,
+`inf`) and a duration outside 0.25–72 hours (0 or negative included) are
+refused with an error.
 
 ```yaml
 action: advanced_climate.set_override
@@ -137,7 +139,20 @@ Works out every room again now.
 Replaces the schedule of a room: `schedule` (the text) or `profiles` (an object:
 profile → list of time and level), optionally `profile_days` (the days and on /
 off of every profile). Not for rooms with a Schedule helper (edit the helper
-instead).
+instead). Malformed `profiles` give a clear error, e.g. *Profile "workday":
+every slot needs "time" and "preset"*.
+
+`profiles` example:
+
+```yaml
+action: advanced_climate.set_schedule
+data:
+  room: Office
+  profiles:
+    workday:
+      - {time: "00:00", preset: sleep}
+      - {time: "07:30", preset: home}
+```
 
 ```yaml
 action: advanced_climate.set_schedule

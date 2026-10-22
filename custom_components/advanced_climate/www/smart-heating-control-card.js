@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.3.15";
+const CARD_VERSION = "2.3.16";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -281,6 +281,7 @@ const TEXT = {
     al_schedule_gap: "No active schedule profile: {days}; the room keeps its frost protection on those days.",
     al_battery_low: "Low battery on {device} ({level}%).",
     al_weather_without_source: "On but not working without an outdoor temperature sensor or a weather entity: {features}.",
+    al_boiler_min_rooms: "Rooms needed to start the heat source is {needed}, but the house has {rooms} rooms: the heat source starts only for frost protection.",
     al_outdoor_unavailable: "No outdoor temperature from {entities} for more than {minutes} min: the cutoff, the automatic season, the compensation and the optimal stop cannot use it.",
     wf_cutoff: "turn heating off when warm",
     wf_season_auto: "automatic season",
@@ -505,6 +506,7 @@ const TEXT = {
     al_schedule_gap: "Fără profil activ în program: {days}; în acele zile camera stă pe protecție la îngheț.",
     al_battery_low: "Baterie descărcată la {device} ({level}%).",
     al_weather_without_source: "Pornite, dar nu funcționează fără senzor de temperatură exterioară sau entitate meteo: {features}.",
+    al_boiler_min_rooms: "Camere necesare pentru pornirea sursei de căldură: {needed}, dar casa are {rooms} camere: sursa de căldură pornește doar pentru antiîngheț.",
     al_outdoor_unavailable: "Nicio temperatură de afară de la {entities} de peste {minutes} min: oprirea când e cald, sezonul automat, compensarea și oprirea anticipată nu o pot folosi.",
     wf_cutoff: "oprirea când e cald",
     wf_season_auto: "sezonul automat",

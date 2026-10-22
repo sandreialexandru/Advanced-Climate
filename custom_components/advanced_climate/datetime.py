@@ -6,10 +6,12 @@ from datetime import datetime
 
 from homeassistant.components.datetime import DateTimeEntity
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import AdvancedClimateConfigEntry
+from .const import DOMAIN
 from .entity import HouseEntity
 from .house import House
 
@@ -40,6 +42,13 @@ class VacationDateTime(HouseEntity, DateTimeEntity):
     async def async_set_value(self, value: datetime) -> None:
         """Set the value."""
         value = dt_util.as_local(value)
+        # The same check as the set_vacation service: the end after the start.
+        start = value if self.which == "start" else self.house.vacation_start
+        end = value if self.which == "end" else self.house.vacation_end
+        if start is not None and end is not None and end <= start:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="vacation_order"
+            )
         if self.which == "start":
             await self.house.async_set_vacation(value, None, partial=True)
         else:

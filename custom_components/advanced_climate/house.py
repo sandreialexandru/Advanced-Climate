@@ -251,9 +251,7 @@ class House:
             room.async_start()
 
         if self.hass.is_running:
-            self._unsubs.append(
-                async_call_later(self.hass, STARTUP_DELAY, self._async_start)
-            )
+            self._unsubs.append(async_call_later(self.hass, STARTUP_DELAY, self._async_start))
         else:
             self._started_unsub = self.hass.bus.async_listen_once(
                 EVENT_HOMEASSISTANT_STARTED, self._async_on_ha_started
@@ -269,9 +267,7 @@ class House:
         self.started = True
         minutes = max(1, int(self.options[CONF_REEVAL_MINUTES]))
         self._unsubs.append(
-            async_track_time_interval(
-                self.hass, self._async_periodic, timedelta(minutes=minutes)
-            )
+            async_track_time_interval(self.hass, self._async_periodic, timedelta(minutes=minutes))
         )
         self._unsubs.append(
             async_track_time_interval(self.hass, self._async_hourly, timedelta(hours=1))
@@ -817,7 +813,7 @@ class House:
         """Return the current outdoor temperature."""
         sensor = self.options.get(CONF_OUTDOOR_SENSOR)
         if sensor:
-            value = temp_state(self.hass, sensor)
+            value = temp_state(self.hass, sensor, self.unit)
             if value is not None:
                 return value
         weather = self.options.get(CONF_WEATHER)
@@ -1000,7 +996,9 @@ class House:
         """Hourly forecast for the next hours (the hour that holds now included)."""
         now = dt_util.utcnow()
         end = now + timedelta(hours=hours)
-        return [(t, v) for t, v in self.hourly_forecast if t + timedelta(hours=1) > now and t <= end]
+        return [
+            (t, v) for t, v in self.hourly_forecast if t + timedelta(hours=1) > now and t <= end
+        ]
 
     def outdoor_between(self, start: datetime, end: datetime) -> tuple[float | None, str]:
         """Mean outdoor temperature expected between two moments ("forecast" or "now")."""
@@ -1078,11 +1076,28 @@ class House:
         """Switch the boiler from the heat demand of the rooms, with minimum on / off times."""
         opts = self.options
         reference = opts.get(CONF_REFERENCE_ROOM)
+        needed = max(1, int(opts[CONF_BOILER_MIN_ROOMS]))
         if reference and reference in self.rooms:
             demand = self.rooms[reference].heat_demand
         else:
             count = sum(1 for room in self.rooms.values() if room.heat_demand)
-            demand = count >= max(1, int(opts[CONF_BOILER_MIN_ROOMS])) if self.rooms else False
+            demand = count >= needed if self.rooms else False
+        # More rooms needed than the house has (rooms were removed): the heat
+        # source would start only for frost protection.
+        if (
+            opts.get(CONF_BOILER_ENTITY)
+            and not (reference and reference in self.rooms)
+            and needed > len(self.rooms)
+        ):
+            self.notify(
+                "boiler_min_rooms",
+                f"Rooms needed to start the heat source is {needed}, but the house has "
+                f"{len(self.rooms)} rooms: the heat source starts only for frost protection.",
+                code="boiler_min_rooms",
+                params={"needed": needed, "rooms": len(self.rooms)},
+            )
+        else:
+            self.clear_alert("boiler_min_rooms")
         # Frost protection of any room starts the heat source on its own (no
         # rooms needed, no reference room, also while paused).
         frost = any(room.frost_demand for room in self.rooms.values())
@@ -1195,7 +1210,9 @@ class House:
                 unused.append("compensation")
             if opts.get(CONF_WINDOW_IGNORE_ABOVE) not in (None, ""):
                 unused.append("window_ignore")
-        if opts[CONF_FORECAST_ENABLED] and not (opts.get(CONF_WEATHER) and opts[CONF_CUTOFF_ENABLED]):
+        if opts[CONF_FORECAST_ENABLED] and not (
+            opts.get(CONF_WEATHER) and opts[CONF_CUTOFF_ENABLED]
+        ):
             unused.append("forecast")
         if unused:
             self.notify(
@@ -1227,7 +1244,11 @@ class House:
                 f"{limit.total_seconds() / 60:.0f} minutes: the cutoff, the automatic season, "
                 "the compensation and the optimal stop cannot use it.",
                 code="outdoor_unavailable",
-                params={"entity": sources[0], "entities": sources, "minutes": round(limit.total_seconds() / 60)},
+                params={
+                    "entity": sources[0],
+                    "entities": sources,
+                    "minutes": round(limit.total_seconds() / 60),
+                },
             )
 
     def heat_source_state(self) -> tuple[bool, bool | None]:
@@ -1336,9 +1357,7 @@ class House:
             domain, _, name = str(service).partition(".")
             if not name:
                 domain, name = "notify", domain
-            self.hass.async_create_task(
-                self._async_call_notify(domain, name, title, message)
-            )
+            self.hass.async_create_task(self._async_call_notify(domain, name, title, message))
         else:
             persistent_notification.async_create(
                 self.hass, message, title=title, notification_id=f"{DOMAIN}_{key}"
@@ -1374,9 +1393,7 @@ class House:
     def clear_alert(self, key: str) -> None:
         """Allow an alert to be sent again."""
         self.active_alerts.pop(key, None)
-        if self._alerts.pop(key, None) is not None and not self.options.get(
-            CONF_NOTIFY_SERVICE
-        ):
+        if self._alerts.pop(key, None) is not None and not self.options.get(CONF_NOTIFY_SERVICE):
             persistent_notification.async_dismiss(self.hass, f"{DOMAIN}_{key}")
 
     # ------------------------------------------------------------------

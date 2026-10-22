@@ -222,7 +222,10 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | Baterie descărcată | alertă sub 20 % | TRV-urile și senzorii camerei |
 | Repornire | restaurare | Schimbările manuale, vacanța și datele învățate se păstrează |
 | Reevaluare periodică | 5 min | Pe lângă evenimente |
-| Timp | UTC intern | Duratele (timp de încălzire, învățare, schimbări manuale, întârzieri, preîncălzirea dinaintea sfârșitului vacanței) sunt în timp real, și peste schimbarea orei; programul, zilele lucrătoare și mediile zilnice folosesc ora locală Un interval din program aflat în ora repetată la sfârșitul orei de vară se aplică o singură dată (la prima apariție); unul din ora sărită primăvara începe când se termină acea oră (de exemplu 03:30 → 04:00). |
+| Valori invalide | refuzate | O valoare de senzor, un atribut sau o valoare salvată care nu e număr (`nan`, `inf`) e tratată ca indisponibilă sau e eliminată; un senzor de temperatură fără unitate e citit în unitatea casei. `set_override` refuză o temperatură care nu e număr și o durată în afara intervalului 0,25–72 h (ca în formular); entitățile vacanței refuză un sfârșit care nu e după început; un profil `set_schedule` greșit dă o eroare clară |
+| Un singur proprietar pe dispozitiv | verificare în formular | Un termostat sau un releu e comandat de o singură cameră (din toate casele); sursa de căldură nu e dispozitivul unei camere; releul unui Generic Thermostat folosit de o cameră nu e nici dispozitiv de cameră, nici sursă de căldură; senzorul exterior nu e senzor de temperatură al unei camere. Senzorii pot fi comuni |
+| Camere necesare | ≤ camere | Formularul permite cel mult numărul de camere ale casei; alertă când se șterg camere și rămân mai puține |
+| Timp | UTC intern | Duratele (timp de încălzire, învățare, schimbări manuale, întârzieri, preîncălzirea dinaintea sfârșitului vacanței) sunt în timp real, și peste schimbarea orei; programul, zilele lucrătoare și mediile zilnice folosesc ora locală. Un interval din program aflat în ora repetată la sfârșitul orei de vară se aplică o singură dată (la prima apariție); unul din ora sărită primăvara începe când se termină acea oră (de exemplu 03:30 → 04:00). |
 
 ## 11. Vizibilitate
 

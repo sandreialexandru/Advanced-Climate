@@ -38,6 +38,13 @@ de încălzire sunt săriți.
 Trebuie ales cel puțin un dispozitiv (altfel apare *Alege cel puțin un
 dispozitiv*).
 
+**Un dispozitiv e comandat de o singură cameră.** Formularul refuză un termostat
+sau un releu pe care îl comandă deja altă cameră (din orice casă), sursa de
+căldură a unei case și releul unui Generic Thermostat folosit de altă cameră
+(și releul unui Generic Thermostat ales aici, dacă e folosit în altă parte). Două
+camere care trimit comenzi opuse aceluiași dispozitiv s-ar contrazice. Senzorii
+(de temperatură, de fereastră, de ocupare) pot fi folosiți de mai multe camere.
+
 ### Comanda pentru alte termostate
 
 | Comandă | Ce face integrarea | Potrivit pentru |
@@ -113,7 +120,7 @@ rămân aceleași: „Lucru” e tot nivelul `home`.
 
 | Câmp | Ce faci |
 | --- | --- |
-| **Senzori de temperatură** | Senzorii din cameră, folosiți în locul senzorului termostatului (mai exacți când termostatul stă lângă calorifer). Gol = senzorul termostatului. **Obligatorii pentru relee**, care nu au senzor (altfel apare *Releele au nevoie de un senzor de temperatură al camerei*). |
+| **Senzori de temperatură** | Senzorii din cameră, folosiți în locul senzorului termostatului (mai exacți când termostatul stă lângă calorifer). Gol = senzorul termostatului. **Obligatorii pentru relee**, care nu au senzor (altfel apare *Releele au nevoie de un senzor de temperatură al camerei*). Senzorul exterior al unei case e refuzat. Un senzor care nu raportează unitatea e citit în unitatea casei. |
 | **Calibrare TRV** | Doar pentru TRV-uri și doar cu un senzor de cameră. *Offset*: corectează senzorul TRV-ului. *Temperatură externă*: scrie temperatura camerei în TRV (dacă TRV-ul are această intrare). *Oprit* altfel. |
 | **Senzori de ocupare** | Senzori de mișcare / prezență ai camerei: dacă camera e goală un timp, trece pe `eco` chiar dacă e cineva acasă. Gol pentru camerele care urmează doar programul. |
 

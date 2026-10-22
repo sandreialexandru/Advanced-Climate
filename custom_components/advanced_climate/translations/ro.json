@@ -83,7 +83,11 @@
     },
     "error": {
       "no_devices": "Alege cel puțin un dispozitiv.",
-      "sensor_required": "Releele au nevoie de un senzor de temperatură al camerei."
+      "sensor_required": "Releele au nevoie de un senzor de temperatură al camerei.",
+      "entity_in_room": "{entity} e deja comandat de {owner}. Un dispozitiv poate fi comandat de o singură cameră.",
+      "entity_is_source": "{entity} e sursa de căldură a casei {owner}. Nu poate fi și dispozitivul unei camere.",
+      "entity_is_gt_heater": "{entity} e releul unui Generic Thermostat folosit de {owner}. Nu poate fi comandat și aici.",
+      "room_sensor_is_outdoor": "{entity} e senzorul exterior al casei {owner}. Alege un senzor din cameră."
     },
     "abort": {
       "reconfigure_successful": "Salvat."
@@ -367,7 +371,12 @@
       "sensor_required": "Releele au nevoie de un senzor de temperatură al camerei.",
       "outdoor_required": "Are nevoie de un senzor de temperatură exterioară sau de o entitate meteo (mai sus).",
       "weather_required": "Prognoza are nevoie de o entitate meteo (mai sus).",
-      "cutoff_required": "Prognoza lucrează cu oprirea: pornește Oprește încălzirea când e cald afară."
+      "cutoff_required": "Prognoza lucrează cu oprirea: pornește Oprește încălzirea când e cald afară.",
+      "entity_in_room": "{entity} e deja comandat de {owner}. Un dispozitiv poate fi comandat de o singură cameră.",
+      "entity_is_source": "{entity} e sursa de căldură a casei {owner}. Nu poate fi și dispozitivul unei camere.",
+      "entity_is_gt_heater": "{entity} e releul unui Generic Thermostat folosit de {owner}. Nu poate fi comandat și aici.",
+      "outdoor_is_room_sensor": "{entity} e senzor de temperatură al {owner}. Senzorul exterior trebuie să fie alt senzor.",
+      "room_sensor_is_outdoor": "{entity} e senzorul exterior al casei {owner}. Alege un senzor din cameră."
     }
   },
   "config_subentries": {
@@ -623,7 +632,11 @@
         "duplicate_names": "Două niveluri au același nume.",
         "invalid_schedule": "Program invalid.",
         "helper_required": "Alege helperul de program.",
-        "sensor_required": "Releele au nevoie de un senzor de temperatură al camerei."
+        "sensor_required": "Releele au nevoie de un senzor de temperatură al camerei.",
+        "entity_in_room": "{entity} e deja comandat de {owner}. Un dispozitiv poate fi comandat de o singură cameră.",
+        "entity_is_source": "{entity} e sursa de căldură a casei {owner}. Nu poate fi și dispozitivul unei camere.",
+        "entity_is_gt_heater": "{entity} e releul unui Generic Thermostat folosit de {owner}. Nu poate fi comandat și aici.",
+        "room_sensor_is_outdoor": "{entity} e senzorul exterior al casei {owner}. Alege un senzor din cameră."
       }
     }
   },
@@ -1008,6 +1021,12 @@
     },
     "invalid_schedule": {
       "message": "Program invalid: {error}"
+    },
+    "temperature_invalid": {
+      "message": "Temperatura trebuie să fie un număr."
+    },
+    "duration_invalid": {
+      "message": "Durata trebuie să fie între {min} și {max} ore."
     }
   }
 }

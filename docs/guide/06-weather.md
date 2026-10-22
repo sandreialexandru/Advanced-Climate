@@ -15,7 +15,8 @@ that need them.
 ## The outdoor temperature
 
 It comes from the *Outdoor temperature sensor* or, without one, from the
-temperature of the *Weather entity*.
+temperature of the *Weather entity*. The outdoor sensor cannot be a temperature
+sensor of a room. A value that is not a number (`nan`, `inf`) is ignored.
 
 The integration keeps the values of the last 48 hours and works out **the
 average of the last *Average over* hours** (6 by default), weighted by time:

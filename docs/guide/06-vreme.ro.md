@@ -14,7 +14,9 @@ nevoie de ele.
 
 ## Temperatura de afară
 
-Vine din *Senzor de temperatură exterioară* sau, dacă nu ai unul, din
+Vine din *Senzor de temperatură exterioară* (care nu poate fi senzorul de
+temperatură al unei camere; o valoare care nu e număr, `nan` sau `inf`, e
+ignorată) sau, dacă nu ai unul, din
 temperatura *Entității meteo*.
 
 Integrarea păstrează valorile din ultimele 48 de ore și calculează **media pe

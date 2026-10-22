@@ -153,7 +153,8 @@ Dacă senzorii de temperatură ai camerei sunt indisponibili:
 2. dacă nici acela nu merge, camera trece pe `eco`, dar niciodată peste program:
    dacă programul cere un nivel mai jos (de exemplu `away`), rămâne acela.
 
-În ambele cazuri primești o alertă.
+În ambele cazuri primești o alertă. O valoare a senzorului care nu e număr
+(`nan`, `inf`) e tratată ca indisponibilă.
 
 ## Verificarea comenzilor
 
@@ -192,6 +193,7 @@ câteva ore.
 | Nivelul … nu există pe … | un preset ales pentru un nivel lipsește de pe termostat și temperatura lui e necunoscută |
 | Programul e invalid | se folosește programul implicit |
 | Fără profil activ în program: … | zile fără profil activ (antiîngheț) |
+| Camere necesare pentru pornirea sursei de căldură: … | mai multe camere necesare decât are casa (au fost șterse camere): sursa pornește doar pentru antiîngheț |
 
 ## Repornirea Home Assistant
 

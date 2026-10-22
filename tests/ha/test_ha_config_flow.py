@@ -422,3 +422,120 @@ async def test_optimal_stop_tolerance_only_with_hvac_action(hass: HomeAssistant)
         assert result["step_id"] == "schedule_optimal"
         assert _keys(result) == expected
         flow.async_abort(result["flow_id"])
+
+
+def _house_with_rooms(hass: HomeAssistant, options: dict | None = None, rooms=()) -> MockConfigEntry:
+    """A house with the given rooms: (title, data)."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Home",
+        options=options or {},
+        subentries_data=[
+            {"data": data, "subentry_type": SUBENTRY_ROOM, "title": title, "unique_id": None}
+            for title, data in rooms
+        ],
+    )
+    entry.add_to_hass(hass)
+    return entry
+
+
+def _gt_climate(hass: HomeAssistant, heater: str) -> str:
+    """A Generic Thermostat entry with its climate entity; returns the entity id."""
+    from homeassistant.helpers import entity_registry as er
+
+    gt_entry = MockConfigEntry(domain="generic_thermostat", options={"heater": heater})
+    gt_entry.add_to_hass(hass)
+    item = er.async_get(hass).async_get_or_create(
+        "climate", "generic_thermostat", gt_entry.entry_id, config_entry=gt_entry
+    )
+    return item.entity_id
+
+
+RELAY_ROOM = {
+    "source": "switch",
+    "switches": ["input_boolean.heater"],
+    "climates": [],
+    "temperature_sensors": ["sensor.room"],
+}
+
+
+async def test_a_device_is_commanded_by_one_room_only(hass: HomeAssistant) -> None:
+    """A relay of a room cannot be chosen again for another room, but stays in its own."""
+    entry = _house_with_rooms(hass, rooms=[("Bedroom", RELAY_ROOM)])
+    flow = hass.config_entries.subentries
+    result = await flow.async_init((entry.entry_id, SUBENTRY_ROOM), context={"source": SOURCE_USER})
+    result = await flow.async_configure(result["flow_id"], {"name": "Office", "source": "switch"})
+    result = await flow.async_configure(result["flow_id"], {"switches": ["input_boolean.heater"]})
+    assert result["errors"] == {"switches": "entity_in_room"}
+    assert result["description_placeholders"]["owner"] == "Home → Bedroom"
+    result = await flow.async_configure(result["flow_id"], {"switches": ["input_boolean.other"]})
+    assert result["step_id"] == "control_on_off"
+    # Reconfiguring the room itself keeps its relay.
+    subentry = next(iter(entry.subentries.values()))
+    result = await entry.start_subentry_reconfigure_flow(hass, subentry.subentry_id)
+    result = await flow.async_configure(result["flow_id"], {"name": "Bedroom", "source": "switch"})
+    result = await flow.async_configure(result["flow_id"], {"switches": ["input_boolean.heater"]})
+    assert result["step_id"] == "control_on_off"
+
+
+async def test_heat_source_and_generic_thermostat_relay(hass: HomeAssistant) -> None:
+    """The heat source is not a room device, nor the relay of a Generic Thermostat room."""
+    climate = _gt_climate(hass, "switch.gt_relay")
+    entry = _house_with_rooms(
+        hass,
+        options={"boiler_entity": "switch.boiler"},
+        rooms=[
+            ("Bedroom", RELAY_ROOM),
+            ("Living", {"source": "generic_thermostat", "climates": [climate], "switches": []}),
+        ],
+    )
+    options = hass.config_entries.options
+    for boiler, error in (
+        ("input_boolean.heater", "entity_in_room"),
+        ("switch.gt_relay", "entity_is_gt_heater"),
+    ):
+        result = await options.async_init(entry.entry_id)
+        result = await options.async_configure(result["flow_id"], {"next_step_id": "boiler"})
+        result = await options.async_configure(result["flow_id"], {"boiler_entity": boiler})
+        assert result["errors"] == {"boiler_entity": error}, boiler
+    # The own heat source of the house is no conflict.
+    result = await options.async_init(entry.entry_id)
+    result = await options.async_configure(result["flow_id"], {"next_step_id": "boiler"})
+    result = await options.async_configure(result["flow_id"], {"boiler_entity": "switch.boiler"})
+    assert result["step_id"] == "boiler_details"
+    # Rooms needed: at most the number of rooms of the house.
+    field = next(k for k in result["data_schema"].schema if str(k) == "boiler_min_rooms")
+    assert result["data_schema"].schema[field].config["max"] == 2
+
+    rooms = hass.config_entries.subentries
+    for switch, error in (
+        ("switch.boiler", "entity_is_source"),
+        ("switch.gt_relay", "entity_is_gt_heater"),
+    ):
+        result = await rooms.async_init((entry.entry_id, SUBENTRY_ROOM), context={"source": SOURCE_USER})
+        result = await rooms.async_configure(result["flow_id"], {"name": "Office", "source": "switch"})
+        result = await rooms.async_configure(result["flow_id"], {"switches": [switch]})
+        assert result["errors"] == {"switches": error}, switch
+
+
+async def test_outdoor_sensor_is_not_a_room_sensor(hass: HomeAssistant) -> None:
+    """The outdoor sensor and the room temperature sensors are different sensors."""
+    entry = _house_with_rooms(
+        hass, options={"outdoor_sensor": "sensor.outdoor"}, rooms=[("Bedroom", RELAY_ROOM)]
+    )
+    options = hass.config_entries.options
+    result = await options.async_init(entry.entry_id)
+    result = await options.async_configure(result["flow_id"], {"next_step_id": "weather"})
+    result = await options.async_configure(result["flow_id"], {"outdoor_sensor": "sensor.room"})
+    assert result["errors"] == {"outdoor_sensor": "outdoor_is_room_sensor"}
+
+    rooms = hass.config_entries.subentries
+    result = await rooms.async_init((entry.entry_id, SUBENTRY_ROOM), context={"source": SOURCE_USER})
+    result = await rooms.async_configure(result["flow_id"], {"name": "Office", "source": "switch"})
+    result = await rooms.async_configure(result["flow_id"], {"switches": ["input_boolean.other"]})
+    result = await _until(hass, result, rooms, stop={"sensors"})
+    assert result["step_id"] == "sensors"
+    result = await rooms.async_configure(result["flow_id"], {"temperature_sensors": ["sensor.outdoor"]})
+    assert result["errors"] == {"temperature_sensors": "room_sensor_is_outdoor"}
+    result = await rooms.async_configure(result["flow_id"], {"temperature_sensors": ["sensor.office"]})
+    assert result["step_id"] != "sensors"

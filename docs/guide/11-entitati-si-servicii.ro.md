@@ -14,7 +14,7 @@ traduse. ID-urile încep cu numele casei sau al camerei, de exemplu
 | *Presence* (senzor) | `home`, `nearby`, `far`; atribute: persoanele, `arriving`, `guest_mode`, `vacation_active`, `vacation_preheating`, `pending`, `pending_since`. |
 | *Pause* (comutator) | Pauza. |
 | *Guest mode* (comutator) | Modul oaspeți (casa rămâne *acasă*). |
-| *Vacation start*, *Vacation end* (dată și oră) | Perioada vacanței. |
+| *Vacation start*, *Vacation end* (dată și oră) | Perioada vacanței. Un sfârșit înainte de început (sau egal cu el) e refuzat, ca la `set_vacation`. |
 | *Heating season* (senzor binar) | Dacă e sezonul de încălzire. |
 | *Outdoor cutoff* (senzor binar) | Dacă încălzirea e oprită pentru că e cald. |
 | *Heat demand* (senzor binar) | Dacă se cere acum căldură. |
@@ -97,12 +97,13 @@ Pune un nivel sau o temperatură ca schimbare manuală.
 | Câmp | Ce e |
 | --- | --- |
 | `room` / `entity_id` | Camera |
-| `preset` | Nivelul (de exemplu `comfort`) |
+| `preset` | Nivelul (de exemplu `comfort`); spațiile din jur și literele mari nu contează |
 | `temperature` | Temperatura, în unitatea casei |
-| `duration_hours` | Orele; gol = regula configurată pentru schimbări manuale |
+| `duration_hours` | Orele, între 0,25 și 72 (ca în opțiunile casei); gol = regula configurată pentru schimbări manuale |
 
 Se dă fie `preset`, fie `temperature`. Temperatura e limitată între antiîngheț
-și maxim.
+și maxim. O temperatură care nu e număr (`nan`, `inf`) și o durată în afara
+intervalului 0,25–72 ore (inclusiv 0 sau negativă) sunt refuzate cu o eroare.
 
 ```yaml
 action: advanced_climate.set_override
@@ -138,7 +139,20 @@ Recalculează toate camerele acum.
 Înlocuiește programul unei camere: `schedule` (textul) sau `profiles` (un
 obiect: profil → listă de oră și nivel), opțional `profile_days` (zilele și
 pornit / oprit ale fiecărui profil). Nu merge pentru camerele cu Schedule
-helper (atunci editezi helperul).
+helper (atunci editezi helperul). Un `profiles` greșit dă o eroare clară, de
+exemplu *Profile "workday": every slot needs "time" and "preset"*.
+
+Exemplu cu `profiles`:
+
+```yaml
+action: advanced_climate.set_schedule
+data:
+  room: Birou
+  profiles:
+    workday:
+      - {time: "00:00", preset: sleep}
+      - {time: "07:30", preset: home}
+```
 
 ```yaml
 action: advanced_climate.set_schedule

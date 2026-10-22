@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import statistics
 from datetime import datetime, time
 from typing import Any
@@ -26,23 +27,25 @@ def float_state(hass: HomeAssistant, entity_id: str | None) -> float | None:
     state = hass.states.get(entity_id)
     if not valid(state):
         return None
-    try:
-        return float(state.state)  # type: ignore[union-attr]
-    except (TypeError, ValueError):
-        return None
+    return finite(state.state)  # type: ignore[union-attr]
 
 
 def float_attr(state: State | None, attr: str) -> float | None:
     """Return a numeric attribute or None."""
     if state is None:
         return None
-    value = state.attributes.get(attr)
-    if value is None:
+    return finite(state.attributes.get(attr))
+
+
+def finite(value: Any) -> float | None:
+    """A number, or None for anything else: also nan and inf (broken sensors)."""
+    if value is None or isinstance(value, bool):
         return None
     try:
-        return float(value)
+        number = float(value)
     except (TypeError, ValueError):
         return None
+    return number if math.isfinite(number) else None
 
 
 # ---------------------------------------------------------------------------
@@ -95,14 +98,20 @@ def system_unit(hass: HomeAssistant) -> str:
         return CELSIUS
 
 
-def temp_state(hass: HomeAssistant, entity_id: str | None) -> float | None:
-    """Temperature of a sensor in °C (its own unit, else the system unit)."""
+def temp_state(
+    hass: HomeAssistant, entity_id: str | None, default_unit: str | None = None
+) -> float | None:
+    """Temperature of a sensor in °C.
+
+    In its own unit; a sensor without a unit is read in ``default_unit`` (the
+    unit of the house), else the system unit.
+    """
     value = float_state(hass, entity_id)
     if value is None:
         return None
     state = hass.states.get(entity_id)  # type: ignore[arg-type]
     unit = state.attributes.get("unit_of_measurement") if state else None
-    return to_celsius(value, unit or system_unit(hass))
+    return to_celsius(value, unit or default_unit or system_unit(hass))
 
 
 def climate_temp(hass: HomeAssistant, state: State | None, attr: str) -> float | None:
@@ -173,7 +182,11 @@ def calendar_moment(value: Any) -> datetime | None:
     if not value:
         return None
     if isinstance(value, datetime):
-        return dt_util.as_utc(value) if value.tzinfo else value.replace(tzinfo=dt_util.get_default_time_zone())
+        return (
+            dt_util.as_utc(value)
+            if value.tzinfo
+            else value.replace(tzinfo=dt_util.get_default_time_zone())
+        )
     text = str(value)
     parsed = dt_util.parse_datetime(text)
     if parsed is not None:
@@ -190,9 +203,8 @@ def distance_km(state: State | None) -> float | None:
     """Return a distance sensor value in km (handles m / km / mi)."""
     if not valid(state):
         return None
-    try:
-        value = float(state.state)  # type: ignore[union-attr]
-    except (TypeError, ValueError):
+    value = finite(state.state)  # type: ignore[union-attr]
+    if value is None:
         return None
     unit = (state.attributes.get("unit_of_measurement") or "km").lower()  # type: ignore[union-attr]
     if unit == "m":
@@ -208,9 +220,8 @@ def minutes_value(state: State | None) -> float | None:
     """Return a duration sensor value in minutes (handles s / min / h)."""
     if not valid(state):
         return None
-    try:
-        value = float(state.state)  # type: ignore[union-attr]
-    except (TypeError, ValueError):
+    value = finite(state.state)  # type: ignore[union-attr]
+    if value is None:
         return None
     unit = (state.attributes.get("unit_of_measurement") or "min").lower()  # type: ignore[union-attr]
     if unit in ("s", "sec"):

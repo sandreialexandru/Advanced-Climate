@@ -170,6 +170,9 @@ CONF_ROOM_DIFF_ALERT: Final = "room_diff_alert"
 
 CONF_OVERRIDE_MODE: Final = "override_mode"
 CONF_OVERRIDE_HOURS: Final = "override_hours"
+# Limits of a fixed duration of a manual change (form and services), hours.
+OVERRIDE_HOURS_MIN: Final = 0.25
+OVERRIDE_HOURS_MAX: Final = 72.0
 CONF_OVERRIDE_SCOPE: Final = "override_scope"
 CONF_REEVAL_MINUTES: Final = "reevaluation_minutes"
 CONF_VACATION_PREHEAT: Final = "vacation_preheat_hours"
@@ -323,8 +326,7 @@ SCHEDULE_HELPER: Final = "helper"
 WEEKDAYS: Final = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
 DEFAULT_SCHEDULE: Final = (
-    "workday: 00:00 sleep, 06:00 home, 22:00 sleep\n"
-    "weekend: 00:00 sleep, 08:00 home, 23:00 sleep"
+    "workday: 00:00 sleep, 06:00 home, 22:00 sleep\nweekend: 00:00 sleep, 08:00 home, 23:00 sleep"
 )
 
 ROOM_DEFAULTS: Final = {

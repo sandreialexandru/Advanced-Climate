@@ -211,14 +211,14 @@ Details: [chapter 8](08-heat-source-and-energy.md).
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| Heat source | – | The boiler (or the relay that starts it) when the rooms cannot start it themselves (TRVs, zone valves). **Leave empty** with Generic Thermostat or a relay on the boiler, and never pick the relay Generic Thermostat already uses. |
+| Heat source | – | The boiler (or the relay that starts it) when the rooms cannot start it themselves (TRVs, zone valves). **Leave empty** with Generic Thermostat or a relay on the boiler. The form refuses a device of a room and the relay of a Generic Thermostat used by a room. |
 | Alert when a room stays colder than | 0 (off) | Alert when a room stays this many degrees below its target while others are warm (stuck valve, open window). |
 
 The second form, only with a heat source:
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| Rooms needed to start the heat source | 1 | How many rooms must ask for heat to start it. |
+| Rooms needed to start the heat source | 1 | How many rooms must ask for heat to start it. At most the number of rooms of the house; if rooms are removed later and fewer remain, you get an alert. |
 | Heat source minimum on / off time | 5 / 5 min | Against short cycles. |
 | Reference room | – | Only this room decides when the source runs; the others only open or close their valves. |
 

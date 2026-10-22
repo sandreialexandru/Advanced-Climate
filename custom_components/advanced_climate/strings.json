@@ -83,7 +83,11 @@
     },
     "error": {
       "no_devices": "Select at least one device.",
-      "sensor_required": "Relays need a temperature sensor of the room."
+      "sensor_required": "Relays need a temperature sensor of the room.",
+      "entity_in_room": "{entity} is already controlled by {owner}. A device can be controlled by one room only.",
+      "entity_is_source": "{entity} is the heat source of {owner}. It cannot also be a device of a room.",
+      "entity_is_gt_heater": "{entity} is the relay of a Generic Thermostat used by {owner}. It cannot also be controlled here.",
+      "room_sensor_is_outdoor": "{entity} is the outdoor sensor of {owner}. Choose a sensor in the room."
     },
     "abort": {
       "reconfigure_successful": "Saved."
@@ -367,7 +371,12 @@
       "sensor_required": "Relays need a temperature sensor of the room.",
       "outdoor_required": "Needs an outdoor temperature sensor or a weather entity (above).",
       "weather_required": "The forecast needs a weather entity (above).",
-      "cutoff_required": "The forecast works with the cutoff: turn on Turn heating off when it is warm outside."
+      "cutoff_required": "The forecast works with the cutoff: turn on Turn heating off when it is warm outside.",
+      "entity_in_room": "{entity} is already controlled by {owner}. A device can be controlled by one room only.",
+      "entity_is_source": "{entity} is the heat source of {owner}. It cannot also be a device of a room.",
+      "entity_is_gt_heater": "{entity} is the relay of a Generic Thermostat used by {owner}. It cannot also be controlled here.",
+      "outdoor_is_room_sensor": "{entity} is a temperature sensor of {owner}. The outdoor sensor must be a different sensor.",
+      "room_sensor_is_outdoor": "{entity} is the outdoor sensor of {owner}. Choose a sensor in the room."
     }
   },
   "config_subentries": {
@@ -623,7 +632,11 @@
         "duplicate_names": "Two levels have the same name.",
         "invalid_schedule": "Invalid schedule.",
         "helper_required": "Select the schedule helper.",
-        "sensor_required": "Relays need a temperature sensor of the room."
+        "sensor_required": "Relays need a temperature sensor of the room.",
+        "entity_in_room": "{entity} is already controlled by {owner}. A device can be controlled by one room only.",
+        "entity_is_source": "{entity} is the heat source of {owner}. It cannot also be a device of a room.",
+        "entity_is_gt_heater": "{entity} is the relay of a Generic Thermostat used by {owner}. It cannot also be controlled here.",
+        "room_sensor_is_outdoor": "{entity} is the outdoor sensor of {owner}. Choose a sensor in the room."
       }
     }
   },
@@ -1008,6 +1021,12 @@
     },
     "invalid_schedule": {
       "message": "Invalid schedule: {error}"
+    },
+    "temperature_invalid": {
+      "message": "The temperature must be a number."
+    },
+    "duration_invalid": {
+      "message": "The duration must be between {min} and {max} hours."
     }
   }
 }

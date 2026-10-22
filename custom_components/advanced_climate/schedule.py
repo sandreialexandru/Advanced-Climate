@@ -124,9 +124,7 @@ def parse_schedule(text: str, valid_presets: Iterable[str]) -> dict[str, list[Sl
                     f" (valid: {', '.join(lookup.values())})"
                 )
             if minute in slots:
-                raise ScheduleError(
-                    f"Line {line_no}: two slots start at {chunk.split()[0]}"
-                )
+                raise ScheduleError(f"Line {line_no}: two slots start at {chunk.split()[0]}")
             slots[minute] = Slot(minute, lookup[preset_raw])
         if not slots:
             raise ScheduleError(f"Line {line_no}: profile '{name}' has no slots")
@@ -155,12 +153,26 @@ def profiles_to_dict(profiles: dict[str, list[Slot]]) -> dict[str, list[dict[str
 def profiles_from_dict(
     data: dict[str, list[dict[str, str]]], valid_presets: Iterable[str]
 ) -> dict[str, list[Slot]]:
-    """Build profiles from the JSON representation and validate them."""
-    text = "\n".join(
-        f"{name}: " + ", ".join(f"{slot['time']} {slot['preset']}" for slot in slots)
-        for name, slots in data.items()
-    )
-    return parse_schedule(text, valid_presets)
+    """Build profiles from the JSON representation and validate them.
+
+    ``data`` is profile name -> list of {"time": "HH:MM", "preset": level}; a
+    malformed value gives a clear ScheduleError.
+    """
+    if not isinstance(data, dict) or not data:
+        raise ScheduleError(
+            'profiles must be an object: profile name -> list of {"time", "preset"}'
+        )
+    lines = []
+    for name, slots in data.items():
+        if not isinstance(slots, list) or not slots:
+            raise ScheduleError(f'Profile "{name}": give a list of {{"time", "preset"}}')
+        parts = []
+        for slot in slots:
+            if not isinstance(slot, dict) or "time" not in slot or "preset" not in slot:
+                raise ScheduleError(f'Profile "{name}": every slot needs "time" and "preset"')
+            parts.append(f"{str(slot['time']).strip()} {str(slot['preset']).strip()}")
+        lines.append(f"{name}: " + ", ".join(parts))
+    return parse_schedule("\n".join(lines), valid_presets)
 
 
 def _days_valid(days: object) -> bool:
@@ -217,9 +229,7 @@ def overlap(a: object, b: object) -> bool:
     return a == b
 
 
-def normalize_profile_days(
-    data: dict | None, names: Iterable[str]
-) -> dict[str, dict]:
+def normalize_profile_days(data: dict | None, names: Iterable[str]) -> dict[str, dict]:
     """Days and on / off of every profile (missing or invalid entries fixed).
 
     Without saved data the selection of earlier versions is kept. A profile
@@ -267,7 +277,9 @@ def validate_profile_days(data: object, names: Iterable[str]) -> dict[str, dict]
     for i, (name, days) in enumerate(active):
         for other, other_days in active[:i]:
             if overlap(days, other_days):
-                raise ScheduleError(f"Profiles '{other}' and '{name}' are both on for the same days")
+                raise ScheduleError(
+                    f"Profiles '{other}' and '{name}' are both on for the same days"
+                )
     return normalize_profile_days(data, names)
 
 
@@ -285,9 +297,7 @@ def uncovered_days(profile_days: dict[str, dict]) -> dict[str, object]:
     work = has_all or DAYS_WORKDAY in active
     free = has_all or DAYS_WEEKEND in active
     days = [
-        d
-        for i, d in enumerate(WEEKDAYS)
-        if d not in specific and not (work if i < 5 else free)
+        d for i, d in enumerate(WEEKDAYS) if d not in specific and not (work if i < 5 else free)
     ]
     return {
         "days": days,

@@ -1350,3 +1350,95 @@ async def test_card_attributes_not_heating_alerts_cutoff(
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_set_override_rejects_bad_values(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """nan / inf and durations outside the form range are errors; a preset is trimmed."""
+    entry = await _setup(hass, freezer)
+    await _tick(hass, freezer, 15)
+    for data, key in (
+        ({"temperature": float("nan")}, "temperature_invalid"),
+        ({"temperature": float("inf")}, "temperature_invalid"),
+        ({"temperature": 21, "duration_hours": 0}, "duration_invalid"),
+        ({"temperature": 21, "duration_hours": -1}, "duration_invalid"),
+        ({"temperature": 21, "duration_hours": 0.1}, "duration_invalid"),
+        ({"temperature": 21, "duration_hours": 73}, "duration_invalid"),
+        ({"temperature": 21, "duration_hours": float("nan")}, "duration_invalid"),
+        ({"preset": "   "}, "preset_or_temperature"),
+    ):
+        with pytest.raises(ServiceValidationError) as err:
+            await hass.services.async_call(
+                DOMAIN, "set_override", {"room": "Bedroom", **data}, blocking=True
+            )
+        assert err.value.translation_key == key, data
+    room = next(iter(entry.runtime_data.rooms.values()))
+    assert room.override is None
+    # Spaces around a level and another case are accepted.
+    await hass.services.async_call(
+        DOMAIN,
+        "set_override",
+        {"room": "Bedroom", "preset": " Sleep ", "duration_hours": 0.25},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    assert room.override["target"]["preset"] == "sleep"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_vacation_datetime_end_after_start(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """The vacation datetime entities refuse an end before the start."""
+    from homeassistant.helpers import entity_registry as er
+
+    entry = await _setup(hass, freezer)
+    await _tick(hass, freezer, 15)
+    registry = er.async_get(hass)
+    start_id = registry.async_get_entity_id("datetime", DOMAIN, f"{entry.entry_id}_vacation_start")
+    end_id = registry.async_get_entity_id("datetime", DOMAIN, f"{entry.entry_id}_vacation_end")
+    start = dt_util.now() + timedelta(days=2)
+    await hass.services.async_call(
+        "datetime", "set_value", {"entity_id": start_id, "datetime": start}, blocking=True
+    )
+    with pytest.raises(ServiceValidationError) as err:
+        await hass.services.async_call(
+            "datetime",
+            "set_value",
+            {"entity_id": end_id, "datetime": start - timedelta(hours=1)},
+            blocking=True,
+        )
+    assert err.value.translation_key == "vacation_order"
+    assert entry.runtime_data.vacation_end is None
+    await hass.services.async_call(
+        "datetime",
+        "set_value",
+        {"entity_id": end_id, "datetime": start + timedelta(days=1)},
+        blocking=True,
+    )
+    assert entry.runtime_data.vacation_end is not None
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_more_rooms_needed_than_the_house_has(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Rooms needed above the number of rooms raises an alert."""
+    entry = await _setup(
+        hass,
+        freezer,
+        house_options={"boiler_entity": "input_boolean.boiler", "boiler_min_rooms": 2},
+    )
+    hass.states.async_set("input_boolean.boiler", "off")
+    house = entry.runtime_data
+    await _tick(hass, freezer, 15)
+    alert = house.active_alerts["boiler_min_rooms"]
+    assert alert["params"] == {"needed": 2, "rooms": 1}
+    house.options["boiler_min_rooms"] = 1
+    await _tick(hass, freezer, 15)
+    assert "boiler_min_rooms" not in house.active_alerts
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

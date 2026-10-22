@@ -36,6 +36,12 @@ import math
 from dataclasses import dataclass, field
 from datetime import datetime
 
+
+def _finite(value: float | None) -> float | None:
+    """The value, or None when it is not a real number (nan / inf from a broken sensor)."""
+    return value if value is not None and math.isfinite(value) else None
+
+
 # An episode (with heat demand for heating, without it for cooling) is used
 # only when it lasted at least this long.
 MIN_DEMAND_MINUTES = 10
@@ -150,9 +156,13 @@ def fit_model(episodes: list[list]) -> HeatingModel:
         if use_fixed and fixed < 0:
             allow_fixed = False
             continue
-        if use_outdoor and min(
-            per_degree + per_outdoor * min(outdoors), per_degree + per_outdoor * max(outdoors)
-        ) < 0:
+        if (
+            use_outdoor
+            and min(
+                per_degree + per_outdoor * min(outdoors), per_degree + per_outdoor * max(outdoors)
+            )
+            < 0
+        ):
             use_outdoor = False
             continue
         if per_degree < 0 and not use_outdoor:
@@ -234,6 +244,7 @@ class HeatingRateLearner:
         such an episode is not used. ``tolerance`` is how far below the target the
         thermostat lets the room fall before heating (its normal cycle).
         """
+        current, target, outdoor = _finite(current), _finite(target), _finite(outdoor)
         if current is None:
             return None
         if heating and self.episode_start is None:
@@ -309,9 +320,16 @@ class HeatingRateLearner:
                 try:
                     outdoor = None if item[0] is None else float(item[0])
                     gap, minutes = float(item[1]), float(item[2])
+                    # A value that is not a real number (nan / inf) is dropped.
+                    if outdoor is not None and not math.isfinite(outdoor):
+                        continue
+                    if not (math.isfinite(gap) and math.isfinite(minutes)):
+                        continue
                     if gap <= 0 or minutes <= 0:
                         continue
-                    obj.episodes.append([outdoor, gap, minutes, str(item[3]) if len(item) > 3 else ""])
+                    obj.episodes.append(
+                        [outdoor, gap, minutes, str(item[3]) if len(item) > 3 else ""]
+                    )
                 except (TypeError, ValueError, IndexError):
                     continue
         obj._keep()
@@ -321,9 +339,7 @@ class HeatingRateLearner:
 # ---------------------------------------------------------------------------
 # Cooling
 # ---------------------------------------------------------------------------
-def cooling_coefficient(
-    start: float, end: float, outdoor: float, hours: float
-) -> float | None:
+def cooling_coefficient(start: float, end: float, outdoor: float, hours: float) -> float | None:
     """How fast a room cools per degree warmer than outdoors (per hour).
 
     A room loses heat in proportion to the difference between inside and
@@ -381,7 +397,9 @@ class CoolingLearner:
             return None  # it never gets that cold
         return math.log((indoor - outdoor) / (floor - outdoor)) / k * 60
 
-    def temperature_after(self, indoor: float, outdoor: float | None, minutes: float) -> float | None:
+    def temperature_after(
+        self, indoor: float, outdoor: float | None, minutes: float
+    ) -> float | None:
         """Room temperature after ``minutes`` without heating."""
         k = self.coefficient
         if k is None or outdoor is None:
@@ -397,6 +415,7 @@ class CoolingLearner:
         window_open: bool = False,
     ) -> float | None:
         """Feed an observation. Returns the coefficient when an episode is used."""
+        current, outdoor = _finite(current), _finite(outdoor)
         if current is None:
             return None
         if not heating and self.episode_start is None:
@@ -425,7 +444,7 @@ class CoolingLearner:
         if disturbed or minutes < MIN_DEMAND_MINUTES or start is None or mean_outdoor is None:
             return None
         k = cooling_coefficient(start, current, mean_outdoor, minutes / 60)
-        if k is None:
+        if k is None or not math.isfinite(k):
             return None
         k = round(k, 5)
         self.episodes.append([round(mean_outdoor, 1), k, now.isoformat()])
@@ -458,7 +477,9 @@ class CoolingLearner:
             return obj
         for item in data.get("episodes") or []:
             try:
-                obj.episodes.append([float(item[0]), float(item[1]), str(item[2])])
+                outdoor, k = float(item[0]), float(item[1])
+                if math.isfinite(outdoor) and math.isfinite(k):
+                    obj.episodes.append([outdoor, k, str(item[2])])
             except (TypeError, ValueError, IndexError):
                 continue
         del obj.episodes[:-COOLING_MAX_EPISODES]

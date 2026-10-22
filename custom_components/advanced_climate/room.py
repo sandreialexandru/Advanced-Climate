@@ -151,6 +151,7 @@ from .util import (
     climate_temp,
     delta_from_celsius,
     delta_to_celsius,
+    finite,
     float_attr,
     from_celsius,
     from_iso,
@@ -167,7 +168,6 @@ if TYPE_CHECKING:
     from .house import House
 
 _LOGGER = logging.getLogger(__name__)
-
 
 
 def device_values(state: State) -> dict[str, Any]:
@@ -213,7 +213,9 @@ class Room:
                 self._legacy_map = True
                 raw = dict(self.preset_names)
             self.preset_map = {
-                p: str(v).strip() for p, v in dict(raw).items() if p in PRESETS and v and str(v).strip()
+                p: str(v).strip()
+                for p, v in dict(raw).items()
+                if p in PRESETS and v and str(v).strip()
             }
             if not self._legacy_map:
                 self.preset_names = {p: self.preset_map.get(p, p) for p in PRESETS}
@@ -493,11 +495,8 @@ class Room:
                 return self.observed_temps[preset]
             return self.levels.get(preset)
         value = self._gt_options().get(GT_PRESET_KEYS[preset])
-        if value is not None:
-            try:
-                return float(to_celsius(float(value), system_unit(self.hass)))
-            except (TypeError, ValueError):
-                pass
+        if (number := finite(value)) is not None:
+            return float(to_celsius(number, system_unit(self.hass)))
         return self.observed_temps.get(preset)
 
     def device_presets(self) -> list[str]:
@@ -542,7 +541,8 @@ class Room:
         values = [
             v
             for entity_id in self.climates
-            if (v := climate_temp(self.hass, self.hass.states.get(entity_id), "max_temp")) is not None
+            if (v := climate_temp(self.hass, self.hass.states.get(entity_id), "max_temp"))
+            is not None
         ]
         return min(values) if values else None
 
@@ -750,7 +750,7 @@ class Room:
         sensors = as_list(self.config.get(CONF_TEMP_SENSORS))
         values = []
         for entity_id in sensors:
-            value = temp_state(self.hass, entity_id)
+            value = temp_state(self.hass, entity_id, self.house.unit)
             if value is not None:
                 values.append(value)
         external = aggregate(values, self.config[CONF_TEMP_AGGREGATION])
@@ -777,7 +777,7 @@ class Room:
         values = [
             v
             for entity_id in as_list(self.config.get(CONF_TEMP_SENSORS))
-            if (v := temp_state(self.hass, entity_id)) is not None
+            if (v := temp_state(self.hass, entity_id, self.house.unit)) is not None
         ]
         return aggregate(values, self.config[CONF_TEMP_AGGREGATION])
 
@@ -1299,8 +1299,13 @@ class Room:
                 or self._exercise_until is not None
             )
             self.learner.observe(
-                now, self.heating, self.current_temp, self.target_temperature,
-                outdoor, disturbed, self.learn_tolerance(),
+                now,
+                self.heating,
+                self.current_temp,
+                self.target_temperature,
+                outdoor,
+                disturbed,
+                self.learn_tolerance(),
             )
             self.cooling.observe(now, self.heating, self.current_temp, outdoor, disturbed)
         else:
@@ -1364,9 +1369,14 @@ class Room:
     def _override_target(self) -> Target | None:
         """Level or temperature of a manual change set by the card or a service."""
         stored = (self.override or {}).get("target")
-        if not isinstance(stored, dict) or stored.get("kind") not in (KIND_TEMPERATURE, KIND_PRESET):
+        if not isinstance(stored, dict) or stored.get("kind") not in (
+            KIND_TEMPERATURE,
+            KIND_PRESET,
+        ):
             return None
-        return Target(stored["kind"], preset=stored.get("preset"), temperature=stored.get("temperature"))
+        return Target(
+            stored["kind"], preset=stored.get("preset"), temperature=stored.get("temperature")
+        )
 
     def _resolve_temperature(self, target: Target) -> float | None:
         """Temperature a target stands for (level, manual temperature or the thermostat)."""
@@ -1544,7 +1554,8 @@ class Room:
                 wanted in (STATE_ON, STATE_OFF)
                 and state.state != wanted
                 and await self._call(
-                    domain, SERVICE_TURN_ON if wanted == STATE_ON else SERVICE_TURN_OFF,
+                    domain,
+                    SERVICE_TURN_ON if wanted == STATE_ON else SERVICE_TURN_OFF,
                     {ATTR_ENTITY_ID: entity_id},
                 )
             ):
@@ -1639,9 +1650,7 @@ class Room:
 
         if target.kind == KIND_OFF:
             if STATE_OFF in modes:
-                return await self._send(
-                    entity_id, "set_hvac_mode", "hvac_mode", STATE_OFF, "state"
-                )
+                return await self._send(entity_id, "set_hvac_mode", "hvac_mode", STATE_OFF, "state")
             minimum = float_attr(state, "min_temp")
             if minimum is None:
                 return False
@@ -1798,7 +1807,9 @@ class Room:
             current = (
                 self._override_target()
                 if self.decision is not None and self.decision.rule == RULE_OVERRIDE
-                else self.decision.target if self.decision is not None else None
+                else self.decision.target
+                if self.decision is not None
+                else None
             )
             if current != expected:
                 self._verify_attempts = 0
@@ -1809,8 +1820,7 @@ class Room:
             mismatched = [
                 eid
                 for eid in self.climates
-                if valid(state := self.hass.states.get(eid))
-                and not self._matches(state, expected)  # type: ignore[arg-type]
+                if valid(state := self.hass.states.get(eid)) and not self._matches(state, expected)  # type: ignore[arg-type]
             ]
             if not mismatched:
                 self._verify_attempts = 0
@@ -1982,8 +1992,11 @@ class Room:
                 f"schedule_gap_{self.id}",
                 f"{self.name}: no active schedule profile on "
                 + ", ".join(
-                    [*gaps["days"], *(["free days"] if gaps["free_days"] else []),
-                     *(["workdays on the weekend"] if gaps["workdays"] else [])]
+                    [
+                        *gaps["days"],
+                        *(["free days"] if gaps["free_days"] else []),
+                        *(["workdays on the weekend"] if gaps["workdays"] else []),
+                    ]
                 )
                 + "; the room keeps its frost protection on those days.",
                 code="schedule_gap",
@@ -2021,9 +2034,8 @@ class Room:
                 state = self.hass.states.get(entry.entity_id)
                 if not valid(state):
                     continue
-                try:
-                    level = float(state.state)  # type: ignore[union-attr]
-                except (TypeError, ValueError):
+                level = finite(state.state)  # type: ignore[union-attr]
+                if level is None:
                     continue
                 key = f"battery_{entry.entity_id}"
                 if level < threshold:

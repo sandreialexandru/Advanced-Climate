@@ -5,6 +5,7 @@ Pure Python, no Home Assistant imports, so it can be unit tested.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, tzinfo
 from itertools import pairwise
@@ -94,7 +95,9 @@ class OutdoorTracker:
     tz: tzinfo | None = None
 
     def add(self, now: datetime, value: float) -> None:
-        """Add a sample and drop old ones."""
+        """Add a sample and drop old ones (a value that is not a real number is ignored)."""
+        if value is None or not math.isfinite(value):
+            return
         if self.samples:
             # The previous value held until now (at most max_age).
             self._accumulate(*self.samples[-1], now)
@@ -187,9 +190,7 @@ class OutdoorTracker:
             return points[-1][1]
         return round(total / weight, 2)
 
-    def update_cutoff(
-        self, average: float | None, threshold: float, hysteresis: float
-    ) -> bool:
+    def update_cutoff(self, average: float | None, threshold: float, hysteresis: float) -> bool:
         """Update the cutoff state with hysteresis and return it."""
         if average is None:
             return self.cutoff_active
@@ -273,19 +274,27 @@ class OutdoorTracker:
         obj = cls()
         if not data:
             return obj
+        # Values that are not real numbers (nan / inf saved by a broken sensor) are dropped.
         for item in data.get("samples", []):
             try:
-                obj.samples.append((datetime.fromisoformat(item[0]), float(item[1])))
+                value = float(item[1])
+                if math.isfinite(value):
+                    obj.samples.append((datetime.fromisoformat(item[0]), value))
             except (ValueError, TypeError, IndexError):
                 continue
-        obj.daily_means = {
-            str(k): float(v) for k, v in (data.get("daily_means") or {}).items()
-        }
+        for key, value in (data.get("daily_means") or {}).items():
+            try:
+                if math.isfinite(float(value)):
+                    obj.daily_means[str(key)] = float(value)
+            except (TypeError, ValueError):
+                continue
         sums = data.get("daily_sums")
         if isinstance(sums, dict):
             for key, pair in sums.items():
                 try:
-                    obj.daily_sums[str(key)] = [float(pair[0]), float(pair[1])]
+                    total, seconds = float(pair[0]), float(pair[1])
+                    if math.isfinite(total) and math.isfinite(seconds):
+                        obj.daily_sums[str(key)] = [total, seconds]
                 except (TypeError, ValueError, IndexError):
                     continue
         else:

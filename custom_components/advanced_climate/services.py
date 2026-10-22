@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
@@ -18,6 +19,8 @@ from .const import (
     CONF_SCHEDULE,
     CONF_SCHEDULE_SOURCE,
     DOMAIN,
+    OVERRIDE_HOURS_MAX,
+    OVERRIDE_HOURS_MIN,
     PRESETS,
     SCHEDULE_INTERNAL,
 )
@@ -117,9 +120,7 @@ def _house(hass: HomeAssistant, entry_id: str | None) -> House:
             translation_placeholders={"entry": entry_id},
         )
     if len(houses) != 1:
-        raise ServiceValidationError(
-            translation_domain=DOMAIN, translation_key="house_ambiguous"
-        )
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="house_ambiguous")
     return houses[0]
 
 
@@ -160,10 +161,28 @@ def async_setup_services(hass: HomeAssistant) -> None:
     async def set_override(call: ServiceCall) -> None:
         """Set a level or a temperature as a manual change."""
         preset = call.data.get(ATTR_PRESET)
+        if preset is not None:
+            preset = str(preset).strip() or None
         temperature = call.data.get(ATTR_TEMPERATURE)
+        hours = call.data.get(ATTR_HOURS)
         if (preset is None) == (temperature is None):
             raise ServiceValidationError(
                 translation_domain=DOMAIN, translation_key="preset_or_temperature"
+            )
+        if temperature is not None and not math.isfinite(temperature):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="temperature_invalid"
+            )
+        if hours is not None and not (
+            math.isfinite(hours) and OVERRIDE_HOURS_MIN <= hours <= OVERRIDE_HOURS_MAX
+        ):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="duration_invalid",
+                translation_placeholders={
+                    "min": f"{OVERRIDE_HOURS_MIN:g}",
+                    "max": f"{OVERRIDE_HOURS_MAX:g}",
+                },
             )
         for room in _rooms(hass, call, required=True):
             if preset is not None:
@@ -179,7 +198,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 # Given in the unit of the house; kept in °C.
                 celsius = to_celsius(float(temperature), room.house.unit)
                 target = Target(KIND_TEMPERATURE, temperature=round(float(celsius), 2))
-            await room.async_apply_manual(target, call.data.get(ATTR_HOURS))
+            await room.async_apply_manual(target, hours)
             await room.house.async_evaluate_or_notify()
 
     async def clear_override(call: ServiceCall) -> None:
@@ -230,7 +249,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
                     parsed = profiles_from_dict(profiles, valid_names)
                 else:
                     parsed = parse_schedule(str(text), valid_names)
-            except (ScheduleError, KeyError, TypeError) as err:
+            except (ScheduleError, KeyError, TypeError, AttributeError) as err:
                 raise ServiceValidationError(
                     translation_domain=DOMAIN,
                     translation_key="invalid_schedule",

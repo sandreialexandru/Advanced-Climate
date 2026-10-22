@@ -37,6 +37,13 @@ heating are skipped.
 
 At least one device must be picked (otherwise *Select at least one device*).
 
+**A device is controlled by one room only.** The form refuses a thermostat or a
+relay that another room already controls (in any house), the heat source of a
+house, and the relay of a Generic Thermostat used by another room (also the
+relay of a Generic Thermostat you pick here, if it is used elsewhere). Two
+integrations, or two rooms, sending opposite commands to the same device would
+fight. Sensors (temperature, window, occupancy) may be shared by several rooms.
+
 ### Command for other thermostats
 
 | Command | What the integration does | Suits |
@@ -111,7 +118,7 @@ roles stay the same: "Work" is still the `home` level.
 
 | Field | What to do |
 | --- | --- |
-| **Temperature sensors** | Sensors in the room, used instead of the thermostat sensor (more accurate when the thermostat sits next to the radiator). Empty = the thermostat sensor. **Required for relays**, which have no sensor (otherwise *Relays need a temperature sensor of the room*). |
+| **Temperature sensors** | Sensors in the room, used instead of the thermostat sensor (more accurate when the thermostat sits next to the radiator). Empty = the thermostat sensor. **Required for relays**, which have no sensor (otherwise *Relays need a temperature sensor of the room*). The outdoor sensor of a house is refused. A sensor that reports no unit is read in the unit of the house. |
 | **TRV calibration** | Only for TRVs and only with a room sensor. *Offset*: corrects the TRV sensor. *External temperature input*: writes the room temperature into the TRV (if it has that input). *Off* otherwise. |
 | **Occupancy sensors** | Motion / presence sensors of the room: when the room is empty for a while it goes to `eco` even if someone is home. Empty for rooms that should only follow the schedule. |
 
