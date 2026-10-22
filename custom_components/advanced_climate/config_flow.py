@@ -1439,9 +1439,9 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
         d = self._shown()
         fields: dict[Any, Any] = {}
         if d.get(CONF_OPTIMAL_START):
-            fields[_req(CONF_OPTIMAL_START_MAX, d, ROOM_DEFAULTS)] = _number(10, 360, 5, "min")
+            fields[_req(CONF_OPTIMAL_START_MAX, d, ROOM_DEFAULTS)] = _number(10, 1440, 5, "min")
         if d.get(CONF_OPTIMAL_STOP):
-            fields[_req(CONF_OPTIMAL_STOP_MINUTES, d, ROOM_DEFAULTS)] = _number(5, 180, 5, "min")
+            fields[_req(CONF_OPTIMAL_STOP_MINUTES, d, ROOM_DEFAULTS)] = _number(5, 1440, 5, "min")
             # Generic Thermostat uses its cold tolerance; relays and thermostats
             # without hvac_action use the hysteresis.
             if (

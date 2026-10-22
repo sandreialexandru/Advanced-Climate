@@ -181,8 +181,8 @@ anticipată**:
 
 | Câmp | Implicit | Ce face |
 | --- | --- | --- |
-| Anticipare maximă | 120 min (10 – 360) | Pornirea anticipată nu începe niciodată mai devreme de atât. |
-| Oprire anticipată maximă | 30 min (5 – 180) | Oprirea anticipată nu începe niciodată mai devreme de atât. Până se învață răcirea, nivelul mai jos începe exact atât de devreme. |
+| Anticipare maximă | 120 min (10 – 1440, adică până la 24 h) | Pornirea anticipată nu începe niciodată mai devreme de atât. |
+| Oprire anticipată maximă | 30 min (5 – 1440, adică până la 24 h) | Oprirea anticipată nu începe niciodată mai devreme de atât. Până se învață răcirea, nivelul mai jos începe exact atât de devreme. |
 | Toleranța opririi anticipate | 0 (0 – 2 °C) | Doar pentru termostatele care raportează `hvac_action` și nu sunt Generic Thermostat: cât poate coborî camera sub nivelul curent înainte de schimbare. 0 = camera nu are voie să scadă sub nivel, deci se oprește mai devreme doar când e mai caldă decât nivelul. |
 
 Detalii: [capitolul 4](04-program.ro.md) și

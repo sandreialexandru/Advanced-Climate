@@ -177,8 +177,8 @@ With optimal start or stop on, **Optimal start / stop** appears:
 
 | Field | Default | What it does |
 | --- | --- | --- |
-| Maximum early start | 120 min (10 – 360) | The optimal start never begins earlier than this. |
-| Maximum early stop | 30 min (5 – 180) | The optimal stop never begins earlier than this. Until the cooling is learned, the lower level starts exactly this early. |
+| Maximum early start | 120 min (10 – 1440, i.e. up to 24 h) | The optimal start never begins earlier than this. |
+| Maximum early stop | 30 min (5 – 1440, i.e. up to 24 h) | The optimal stop never begins earlier than this. Until the cooling is learned, the lower level starts exactly this early. |
 | Optimal stop tolerance | 0 (0 – 2 °C) | Only for thermostats that report `hvac_action` and are not Generic Thermostat: how far below the current level the room may fall before the change. 0 = the room must not fall below the level, so it stops early only when warmer than the level. |
 
 Details: [chapter 4](04-schedule.md) and
