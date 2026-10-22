@@ -182,8 +182,10 @@ Rules are evaluated from the top; the first one that applies wins:
 4. Mode Off / Summer / outside the heating season
 5. Window open
 6. Manual change
-7. Vacation
-8. Presence: far → `away`, nearby → `eco` (or a fixed temperature)
+7. Vacation (on a day without an active profile: frost protection)
+8. Presence: far → `away` (on a day without an active profile: frost
+   protection), nearby → `eco` (or a fixed temperature; with *Not above the
+   schedule* the lower of it and the schedule)
 9. Schedule (optimal start / stop, room occupancy)
 
 Then the adjustments (outdoor cutoff, compensation, tariff, PV, solar gain) and

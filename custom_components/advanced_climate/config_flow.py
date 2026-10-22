@@ -70,6 +70,7 @@ from .const import (
     CONF_MIN_OFF,
     CONF_MIN_ON,
     CONF_NEARBY_GEOMETRIC,
+    CONF_NEARBY_LIMIT,
     CONF_NEARBY_MODE,
     CONF_NEARBY_TEMP,
     CONF_NEARBY_ZONES,
@@ -1176,6 +1177,7 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
             vol.Required(CONF_NEARBY_MODE, default=d[CONF_NEARBY_MODE]): _select(
                 [NEARBY_PRESET, NEARBY_TEMPERATURE], "nearby_mode"
             ),
+            vol.Required(CONF_NEARBY_LIMIT, default=bool(d.get(CONF_NEARBY_LIMIT, False))): _bool(),
         }
         if source != SOURCE_GT:
             for preset in PRESETS:
@@ -1235,6 +1237,7 @@ class RoomSubentryFlow(_UnitForms, ConfigSubentryFlow):
             else:
                 self._data.pop(CONF_LEVELS, None)
             self._data[CONF_NEARBY_MODE] = user_input[CONF_NEARBY_MODE]
+            self._data[CONF_NEARBY_LIMIT] = bool(user_input.get(CONF_NEARBY_LIMIT, False))
             if user_input[CONF_NEARBY_MODE] == NEARBY_TEMPERATURE:
                 return await self.async_step_levels_nearby()
             return await self.async_step_sensors()

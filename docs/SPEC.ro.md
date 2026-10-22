@@ -70,7 +70,9 @@ GT.
 
 Pentru *aproape* implicit este presetul `eco`. În locul presetului se poate
 configura o **temperatură fixă**; integrarea o trimite la GT, care trece singur
-pe presetul `none`.
+pe presetul `none`. Cu *Nu peste program* (pe cameră, nebifat implicit) se aplică
+cea mai mică dintre nivelul / temperatura pentru aproape și program, ca în oraș
+noaptea să nu se încălzească mai mult decât acasă.
 
 Fără Generic Thermostat rolurile din reguli rămân aceleași, iar setările camerei
 depind de comandă:
@@ -252,8 +254,8 @@ aplică stabilește nivelul.
 4. **Mod Oprit / Vară / în afara sezonului**
 5. **Fereastră deschisă**
 6. **Schimbare manuală**
-7. **Vacanță**
-8. **Prezență** – departe → `away`, aproape → `eco` (sau temperatura fixă), acasă → program
+7. **Vacanță** (o zi fără profil activ: antiîngheț, peste `away`)
+8. **Prezență** – departe → `away` (o zi fără profil activ: antiîngheț), aproape → `eco` (sau temperatura fixă; cu *Nu peste program* cea mai mică dintre ea și program), acasă → program
 9. **Program** – cu pornire / oprire anticipată și ocuparea camerei
 
 Ajustările finale (prag de temperatură exterioară, compensare, tarif,

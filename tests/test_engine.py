@@ -242,10 +242,41 @@ class NoProfileTest(unittest.TestCase):
         self.assertEqual(d.target.kind, engine.KIND_TEMPERATURE)
         # Not adjusted: the frost temperature itself.
         self.assertEqual(d.target.temperature, inputs().frost_temp)
+        # Far away or on vacation on such a day: frost protection is above away.
+        self.assertEqual(
+            engine.decide(inputs(schedule_preset=const.PRESET_FROST, presence=const.PRESENCE_FAR)).key,
+            "no_profile",
+        )
+        self.assertEqual(
+            engine.decide(inputs(schedule_preset=const.PRESET_FROST, vacation_active=True)).key,
+            "no_profile",
+        )
         # Rules above the schedule still apply.
         self.assertEqual(
-            engine.decide(inputs(schedule_preset=const.PRESET_FROST, presence=const.PRESENCE_FAR)).key, "far"
+            engine.decide(
+                inputs(schedule_preset=const.PRESET_FROST, window_open=True)
+            ).rule,
+            const.RULE_WINDOW,
         )
+
+
+class NearbyLimitTest(unittest.TestCase):
+    def test_not_above_the_schedule_when_checked(self) -> None:
+        near = {"presence": const.PRESENCE_NEARBY, "nearby_mode": const.NEARBY_TEMPERATURE}
+        # Nearby 20 °C, schedule sleep (lower): unchecked keeps 20 °C.
+        d = engine.decide(inputs(schedule_preset="sleep", nearby_temp=20.0, **near))
+        self.assertEqual((d.key, d.target.temperature), ("nearby_temperature", 20.0))
+        # Checked: the schedule (sleep) applies.
+        d = engine.decide(inputs(schedule_preset="sleep", nearby_temp=20.0, nearby_limit=True, **near))
+        self.assertEqual((d.key, d.target.preset), ("nearby_schedule", "sleep"))
+        # Checked, schedule higher (home): the nearby temperature stays.
+        d = engine.decide(inputs(schedule_preset="home", nearby_temp=17.0, nearby_limit=True, **near))
+        self.assertEqual(d.key, "nearby_temperature")
+        # Checked, a day without a profile: frost protection.
+        d = engine.decide(
+            inputs(schedule_preset=const.PRESET_FROST, nearby_temp=20.0, nearby_limit=True, **near)
+        )
+        self.assertEqual(d.key, "no_profile")
 
 
 class MaxRoomTest(unittest.TestCase):

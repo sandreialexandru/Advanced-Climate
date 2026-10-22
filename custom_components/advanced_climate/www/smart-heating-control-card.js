@@ -17,7 +17,7 @@
  *   runtime_period: day          # heating time shown for: day | week | month (tap to change)
  */
 
-const CARD_VERSION = "2.3.9";
+const CARD_VERSION = "2.3.10";
 
 // Decisions that last only a while: the planned part of the chart shows the schedule.
 const TEMPORARY_RULES = ["window_open", "frost_protection", "valve_exercise"];
@@ -293,6 +293,7 @@ const TEXT = {
     r_far: "Everyone is far away (outside the nearby zones)",
     r_nearby: "Nobody home, someone nearby",
     r_nearby_temperature: "Nobody home, someone nearby: {temperature}",
+    r_nearby_schedule: "Nobody home, someone nearby: the schedule ({preset}) is lower",
     r_no_schedule: "No schedule available",
     r_no_profile: "No active profile for this day: frost protection",
     r_sensor_fallback: "Temperature sensors unavailable: eco until they recover",
@@ -508,6 +509,7 @@ const TEXT = {
     r_far: "Toți sunt departe (în afara zonelor apropiate)",
     r_nearby: "Nimeni acasă, cineva în apropiere",
     r_nearby_temperature: "Nimeni acasă, cineva în apropiere: {temperature}",
+    r_nearby_schedule: "Nimeni acasă, cineva în apropiere: programul ({preset}) e mai jos",
     r_no_schedule: "Niciun program disponibil",
     r_no_profile: "Niciun profil activ pentru ziua de azi: protecție la îngheț",
     r_sensor_fallback: "Senzorii de temperatură indisponibili: eco până revin",

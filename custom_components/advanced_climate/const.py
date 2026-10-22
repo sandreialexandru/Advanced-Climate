@@ -255,6 +255,8 @@ CONF_PRESET_MAP: Final = "preset_map"  # level role -> device preset (climate + 
 CONF_LEVELS: Final = "levels"  # level temperatures chosen in the room flow
 CONF_NEARBY_MODE: Final = "nearby_mode"
 CONF_NEARBY_TEMP: Final = "nearby_temp"
+# Nearby never above the schedule: the lower of the two applies.
+CONF_NEARBY_LIMIT: Final = "nearby_not_above_schedule"
 CONF_TEMP_SENSORS: Final = "temperature_sensors"
 CONF_TEMP_AGGREGATION: Final = "temperature_aggregation"
 CONF_CALIBRATION_MODE: Final = "calibration_mode"
@@ -333,6 +335,7 @@ ROOM_DEFAULTS: Final = {
     CONF_PRESET_NAMES: {},
     CONF_NEARBY_MODE: NEARBY_PRESET,
     CONF_NEARBY_TEMP: 17.0,
+    CONF_NEARBY_LIMIT: False,
     CONF_TEMP_SENSORS: [],
     CONF_TEMP_AGGREGATION: AGG_MEAN,
     CONF_CALIBRATION_MODE: CALIBRATION_OFF,

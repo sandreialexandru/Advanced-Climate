@@ -66,7 +66,9 @@ functionality of GT.
 
 For *nearby* the default is the `eco` preset. Instead of the preset a **fixed
 temperature** can be configured; the integration sends it to GT, which switches
-to preset `none` by itself.
+to preset `none` by itself. With *Not above the schedule* (per room, unchecked
+by default) the lower of the nearby level / temperature and the schedule
+applies, so being in town at night does not heat more than being home.
 
 Without Generic Thermostat the roles in the rules stay the same and the room
 settings depend on the command:
@@ -248,8 +250,8 @@ applies sets the level.
 4. **Mode Off / Summer / out of season**
 5. **Window open**
 6. **Manual change**
-7. **Vacation**
-8. **Presence** – far → `away`, nearby → `eco` (or the fixed temperature), home → schedule
+7. **Vacation** (a day without an active profile: frost protection, above `away`)
+8. **Presence** – far → `away` (a day without an active profile: frost protection), nearby → `eco` (or the fixed temperature; with *Not above the schedule* the lower of it and the schedule), home → schedule
 9. **Schedule** – with optimal start / stop and room occupancy
 
 Final adjustments (outdoor cutoff, compensation, tariff, PV, solar gain) only

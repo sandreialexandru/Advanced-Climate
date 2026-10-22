@@ -431,6 +431,7 @@
           "title": "Niveluri",
           "data": {
             "nearby_mode": "Când nimeni nu e acasă, dar cineva e aproape",
+            "nearby_not_above_schedule": "Nu peste program",
             "name_home": "Numele nivelului „home”",
             "name_sleep": "Numele nivelului „sleep”",
             "name_eco": "Numele nivelului „eco”",
@@ -453,6 +454,7 @@
           "description": "Nivelurile au roluri fixe: home, sleep, eco (aproape), away (departe / vacanță), comfort și activity.",
           "data_description": {
             "nearby_mode": "Preset eco: folosește nivelul eco. Temperatură fixă: temperatura se alege pe pagina următoare (cu Generic Thermostat, presetul devine none).",
+            "nearby_not_above_schedule": "Bifat: când programul e mai jos decât nivelul sau temperatura pentru nearby, se aplică cea mai mică (în oraș noaptea nu se încălzește mai mult decât acasă). Nebifat: se aplică nivelul sau temperatura pentru nearby.",
             "name_home": "Cum se numește nivelul în program și în card. Lasă numele implicit dacă nu ai nevoie de altul.",
             "name_sleep": "Cum se numește nivelul în program și în card. Lasă numele implicit dacă nu ai nevoie de altul.",
             "name_eco": "Cum se numește nivelul în program și în card. Lasă numele implicit dacă nu ai nevoie de altul.",

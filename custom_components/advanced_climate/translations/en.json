@@ -431,6 +431,7 @@
           "title": "Levels",
           "data": {
             "nearby_mode": "When nobody is home but someone is nearby",
+            "nearby_not_above_schedule": "Not above the schedule",
             "name_home": "Name of the 'home' level",
             "name_sleep": "Name of the 'sleep' level",
             "name_eco": "Name of the 'eco' level",
@@ -453,6 +454,7 @@
           "description": "The levels have fixed roles: home, sleep, eco (nearby), away (far / vacation), comfort and activity.",
           "data_description": {
             "nearby_mode": "Eco preset: uses the eco level. Fixed temperature: the temperature is chosen on the next page (with Generic Thermostat the preset becomes none).",
+            "nearby_not_above_schedule": "Checked: when the schedule is lower than the nearby level or temperature, the lower one applies (being in town at night does not heat more than being home). Unchecked: the nearby level or temperature applies.",
             "name_home": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",
             "name_sleep": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",
             "name_eco": "How this level is called in the schedule and in the card. Leave the default name if you do not need another one.",

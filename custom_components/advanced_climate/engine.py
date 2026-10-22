@@ -136,6 +136,8 @@ class RoomInputs:
     # Relays and thermostats commanded with hvac_mode: no set temperature to read,
     # the room temperature is checked against the maximum instead.
     on_off: bool = False
+    # Nearby never above the schedule (the lower of the two applies).
+    nearby_limit: bool = False
     unit: str = "°C"  # only for the texts; every value is in °C
     # The last hours of a vacation: the schedule applies, so the house is warm on return.
     vacation_preheat: bool = False
@@ -224,11 +226,16 @@ def base_decision(inputs: RoomInputs) -> Decision:
             RULE_OVERRIDE, Target(KIND_NONE), "Manual change is respected", key="override"
         )
     if inputs.mode == MODE_VACATION or inputs.vacation_active:
+        # A day without an active profile is frost protection: above away.
+        if inputs.schedule_preset == PRESET_FROST:
+            return _no_profile(inputs)
         return Decision(
             RULE_VACATION, Target(KIND_PRESET, preset=PRESET_AWAY), "Vacation", key="vacation"
         )
     if not inputs.arriving and not inputs.vacation_preheat:
         if inputs.presence == PRESENCE_FAR:
+            if inputs.schedule_preset == PRESET_FROST:
+                return _no_profile(inputs)
             return Decision(
                 RULE_FAR,
                 Target(KIND_PRESET, preset=PRESET_AWAY),
@@ -236,7 +243,26 @@ def base_decision(inputs: RoomInputs) -> Decision:
                 key="far",
             )
         if inputs.presence == PRESENCE_NEARBY:
-            if inputs.nearby_mode == NEARBY_TEMPERATURE and inputs.nearby_temp is not None:
+            fixed = inputs.nearby_mode == NEARBY_TEMPERATURE and inputs.nearby_temp is not None
+            near = inputs.nearby_temp if fixed else inputs.level_temp(PRESET_ECO)
+            scheduled = _schedule_temp(inputs)
+            if (
+                inputs.nearby_limit
+                and near is not None
+                and scheduled is not None
+                and scheduled < near
+            ):
+                # Not above the schedule: the schedule is lower, it applies.
+                if inputs.schedule_preset == PRESET_FROST:
+                    return _no_profile(inputs)
+                return Decision(
+                    RULE_NEARBY,
+                    Target(KIND_PRESET, preset=inputs.schedule_preset),
+                    f"Nobody home, someone nearby: the schedule ({inputs.schedule_preset}) is lower",
+                    key="nearby_schedule",
+                    params={"preset": inputs.schedule_preset},
+                )
+            if fixed:
                 return Decision(
                     RULE_NEARBY,
                     Target(KIND_TEMPERATURE, temperature=inputs.nearby_temp),
@@ -260,13 +286,7 @@ def base_decision(inputs: RoomInputs) -> Decision:
     if inputs.schedule_preset is None:
         return Decision(RULE_SCHEDULE, Target(KIND_NONE), "No schedule available", key="no_schedule")
     if inputs.schedule_preset == PRESET_FROST:
-        # No active profile covers this day: frost protection only.
-        return Decision(
-            RULE_SCHEDULE,
-            Target(KIND_TEMPERATURE, temperature=inputs.frost_temp),
-            "No active schedule profile for this day: frost protection",
-            key="no_profile",
-        )
+        return _no_profile(inputs)
     preset = inputs.schedule_preset
     if inputs.sensor_failed:
         return Decision(
@@ -301,6 +321,25 @@ def base_decision(inputs: RoomInputs) -> Decision:
         key=keys.get(inputs.schedule_rule, "schedule"),
         params=params,
     )
+
+
+def _no_profile(inputs: RoomInputs) -> Decision:
+    """No active profile covers this day: frost protection only."""
+    return Decision(
+        RULE_SCHEDULE,
+        Target(KIND_TEMPERATURE, temperature=inputs.frost_temp),
+        "No active schedule profile for this day: frost protection",
+        key="no_profile",
+    )
+
+
+def _schedule_temp(inputs: RoomInputs) -> float | None:
+    """Temperature the schedule asks for now (None without a schedule)."""
+    if inputs.schedule_preset is None:
+        return None
+    if inputs.schedule_preset == PRESET_FROST:
+        return inputs.frost_temp
+    return inputs.level_temp(inputs.schedule_preset)
 
 
 def _warmer(inputs: RoomInputs, preset: str, than: str) -> bool:

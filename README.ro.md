@@ -196,8 +196,10 @@ Regulile sunt evaluate de sus în jos; prima care se aplică decide:
 4. Mod Oprit / Vară / în afara sezonului de încălzire
 5. Fereastră deschisă
 6. Schimbare manuală
-7. Vacanță
-8. Prezență: departe → `away`, aproape → `eco` (sau o temperatură fixă)
+7. Vacanță (într-o zi fără profil activ: antiîngheț)
+8. Prezență: departe → `away` (într-o zi fără profil activ: antiîngheț),
+   aproape → `eco` (sau o temperatură fixă; cu *Nu peste program* cea mai mică
+   dintre ea și program)
 9. Program (pornire / oprire anticipată, ocuparea camerei)
 
 Apoi ajustările (prag de temperatură exterioară, compensare, tarif,
