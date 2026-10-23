@@ -10,40 +10,40 @@ traduse. ID-urile încep cu numele casei sau al camerei, de exemplu
 
 | Entitate | Ce arată / face |
 | --- | --- |
-| *Mode* (select) | Modul: `auto`, `vacation`, `off`, `summer`. |
-| *Presence* (senzor) | `home`, `nearby`, `far`; atribute: persoanele, `arriving`, `guest_mode`, `vacation_active`, `vacation_preheating`, `pending`, `pending_since`. |
-| *Pause* (comutator) | Pauza. |
-| *Guest mode* (comutator) | Modul oaspeți (casa rămâne *acasă*). |
-| *Vacation start*, *Vacation end* (dată și oră) | Perioada vacanței. Un sfârșit înainte de început (sau egal cu el) e refuzat, ca la `set_vacation`. |
-| *Heating season* (senzor binar) | Dacă e sezonul de încălzire. |
-| *Outdoor cutoff* (senzor binar) | Dacă încălzirea e oprită pentru că e cald. |
-| *Heat demand* (senzor binar) | Dacă se cere acum căldură. |
-| *Outdoor average* (senzor) | Media de afară pe *Medie pe* ore; atribute: ultima valoare, motivul opririi (`cutoff_reason`: `measured`, `forecast_warm`, `forecast_cold`), media prognozei (`forecast_mean`), pragurile, prognoza. |
-| *Heating runtime* (senzor) | Ore totale de încălzire ale casei. |
-| *Clear manual changes* (buton) | Anulează schimbările manuale din toate camerele. |
-| *Clear vacation* (buton) | Anulează vacanța. |
-| *Reevaluate* (buton) | Recalculează totul acum. |
+| *Mod* (select) | Modul: `auto`, `vacation`, `off`, `summer`. |
+| *Prezență* (senzor) | `home`, `nearby`, `far`; atribute: persoanele, `arriving`, `guest_mode`, `vacation_active`, `vacation_preheating`, `pending`, `pending_since`. |
+| *Pauză* (comutator) | Pauza. |
+| *Mod oaspeți* (comutator) | Modul oaspeți (casa rămâne *acasă*). |
+| *Început vacanță*, *Sfârșit vacanță* (dată și oră) | Perioada vacanței. Un sfârșit înainte de început (sau egal cu el) e refuzat, ca la `set_vacation`. |
+| *Sezon de încălzire* (senzor binar) | Dacă e sezonul de încălzire. |
+| *Cald afară* (senzor binar) | Dacă încălzirea e oprită pentru că e cald. |
+| *Cerere de căldură* (senzor binar) | Dacă se cere acum căldură. |
+| *Medie afară* (senzor) | Media de afară pe *Medie pe* ore; atribute: ultima valoare, motivul opririi (`cutoff_reason`: `measured`, `forecast_warm`, `forecast_cold`), media prognozei (`forecast_mean`), pragurile, prognoza. |
+| *Timp de încălzire* (senzor) | Ore totale de încălzire ale casei. |
+| *Anulează modificările manuale* (buton) | Anulează modificările manuale din toate camerele. |
+| *Șterge vacanța* (buton) | Anulează vacanța. |
+| *Reevaluează* (buton) | Recalculează totul acum. |
 
 ## Entitățile unei camere
 
 | Entitate | Ce arată / face |
 | --- | --- |
-| *Decision* (senzor) | Regula care decide acum (vezi mai jos), cu multe atribute. |
-| *Target temperature* (senzor) | Ținta, în unitatea casei. |
-| *Room temperature* (senzor) | Temperatura camerei folosită de integrare. |
-| *Next change* (senzor) | Următoarea schimbare din program; atribute: nivelul următor, profilul. |
-| *Heating rate* (senzor) | Minute pe grad învățate pentru temperatura de afară de acum (vezi [capitolul 7](07-anticipare-si-invatare.ro.md)). |
-| *Cooling rate* (senzor) | Cât de repede scade camera acum fără încălzire. |
-| *Heating runtime* (senzor) | Ore totale de încălzire ale camerei. |
-| *Heat demand* (senzor binar) | Dacă camera cere căldură; atributul `heating` arată dacă sursa ei merge. |
-| *Window open* (senzor binar) | Dacă o fereastră contează acum ca deschisă. |
-| *Manual change* (senzor binar) | Dacă e activă o schimbare manuală. |
-| *Child lock* (comutator) | Blocarea pentru copii. |
-| *Clear manual change* (buton) | Anulează schimbarea manuală a camerei. |
-| *Reset heating learning*, *Reset cooling learning* (butoane) | Șterg învățarea camerei. |
-| *Level Home* … *Level Activity*, *Nearby temperature* (numere) | Temperaturile nivelurilor, doar la camerele fără Generic Thermostat. Un nivel cu nume propriu apare ca *Level „nume”*. |
+| *Decizie* (senzor) | Regula care decide acum (vezi mai jos), cu multe atribute. |
+| *Temperatură țintă* (senzor) | Ținta, în unitatea casei. |
+| *Temperatura camerei* (senzor) | Temperatura camerei folosită de integrare. |
+| *Următoarea schimbare* (senzor) | Următoarea schimbare din program; atribute: nivelul următor, profilul. |
+| *Viteză de încălzire* (senzor) | Minute pe grad învățate pentru temperatura de afară de acum (vezi [capitolul 7](07-anticipare-si-invatare.ro.md)). |
+| *Viteză de răcire* (senzor) | Cât de repede scade camera acum fără încălzire. |
+| *Timp de încălzire* (senzor) | Ore totale de încălzire ale camerei. |
+| *Cerere de căldură* (senzor binar) | Dacă camera cere căldură; atributul `heating` arată dacă sursa ei merge. |
+| *Fereastră deschisă* (senzor binar) | Dacă o fereastră contează acum ca deschisă. |
+| *Modificare manuală* (senzor binar) | Dacă e activă o modificare manuală. |
+| *Blocare modificări* (comutator) | Blocarea pentru copii. |
+| *Anulează modificarea manuală* (buton) | Anulează modificarea manuală a camerei. |
+| *Resetează învățarea încălzirii*, *Resetează învățarea răcirii* (butoane) | Șterg învățarea camerei. |
+| *Nivel Home* … *Nivel Activity*, *Temperatură „aproape”* (numere) | Temperaturile nivelurilor, doar la camerele fără Generic Thermostat. Un nivel cu nume propriu apare ca *Level „nume”*. |
 
-### Stările senzorului *Decision*
+### Stările senzorului *Decizie*
 
 | Stare | Înseamnă |
 | --- | --- |
@@ -51,23 +51,23 @@ traduse. ID-urile încep cu numele casei sau al camerei, de exemplu
 | `frost_protection` | Antiîngheț |
 | `maximum_temperature` | Temperatura maximă |
 | `pause` | Pauză |
-| `mode_off` | Modul Off |
-| `summer` | Modul Summer |
+| `mode_off` | Modul Oprit |
+| `summer` | Modul Vară |
 | `out_of_season` | În afara sezonului de încălzire |
 | `valve_exercise` | Mișcarea robinetelor |
 | `window_open` | Fereastră deschisă |
-| `manual_override` | Schimbare manuală |
+| `manual_override` | Modificare manuală |
 | `vacation` | Vacanță |
 | `presence_far` | Toți sunt departe |
 | `presence_nearby` | Nimeni acasă, cineva aproape |
 | `room_unoccupied` | Camera neocupată |
-| `sensor_fallback` | Senzorii de temperatură căzuți |
+| `sensor_fallback` | Senzorii de temperatură indisponibili |
 | `schedule` | Programul |
 | `optimal_start` | Pornire anticipată |
 | `optimal_stop` | Oprire anticipată |
 | `outdoor_cutoff` | Cald afară |
 
-### Atribute utile ale senzorului *Decision*
+### Atribute utile ale senzorului *Decizie*
 
 | Atribut | Ce conține |
 | --- | --- |
@@ -80,7 +80,7 @@ traduse. ID-urile încep cu numele casei sau al camerei, de exemplu
 | `stop_forecast` | Temperatura estimată la schimbare, în timpul unei opriri anticipate |
 | `optimal_stop_cancelled` | Dacă oprirea anticipată a fost anulată |
 | `no_heat_reason` | De ce nu încălzește o cameră sub țintă |
-| `override`, `hold_until` | Schimbarea manuală activă și până când ține planul actual |
+| `override`, `hold_until` | Modificarea manuală activă și până când ține planul actual |
 | `alerts` | Alertele camerei |
 | `window_open`, `presence`, `heat_demand`, `heating` | Stările de acum |
 
@@ -92,14 +92,14 @@ camerei sau termostatul ei). Cu mai multe case, serviciile casei cer
 
 ### `advanced_climate.set_override`
 
-Pune un nivel sau o temperatură ca schimbare manuală.
+Pune un nivel sau o temperatură ca modificare manuală.
 
 | Câmp | Ce e |
 | --- | --- |
 | `room` / `entity_id` | Camera |
 | `preset` | Nivelul (de exemplu `comfort`); spațiile din jur și literele mari nu contează |
 | `temperature` | Temperatura, în unitatea casei |
-| `duration_hours` | Orele, între 0,25 și 72 (ca în opțiunile casei); gol = regula configurată pentru schimbări manuale |
+| `duration_hours` | Orele, între 0,25 și 72 (ca în opțiunile casei); gol = regula configurată pentru modificări manuale |
 
 Se dă fie `preset`, fie `temperature`. Temperatura e limitată între antiîngheț
 și maxim. O temperatură care nu e număr (`nan`, `inf`) și o durată în afara
@@ -194,7 +194,7 @@ actions:
       entity_id: switch.acasa_guest_mode
 ```
 
-**Modul Summer la 1 mai** (dacă nu folosești
+**Modul Vară la 1 mai** (dacă nu folosești
 sezonul între date sau automat):
 
 ```yaml

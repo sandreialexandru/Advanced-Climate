@@ -64,10 +64,10 @@ other thermostats or plain relays are supported as well.
 - **Global modes**: Auto, Vacation (with dates, preheating before the return and
   automatic vacation), Off (frost protection) and Summer. During the preheating
   hours before the end of a vacation the schedule applies even while everyone
-  is still far away. Only an end date: the vacation starts now. The automatic
+  is still far. Only an end date: the vacation starts now. The automatic
   vacation ends when someone is on the way home (*arriving*), so the house
-  preheats; it comes back only when everyone has been far away again for the
-  time set in *Automatic vacation after far away for*.
+  preheats; it comes back only when everyone has been far again for the
+  time set in *Automatic vacation after everyone is far for*.
 - **Energy**: dynamic tariff, PV surplus, control of the heat source (boiler)
   from the heat demand of the rooms, heating time statistics.
 - **Safety**: frost protection always (once it starts heating it continues
@@ -199,11 +199,11 @@ the safety limits.
 
 House: *Mode* (select), *Presence* (home / nearby / far), *Pause* and *Guest
 mode* (switches), *Vacation start / end* (datetime), *Heating season*, *Outdoor
-cutoff* and *Heat demand* (binary sensors), *Outdoor average*, *Heating runtime*,
+cutoff* and *Heat demand* (binary sensors), *Outdoor average*, *Heating time*,
 buttons to clear manual changes, clear the vacation and reevaluate.
 
 Room: *Decision* (enum with the reason in the attributes), *Target temperature*,
-*Room temperature*, *Next change*, *Heating rate*, *Cooling rate*, *Heating runtime*, *Heat
+*Room temperature*, *Next change*, *Heating rate*, *Cooling rate*, *Heating time*, *Heat
 demand*, *Window open*, *Manual change*, *Child lock*
 (switch), *Clear manual change*, *Reset heating learning* and *Reset cooling
 learning* (buttons) and, for rooms without Generic
@@ -278,7 +278,7 @@ degree follow the outdoor temperature (a straight line).
   setting is shown for them (and for thermostats unavailable during the
   setup, which cannot be checked).
 
-The *Heating runtime* sensors count the same way: a room while its heat
+The *Heating time* sensors count the same way: a room while its heat
 source runs for it, the house while the heat source runs (without one, while
 at least one room heats). The chart of the card shows these periods.
 
@@ -402,7 +402,7 @@ type: custom:smart-heating-control-card
 | `show_schedule_editor` | `true` | Schedule profiles with an editor: drag the start times on the day bar (5-minute steps), copy a profile over another day |
 | `collapsed` | `false` | Rooms start folded; tap the room name to open it |
 | `compact` | `false` | One row per room (name, rule, now → target) and one for the house; tap a row to open it |
-| `runtime_period` | `day` | Heating time shown for `day`, `week` or `month` (calendar periods, from the long-term statistics; tap the value in the card to change it). The *Heating runtime* sensors stay cumulative totals |
+| `runtime_period` | `day` | Heating time shown for `day`, `week` or `month` (calendar periods, from the long-term statistics; tap the value in the card to change it). The *Heating time* sensors stay cumulative totals |
 
 Every room also shows its decision, the reason, heating / window / manual change
 badges and *Back to automatic*; the *Child lock* switch is in *Set for a while*.

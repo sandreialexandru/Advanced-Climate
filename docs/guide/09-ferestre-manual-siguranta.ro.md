@@ -1,4 +1,4 @@
-# 9. Ferestre, schimbări manuale și siguranță
+# 9. Ferestre, modificări manuale și siguranță
 
 *[English](09-windows-manual-safety.md) · [Cuprins](README.ro.md)*
 
@@ -16,7 +16,7 @@ reacționează pe cameră.
      trimite antiînghețul).
 2. Fereastra se închide. După *Întârziere la închidere* (implicit 30 de
    secunde), camera revine la ce spun regulile în acel moment (program,
-   prezență, o schimbare manuală care era activă).
+   prezență, o modificare manuală care era activă).
 
 Aerisirile mai scurte decât întârzierea la deschidere sunt ignorate.
 
@@ -39,16 +39,16 @@ necesară, primești o alertă.
 
 Episoadele de învățare în care o fereastră a fost deschisă nu se folosesc.
 
-## Schimbările manuale
+## Modificările manuale
 
-O **schimbare manuală** e orice schimbare făcută de o persoană: pe termostat,
+O **modificare manuală** e orice schimbare făcută de o persoană: pe termostat,
 pe TRV, în aplicație, în Home Assistant, din card sau cu serviciul
 `set_override`. Integrarea o respectă un timp, apoi preia din nou controlul.
 
 **Cum le recunoaște.** Comenzile trimise de integrare au un „context” propriu în
 Home Assistant, deci integrarea știe care sunt ale ei. Un dispozitiv care doar
 raportează mai târziu ce i-a trimis integrarea (de exemplu un TRV Zigbee pe
-baterie care se trezește rar) nu e o schimbare manuală.
+baterie care se trezește rar) nu e o modificare manuală.
 
 **Cât durează** (*Modificările manuale se păstrează*, în opțiunile casei):
 
@@ -65,7 +65,7 @@ baterie care se trezește rar) nu e o schimbare manuală.
 (implicit) sau **Toată casa** (o schimbare într-o cameră e copiată în toate;
 doar când fiecare cameră are robinete proprii).
 
-**Dacă o regulă mai importantă intervine.** Dacă în timpul unei schimbări
+**Dacă o regulă mai importantă intervine.** Dacă în timpul unei modificări
 manuale se deschide o fereastră (sau intervine antiînghețul, sau se schimbă
 modul), dispozitivele se schimbă după acea regulă. Când regula se termină,
 valoarea manuală e pusă din nou: valoarea din card / serviciu, sau ce ai pus tu
@@ -74,23 +74,23 @@ refacerea respectă timpul minim pornit / oprit. Cardul arată *revine după: �
 cât timp e întreruptă.
 
 **Din card sau din serviciu.** Un nivel sau o temperatură puse din card (*Setează
-temporar*) sau cu `set_override` se trimit doar cât se aplică schimbarea
+temporar*) sau cu `set_override` se trimit doar cât se aplică modificarea
 manuală (nu în pauză, nu cu fereastra deschisă, nu în modul Oprit sau Vară) și
 rămân pe dispozitive tot timpul ei. Cât o regulă de mai sus o ține departe,
 cardul arată *se aplică după: …*. Temperatura e mereu între antiîngheț și maxim.
 
-**Anularea**: butonul *Clear manual change* al camerei, *Înapoi la automat* în
+**Anularea**: butonul *Anulează modificarea manuală* al camerei, *Înapoi la automat* în
 card, butonul casei pentru toate camerele, sau serviciul `clear_override`.
 
 ## Blocarea pentru copii
 
-Comutatorul *Child lock* al camerei (și în card, la *Setează temporar*): orice
-schimbare manuală pe dispozitiv e anulată imediat, iar camera revine la decizia
+Comutatorul *Blocare modificări* al camerei (și în card, la *Setează temporar*): orice
+modificare manuală pe dispozitiv e anulată imediat, iar camera revine la decizia
 integrării. Util pentru un TRV la îndemâna copiilor.
 
 ## Pauza
 
-Comutatorul *Pause* al casei oprește toate comenzile integrării: nu se schimbă
+Comutatorul *Pauză* al casei oprește toate comenzile integrării: nu se schimbă
 nimic pe dispozitive și nu se face calibrarea TRV. Două lucruri rămân active,
 pentru siguranță:
 
@@ -100,19 +100,19 @@ pentru siguranță:
   cameră cu releu sau comandată pornit / oprit e oprită cât e la maxim sau
   peste.
 
-În card apare o bandă sus cât timp casa e în pauză. O schimbare manuală făcută
+În card apare o bandă sus cât timp casa e în pauză. O modificare manuală făcută
 în pauză se păstrează și se trimite după pauză.
 
 ## Modurile casei
 
-Selectul *Mode* al casei:
+Selectul *Mod* al casei:
 
 | Mod | Ce face |
 | --- | --- |
 | **Auto** | Toate regulile: program, prezență, ferestre, vreme… |
-| **Vacation** | `away` în toate camerele (vezi [capitolul 5](05-prezenta.ro.md#vacanța)) |
-| **Off** | Doar antiîngheț |
-| **Summer** | Încălzire oprită (antiînghețul rămâne ca siguranță). Cu sezonul automat sau între date, încălzirea se oprește singură în afara sezonului. |
+| **Vacanță** | `away` în toate camerele (vezi [capitolul 5](05-prezenta.ro.md#vacanța)) |
+| **Oprit** | Doar antiîngheț |
+| **Vară** | Încălzire oprită (antiînghețul rămâne ca siguranță). Cu sezonul automat sau între date, încălzirea se oprește singură în afara sezonului. |
 
 ## Antiînghețul
 
@@ -121,7 +121,7 @@ Cea mai mică temperatură pe care o primește vreodată o cameră:
 - valoarea *Antiîngheț* din opțiunile casei (implicit 7 °C, între 3 și 15 °C);
 - la camerele cu Generic Thermostat, temperatura minimă a GT (`min_temp`).
 
-Se aplică **mereu**: în modul Off, în pauză, peste o schimbare manuală, cu
+Se aplică **mereu**: în modul Oprit, în pauză, peste o modificare manuală, cu
 fereastra deschisă. Odată ce o cameră încălzește pentru antiîngheț, continuă
 până când dispozitivul nu mai cere căldură (nu pornește și oprește în jurul
 limitei). Un nivel setat sub antiîngheț (de exemplu în Generic Thermostat) e
@@ -136,7 +136,7 @@ Niciun nivel nu poate fi setat în integrare sub antiîngheț: câmpurile, cardu
 de ea:
 
 - un nivel mai mare e trimis ca maxim;
-- o temperatură setată pe termostat peste maxim (schimbare manuală, pauză) e
+- o temperatură setată pe termostat peste maxim (modificare manuală, pauză) e
   coborâtă la maxim;
 - o cameră cu releu sau comandată pornit / oprit e **oprită** cât temperatura
   camerei e la maxim sau peste; sub maxim nu e pornită din nou ca să încălzească
@@ -159,7 +159,7 @@ Dacă senzorii de temperatură ai camerei sunt indisponibili:
 ## Verificarea comenzilor
 
 Cu *Verifică comenzile* (pornit implicit), la 2 minute după o comandă integrarea
-verifică dacă dispozitivul a acceptat-o (și pentru o schimbare manuală din
+verifică dacă dispozitivul a acceptat-o (și pentru o modificare manuală din
 card). Dacă nu, o retrimite o dată; dacă nici atunci, dă alerta *… nu a acceptat
 …*. Oprește verificarea doar dacă un dispozitiv își raportează starea foarte
 încet.
@@ -169,7 +169,7 @@ card). Dacă nu, o retrimite o dată; dacă nici atunci, dă alerta *… nu a ac
 Pentru TRV-uri (*Mișcarea robinetelor*, la pasul *Extra* al camerei): o dată pe
 săptămână, în ziua și la ora alese (implicit duminică la 10:00), TRV-urile se
 deschid complet 5 minute, contra depunerilor de calcar. Se face în orice mod,
-și vara și în afara sezonului. O pauză, o schimbare manuală sau o fereastră
+și vara și în afara sezonului. O pauză, o modificare manuală sau o fereastră
 deschisă o amână mai târziu în aceeași zi. Nu cere căldură de la centrală, iar
 perioada ei nu se învață.
 
@@ -197,7 +197,7 @@ câteva ore.
 
 ## Repornirea Home Assistant
 
-Se păstrează: schimbările manuale, vacanța și vacanța automată, modul, pauza,
+Se păstrează: modificările manuale, vacanța și vacanța automată, modul, pauza,
 oaspeții, învățarea încălzirii și a răcirii, mediile de afară (inclusiv
 mediile zilnice pentru sezon), oprirea după prognoză, timpii ultimelor comutări
 ale centralei și releelor și dacă centrala a fost pornită pentru antiîngheț.

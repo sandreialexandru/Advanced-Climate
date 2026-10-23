@@ -224,14 +224,14 @@ The second form, only with a heat source:
 
 Details: [chapter 8](08-heat-source-and-energy.md).
 
-### Overrides, vacation and limits
+### Manual changes, vacation and limits
 
 | Setting | Default | What it does |
 | --- | --- | --- |
 | Manual changes are kept | Fixed duration | *Fixed duration* (the hours below) or *Until next reevaluation* (until the schedule, presence, a window or the mode changes). |
 | Manual change applies to | Only that room | *Whole house* copies a manual change to every room; only when every room has its own valves. |
 | Preheat before the end of a vacation | 4 h | The schedule returns this many hours before the vacation ends. |
-| Automatic vacation after far away for | 0 h (off) | The vacation starts by itself after everybody has been far this long. |
+| Automatic vacation after everyone is far for | 0 h (off) | The vacation starts by itself after everybody has been far this long. |
 | Frost protection | 7 °C (3 – 15 °C) | The lowest temperature. Rooms with Generic Thermostat use its minimum temperature instead. |
 | Maximum temperature | 25 °C (15 – 35 °C) | No target goes above it. |
 | Periodic check every | 5 min (1 – 60) | The safety check that resends the decision. Changes are applied at once anyway. |

@@ -79,16 +79,16 @@ Nu, dacă ai un singur termostat. Zona *Whole house* e suficientă. Adaugi camer
 doar pentru camerele cu robinete sau termostate proprii.
 
 **Pot schimba temperatura de mână?**
-Da. Integrarea o recunoaște ca schimbare manuală și o păstrează (implicit 2
-ore). Cu *Child lock* pornit, schimbarea e anulată imediat.
+Da. Integrarea o recunoaște ca modificare manuală și o păstrează (implicit 2
+ore). Cu *Blocare modificări* pornit, schimbarea e anulată imediat.
 
 **De ce nu pornește încălzirea?**
 Uită-te la decizia camerei în card. Dacă e sub țintă și nu încălzește, cardul
 spune motivul (*Nu încălzește: …*). Motive dese: fereastră deschisă, cald afară,
-pauză, modul Summer, în afara sezonului, timpul minim, alte camere necesare.
+pauză, modul Vară, în afara sezonului, timpul minim, alte camere necesare.
 
 **De ce camera e pe `eco` deși sunt acasă?**
-Verifică senzorul *Presence*: poate telefonul raportează greșit (atunci casa e
+Verifică senzorul *Prezență*: poate telefonul raportează greșit (atunci casa e
 *aproape*). Sau camera are senzori de ocupare și nu te-a detectat de *Eco după
 lipsă de ocupare de* minute.
 
@@ -112,7 +112,7 @@ când vine frigul.
 
 **Casa e pe antiîngheț și nu înțeleg de ce.**
 Poate e o zi fără profil activ în program (camera arată alerta *Fără profil activ
-în program*), modul Off, o fereastră deschisă sau o fereastră detectată din
+în program*), modul Oprit, o fereastră deschisă sau o fereastră detectată din
 scăderea temperaturii.
 
 **Ce se întâmplă dacă Home Assistant repornește?**

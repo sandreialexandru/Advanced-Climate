@@ -5,7 +5,7 @@
 *Ghidul pas cu pas pentru fiecare setare: [guide/README.ro.md](guide/README.ro.md).*
 
 Smart Heating Control calculează **o țintă pentru fiecare cameră** din program,
-prezență, ferestre, vreme și schimbări manuale, și o aplică dispozitivelor de
+prezență, ferestre, vreme și modificări manuale, și o aplică dispozitivelor de
 încălzire. Totul se configurează din interfață (config flow, options flow și
 subintrările camerelor); nu e nevoie de YAML.
 
@@ -22,9 +22,9 @@ termostate, TRV-uri sau relee simple.
   minute) prinde orice a scăpat.
 - **O ierarhie a regulilor fixă și explicită** (secțiunea 12), ca două reguli
   să nu se contrazică niciodată.
-- **Fiecare decizie are un motiv vizibil**: senzorul *Decision* al camerei
+- **Fiecare decizie are un motiv vizibil**: senzorul *Decizie* al camerei
   arată regula câștigătoare și un text care o explică.
-- **Starea se păstrează la repornire**: schimbările manuale, vacanța,
+- **Starea se păstrează la repornire**: modificările manuale, vacanța,
   încălzirea și răcirea învățate.
 - **Valori implicite sigure**: fără configurare suplimentară integrarea nu
   poate nici lăsa casa să înghețe, nici s-o supraîncălzească.
@@ -172,7 +172,7 @@ ce cere programul.
 | Prognoză | oprită | Are nevoie de o entitate meteo și de oprirea când e cald. Doar media prognozei pe următoarele ore de prognoză (fiecare valoare pentru ora ei, valoarea măsurată până la următoarea oră din prognoză), niciodată o singură oră. Încălzire oprită de media măsurată și acea medie la temperatura de repornire sau sub ea: încălzirea poate porni (camerele încălzesc la nevoie); peste ea: încălzirea rămâne oprită. Încălzire pornită și acea medie la prag sau peste: încălzirea se oprește mai devreme și rămâne oprită până când media scade la temperatura de repornire (același histerezis ca la media măsurată; starea se salvează) |
 | Câștig solar pe cameră | oprit | Ajustare negativă cât e soare (are nevoie de entitatea meteo) |
 
-## 7. Schimbări manuale
+## 7. Modificări manuale
 
 O schimbare făcută de o persoană (aplicație, TRV, HA) este respectată un timp
 definit; apoi integrarea preia din nou controlul.
@@ -180,13 +180,13 @@ definit; apoi integrarea preia din nou controlul.
 | Opțiune | Implicit | Descriere |
 | --- | --- | --- |
 | Detectare | activă | Schimbările făcute de integrare se recunosc după context, sau pentru că dispozitivul doar raportează valorile trimise de integrare |
-| Durată | configurabilă, universală | O singură regulă pentru orice schimbare manuală, inclusiv oprirea GT: **durată fixă** (X ore) sau **până la următoarea reevaluare** declanșată de o schimbare (interval, prezență, fereastră, mod). Verificarea periodică nu o încheie |
+| Durată | configurabilă, universală | O singură regulă pentru orice modificare manuală, inclusiv oprirea GT: **durată fixă** (X ore) sau **până la următoarea reevaluare** declanșată de o schimbare (interval, prezență, fereastră, mod). Verificarea periodică nu o încheie |
 | Domeniu | cameră | Toată casa doar când camerele au robinete proprii |
 | Pauză | – | Comutator: nicio comandă, fără calibrarea TRV (antiînghețul și temperatura maximă se aplică în continuare) |
-| Blocare pentru copii | oprită | Schimbările manuale sunt anulate imediat |
+| Blocare pentru copii | oprită | Modificările manuale sunt anulate imediat |
 | Anulare | – | Buton pentru fiecare cameră și pentru casă |
-| Card / serviciu | – | Un nivel sau o temperatură puse din card sau cu `set_override` se trimit doar cât se aplică schimbarea manuală (nu în pauză, cu fereastra deschisă, în modul Off / Summer…) și rămân pe dispozitive tot timpul ei |
-| După o întrerupere | – | Când o regulă de mai sus a schimbat dispozitivele în timpul unei schimbări manuale (fereastră, antiîngheț, mod), valoarea manuală se pune din nou după ce se termină: valoarea din card / serviciu sau ce a pus persoana pe dispozitiv (mod, preset, temperatură, releu pornit / oprit). Temperatura maximă o limitează definitiv |
+| Card / serviciu | – | Un nivel sau o temperatură puse din card sau cu `set_override` se trimit doar cât se aplică modificarea manuală (nu în pauză, cu fereastra deschisă, în modul Oprit / Vară…) și rămân pe dispozitive tot timpul ei |
+| După o întrerupere | – | Când o regulă de mai sus a schimbat dispozitivele în timpul unei modificări manuale (fereastră, antiîngheț, mod), valoarea manuală se pune din nou după ce se termină: valoarea din card / serviciu sau ce a pus persoana pe dispozitiv (mod, preset, temperatură, releu pornit / oprit). Temperatura maximă o limitează definitiv |
 
 ## 8. Moduri globale
 
@@ -214,18 +214,18 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | Opțiune | Implicit | Descriere |
 | --- | --- | --- |
 | Antiîngheț | activ | Limita de jos, și în modurile Oprit și Pauză (GT: temperatura lui minimă); odată ce încălzește, continuă până când dispozitivul nu mai cere căldură. O cameră în antiîngheț pornește singură sursa de căldură (fără camere necesare, fără camera de referință, și în pauză) |
-| Temperatură maximă | 25 °C | Limita de sus a oricărei ținte: un nivel peste ea se trimite ca maxim, o temperatură setată peste ea (schimbare manuală, pauză) e coborâtă la ea, o cameră cu releu sau comandată cu hvac_mode e oprită cât temperatura camerei e la maxim sau peste (schimbare manuală, pauză; nu e pornită din nou ca să încălzească la loc), serviciul și cardul rămân în limită, iar un termostat care rotunjește la pasul lui primește pasul imediat sub maxim. Apare ca regula *Temperatură maximă* |
+| Temperatură maximă | 25 °C | Limita de sus a oricărei ținte: un nivel peste ea se trimite ca maxim, o temperatură setată peste ea (modificare manuală, pauză) e coborâtă la ea, o cameră cu releu sau comandată cu hvac_mode e oprită cât temperatura camerei e la maxim sau peste (modificare manuală, pauză; nu e pornită din nou ca să încălzească la loc), serviciul și cardul rămân în limită, iar un termostat care rotunjește la pasul lui primește pasul imediat sub maxim. Apare ca regula *Temperatură maximă* |
 | Senzor indisponibil | senzorul dispozitivului | Senzor extern căzut → senzorul dispozitivului → eco (niciodată peste program: un nivel mai jos, de exemplu away, rămâne), cu alertă |
 | Dispozitiv indisponibil | alertă după 15 min | Celelalte camere funcționează în continuare; și pentru sursa de căldură (atunci nici antiînghețul nu poate încălzi) |
 | Verificarea comenzilor | activă | Reîncearcă o dată după 2 min, apoi alertă |
-| Mișcarea robinetelor | oprită | Deschidere completă săptămânală a TRV-urilor, în orice mod (și vara și în afara sezonului); o pauză, o schimbare manuală sau o fereastră deschisă o amână pentru mai târziu în aceeași zi; nu cere căldură și perioada ei nu se învață |
+| Mișcarea robinetelor | oprită | Deschidere completă săptămânală a TRV-urilor, în orice mod (și vara și în afara sezonului); o pauză, o modificare manuală sau o fereastră deschisă o amână pentru mai târziu în aceeași zi; nu cere căldură și perioada ei nu se învață |
 | Baterie descărcată | alertă sub 20 % | TRV-urile și senzorii camerei |
-| Repornire | restaurare | Schimbările manuale, vacanța și datele învățate se păstrează |
+| Repornire | restaurare | Modificările manuale, vacanța și datele învățate se păstrează |
 | Reevaluare periodică | 5 min | Pe lângă evenimente |
 | Valori invalide | refuzate | O valoare de senzor, un atribut sau o valoare salvată care nu e număr (`nan`, `inf`) e tratată ca indisponibilă sau e eliminată; un senzor de temperatură fără unitate e citit în unitatea casei. `set_override` refuză o temperatură care nu e număr și o durată în afara intervalului 0,25–72 h (ca în formular); entitățile vacanței refuză un sfârșit care nu e după început; un profil `set_schedule` greșit dă o eroare clară |
 | Un singur proprietar pe dispozitiv | verificare în formular | Un termostat sau un releu e comandat de o singură cameră (din toate casele); sursa de căldură nu e dispozitivul unei camere; releul unui Generic Thermostat folosit de o cameră nu e nici dispozitiv de cameră, nici sursă de căldură; senzorul exterior nu e senzor de temperatură al unei camere. Senzorii pot fi comuni |
 | Camere necesare | ≤ camere | Formularul permite cel mult numărul de camere ale casei; alertă când se șterg camere și rămân mai puține |
-| Timp | UTC intern | Duratele (timp de încălzire, învățare, schimbări manuale, întârzieri, preîncălzirea dinaintea sfârșitului vacanței) sunt în timp real, și peste schimbarea orei; programul, zilele lucrătoare și mediile zilnice folosesc ora locală. Un interval din program aflat în ora repetată la sfârșitul orei de vară se aplică o singură dată (la prima apariție); unul din ora sărită primăvara începe când se termină acea oră (de exemplu 03:30 → 04:00). |
+| Timp | UTC intern | Duratele (timp de încălzire, învățare, modificări manuale, întârzieri, preîncălzirea dinaintea sfârșitului vacanței) sunt în timp real, și peste schimbarea orei; programul, zilele lucrătoare și mediile zilnice folosesc ora locală. Un interval din program aflat în ora repetată la sfârșitul orei de vară se aplică o singură dată (la prima apariție); unul din ora sărită primăvara începe când se termină acea oră (de exemplu 03:30 → 04:00). |
 
 ## 11. Vizibilitate
 
@@ -240,10 +240,10 @@ Un select pentru casă: **Auto / Vacanță / Oprit / Vară**.
 | `binary_sensor.<room>_heat_demand` | Dacă camera cere căldură; atributul `heating` arată dacă sursa ei merge |
 | `sensor.<house>_presence` | acasă / aproape / departe |
 | `select.<house>_mode` | Modul global |
-| `number.*`, `button.*`, `switch.*` | Niveluri, anularea schimbărilor manuale, resetarea învățării încălzirii / răcirii (pe cameră), mod oaspeți, pauză, blocare pentru copii |
+| `number.*`, `button.*`, `switch.*` | Niveluri, anularea modificărilor manuale, resetarea învățării încălzirii / răcirii (pe cameră), mod oaspeți, pauză, blocare pentru copii |
 | Servicii | `set_override`, `clear_override`, `set_vacation`, `reevaluate`, `set_schedule` |
 | Evenimente | `advanced_climate_decision_changed` cu camera, ținta veche și nouă și motivul |
-| Cardul Lovelace | Starea și decizia camerei; grafic pe 24 h (temperatură, țintă, încălzire) cu următoarele 12 h planificate și zoom până la minut (o bară sub graficul mărit îl mută; tragerea pe grafic citește valorile); program editabil prin tragere (5 minute), copierea unei zile; timpul până la țintă sau, în timpul unei opriri anticipate, temperatura estimată la schimbare; următoarea pornire / oprire anticipată în detaliile camerei; grafic cu grilă pe grade, ținta ca linie în trepte, încălzirea pe o bandă separată, temperatura de afară (măsurată și prognozată) pe banda ei și următoarea pornire / oprire anticipată; de ce nu încălzește o cameră sub țintă; de ce e oprită încălzirea pentru că e cald (media măsurată sau media prognozei) sau că prognoza o lasă să pornească; bandă de pauză; starea învățării și alertele în detalii; originea schimbării manuale; linkuri către entități; timpul de încălzire pe zi / săptămână / lună; mod compact |
+| Cardul Lovelace | Starea și decizia camerei; grafic pe 24 h (temperatură, țintă, încălzire) cu următoarele 12 h planificate și zoom până la minut (o bară sub graficul mărit îl mută; tragerea pe grafic citește valorile); program editabil prin tragere (5 minute), copierea unei zile; timpul până la țintă sau, în timpul unei opriri anticipate, temperatura estimată la schimbare; următoarea pornire / oprire anticipată în detaliile camerei; grafic cu grilă pe grade, ținta ca linie în trepte, încălzirea pe o bandă separată, temperatura de afară (măsurată și prognozată) pe banda ei și următoarea pornire / oprire anticipată; de ce nu încălzește o cameră sub țintă; de ce e oprită încălzirea pentru că e cald (media măsurată sau media prognozei) sau că prognoza o lasă să pornească; bandă de pauză; starea învățării și alertele în detalii; originea modificării manuale; linkuri către entități; timpul de încălzire pe zi / săptămână / lună; mod compact |
 | Diagnostic | Configurația și ultimele 100 de decizii |
 
 ## 12. Ierarhia regulilor
@@ -252,13 +252,13 @@ Regulile sunt evaluate de sus în jos pentru fiecare cameră; prima regulă care
 aplică stabilește nivelul.
 
 1. **Siguranță** – antiîngheț și temperatură maximă, aplicate mereu: și unei
-   schimbări manuale, în pauză, serviciului `set_override` și cardului, iar
+   modificări manuale, în pauză, serviciului `set_override` și cardului, iar
    antiînghețul pornește singur sursa de căldură
 2. **Pauză**
 3. **Mișcarea robinetelor** – în orice mod, nu cu o fereastră deschisă
 4. **Mod Oprit / Vară / în afara sezonului**
 5. **Fereastră deschisă**
-6. **Schimbare manuală**
+6. **Modificare manuală**
 7. **Vacanță** (o zi fără profil activ: antiîngheț, peste `away`)
 8. **Prezență** – departe → `away` (o zi fără profil activ: antiîngheț), aproape → `eco` (sau temperatura fixă; cu *Nu peste program* cea mai mică dintre ea și program), acasă → program
 9. **Program** – cu pornire / oprire anticipată și ocuparea camerei

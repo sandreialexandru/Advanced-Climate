@@ -869,7 +869,7 @@ async def test_forecast_cancels_or_triggers_the_cutoff(
     await _tick(hass, freezer, 15)
     # Warm measured and warm forecast: off, because of the measured average.
     assert house.cutoff_reason == "measured"
-    assert hass.states.get("binary_sensor.home_outdoor_cutoff").state == "on"
+    assert hass.states.get("binary_sensor.home_warm_outside").state == "on"
 
     # It gets cold: the forecast mean (12 °C) is below the resume temperature
     # (17 °C), so the stop is cancelled while the measured average is still warm.
@@ -878,7 +878,7 @@ async def test_forecast_cancels_or_triggers_the_cutoff(
     await _tick(hass, freezer, 15)
     assert house.outdoor.cutoff_active
     assert house.cutoff_reason == "forecast_cold"
-    assert hass.states.get("binary_sensor.home_outdoor_cutoff").state == "off"
+    assert hass.states.get("binary_sensor.home_warm_outside").state == "off"
     outdoor = hass.states.get("sensor.home_outdoor_average").attributes
     assert outdoor["cutoff_reason"] == "forecast_cold"
     assert outdoor["forecast_hours"] == 3
@@ -898,7 +898,7 @@ async def test_forecast_cancels_or_triggers_the_cutoff(
     await _tick(hass, freezer, 15)
     assert house.forecast_mean < 18
     assert house.cutoff_reason is None
-    assert hass.states.get("binary_sensor.home_outdoor_cutoff").state == "off"
+    assert hass.states.get("binary_sensor.home_warm_outside").state == "off"
 
     # Measured cold, forecast mean warm: the heating is turned off earlier (the
     # mean of the next 3 h reaches the cutoff: measured 10 °C for at most 1 h,
@@ -909,7 +909,7 @@ async def test_forecast_cancels_or_triggers_the_cutoff(
     assert not house.outdoor.cutoff_active
     assert house.cutoff_reason == "forecast_warm"
     assert house.forecast_mean >= 18
-    assert hass.states.get("binary_sensor.home_outdoor_cutoff").state == "on"
+    assert hass.states.get("binary_sensor.home_warm_outside").state == "on"
     assert hass.states.get("sensor.bedroom_decision").state == "outdoor_cutoff"
 
     # Measured and forecast 17.5 °C, between the resume temperature (18 - 1 =
@@ -921,7 +921,7 @@ async def test_forecast_cancels_or_triggers_the_cutoff(
     assert 17 < house.forecast_mean < 18
     assert not house.outdoor.cutoff_active
     assert house.cutoff_reason == "forecast_warm"
-    assert hass.states.get("binary_sensor.home_outdoor_cutoff").state == "on"
+    assert hass.states.get("binary_sensor.home_warm_outside").state == "on"
 
     # Forecast 12 °C: the 3 h mean is at most (17.5 + 2 * 12) / 3 = 13.8 °C
     # (measured 17.5 °C for at most 1 h), at or below 17 °C: heating may run.

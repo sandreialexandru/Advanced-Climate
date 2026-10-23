@@ -63,7 +63,7 @@ nimic.
 
 ## Când nu încălzește o cameră sub țintă
 
-Cardul spune de ce, iar senzorul *Decision* are atributul `no_heat_reason`:
+Cardul spune de ce, iar senzorul *Decizie* are atributul `no_heat_reason`:
 
 | Motiv | Ce înseamnă |
 | --- | --- |
@@ -113,11 +113,11 @@ limitată la ±3 °C și nu se aplică niciodată unui antiîngheț (vezi
 
 ## Timpul de încălzire
 
-- **Heating runtime** al fiecărei camere: cât timp a încălzit camera (cât a
+- **Timp de încălzire** al fiecărei camere: cât timp a încălzit camera (cât a
   mers sursa ei).
-- **Heating runtime** al casei: cât timp a mers sursa de căldură; fără sursă,
+- **Timp de încălzire** al casei: cât timp a mers sursa de căldură; fără sursă,
   cât timp a încălzit cel puțin o cameră.
-- **Heat demand** (senzor binar) al casei: dacă se cere acum căldură; al
+- **Cerere de căldură** (senzor binar) al casei: dacă se cere acum căldură; al
   camerei: dacă cere camera, cu atributul `heating` (dacă sursa ei merge).
 
 Senzorii de timp sunt totaluri crescătoare (ore), deci Home Assistant le

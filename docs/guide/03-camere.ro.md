@@ -255,6 +255,6 @@ Cu TRV-uri, centrala trebuie să știe când să pornească: la opțiunile casei
 
 Fiecare cameră primește un dispozitiv cu entitățile ei: decizia, ținta,
 temperatura camerei, următoarea schimbare, învățarea, timpul de încălzire,
-fereastra, cererea de căldură, schimbarea manuală, blocarea pentru copii și,
+fereastra, cererea de căldură, modificarea manuală, blocarea pentru copii și,
 pentru camerele fără Generic Thermostat, temperaturile nivelurilor. Lista
 completă: [capitolul 11](11-entitati-si-servicii.ro.md).

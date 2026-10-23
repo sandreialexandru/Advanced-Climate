@@ -22,7 +22,7 @@ citi când ai nevoie de o funcție anume.
 | [6. Vremea și sezonul](06-vreme.ro.md) | Temperatura de afară, oprirea când e cald, prognoza, sezonul de încălzire, compensarea, câștigul solar |
 | [7. Pornirea și oprirea anticipată, învățarea](07-anticipare-si-invatare.ro.md) | Cum învață fiecare cameră cât durează să se încălzească și să se răcească, și cum folosește asta |
 | [8. Sursa de căldură și energia](08-sursa-si-energie.ro.md) | Centrala comandată de integrare, camere necesare, camera de referință, timpi minimi, tarif, fotovoltaic, timpul de încălzire |
-| [9. Ferestre, schimbări manuale și siguranță](09-ferestre-manual-siguranta.ro.md) | Ferestre, schimbări manuale, blocare pentru copii, pauză, moduri, antiîngheț, maxim, verificarea comenzilor, alerte, mișcarea robinetelor |
+| [9. Ferestre, modificări manuale și siguranță](09-ferestre-manual-siguranta.ro.md) | Ferestre, modificări manuale, blocare pentru copii, pauză, moduri, antiîngheț, maxim, verificarea comenzilor, alerte, mișcarea robinetelor |
 | [10. Cardul](10-card.ro.md) | Cardul Lovelace: ce arată, cum se folosește, toate opțiunile |
 | [11. Entități, servicii și automatizări](11-entitati-si-servicii.ro.md) | Toate entitățile, serviciile, evenimentul, diagnosticul, exemple de automatizări |
 | [12. Exemple și întrebări](12-exemple-si-intrebari.ro.md) | Configurări complete pentru case obișnuite, întrebări frecvente, ce faci când ceva nu merge |

@@ -100,7 +100,7 @@ imediat după fiecare citire.
 
 | Mod | Ce face |
 | --- | --- |
-| **Mereu** (implicit) | Încălzirea e posibilă tot anul. Vara o oprești tu, cu modul *Summer*. |
+| **Mereu** (implicit) | Încălzirea e posibilă tot anul. Vara o oprești tu, cu modul *Vară*. |
 | **Între date** | Doar între *Început sezon* și *Sfârșit sezon* (implicit 10-15 și 04-15, adică 15 octombrie – 15 aprilie, format luna-ziua). |
 | **Automat (temperatura exterioară)** | Sezonul începe după *Sezon automat: zile consecutive* (implicit 3) zile la rând cu media zilnică sub *Prag sezon automat* (implicit 15 °C) și se termină după tot atâtea zile la rând peste prag. |
 

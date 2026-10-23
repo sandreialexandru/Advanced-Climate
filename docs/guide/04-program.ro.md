@@ -141,7 +141,7 @@ La ora din program, camera trece pe nivelul nou. Cu **pornirea anticipată**,
 din program; cu **oprirea anticipată**, un nivel mai rece poate începe mai
 devreme (vezi [capitolul 7](07-anticipare-si-invatare.ro.md)).
 
-Senzorul *Next change* al camerei arată următoarea schimbare, iar cardul arată
+Senzorul *Următoarea schimbare* al camerei arată următoarea schimbare, iar cardul arată
 în grafic ce urmează în următoarele 12 ore.
 
 ## Schimbarea programului dintr-o automatizare

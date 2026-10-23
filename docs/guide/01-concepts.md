@@ -56,7 +56,7 @@ role**:
 | `home` | someone is home, during the day | 21 °C |
 | `sleep` | at night, with someone home | 18 °C |
 | `eco` | nobody home, but someone is nearby (e.g. in town) | 17 °C |
-| `away` | everybody is far away, or vacation | 12 °C |
+| `away` | everybody is far, or vacation | 12 °C |
 | `comfort` | no automatic role; you use it in the schedule | 22 °C |
 | `activity` | no automatic role; you use it in the schedule | 20 °C |
 
@@ -78,7 +78,7 @@ applies now and which target follows. The decision is shown by the room's
 *Decision* sensor and in the card, with its reason. For example:
 
 - *Schedule: home*;
-- *Everyone is far away (outside the nearby zones)*;
+- *Everyone is far (outside the nearby zones)*;
 - *Window open: frost protection*.
 
 The decision is worked out again **at once** when something important changes

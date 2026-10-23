@@ -122,13 +122,13 @@ Vacation sets every room to `away`. It can start in three ways:
    - **Preheat before the end of a vacation** (4 hours by default): the schedule
      returns this many hours before the end, even if everybody is still far
      away, so it is warm when you come back.
-3. **Automatic vacation**: *Automatic vacation after far away for* (0 = off by
+3. **Automatic vacation**: *Automatic vacation after everyone is far for* (0 = off by
    default). When everybody has been far this many hours, the vacation starts by
    itself.
    - It ends when someone is *nearby* or *home*, or **on the way home** (the
      house preheats).
    - If everybody is then far again (e.g. you only passed by), it comes back only
-     after another that many hours far away.
+     after another that many hours far.
    - The preheating before the end of a planned vacation wins over the automatic
      vacation.
 

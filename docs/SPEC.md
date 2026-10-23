@@ -22,7 +22,7 @@ fits. Rooms heated by other thermostats, TRVs or plain relays are supported too.
 - **A fixed and explicit rule hierarchy** (section 12), so two rules never fight.
 - **Every decision has a visible reason**: the *Decision* sensor of the room
   shows the winning rule and a text explaining it.
-- **State survives restarts**: overrides, vacation, learned heating and cooling.
+- **State survives restarts**: manual changes, vacation, learned heating and cooling.
 - **Safe defaults**: without extra configuration the integration can neither let
   the house freeze nor overheat it.
 - **Advanced options are optional** and stay off until enabled.
@@ -216,7 +216,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | Command verification | on | Retry once after 2 min, then alert |
 | Valve exercise | off | Weekly full opening of the TRVs, in every mode (also in summer and outside the season); a pause, a manual change or an open window postpones it to later the same day; it does not ask for heat and its period is not learned |
 | Low battery | alert below 20 % | TRVs and sensors of the room |
-| Restart | restore | Overrides, vacation and learned data are kept |
+| Restart | restore | Manual changes, vacation and learned data are kept |
 | Periodic reevaluation | 5 min | In addition to events |
 | Invalid values | refused | A sensor value, attribute or saved value that is not a number (`nan`, `inf`) counts as unavailable or is dropped; a temperature sensor without a unit is read in the unit of the house. `set_override` refuses a temperature that is not a number and a duration outside 0.25–72 h (as in the form); the vacation entities refuse an end not after the start; a malformed `set_schedule` profile gives a clear error |
 | One owner per device | form check | A thermostat or relay is controlled by one room only (in every house); the heat source is not a room device; the relay of a Generic Thermostat used by a room is neither a room device nor a heat source; the outdoor sensor is not a room temperature sensor. Sensors may be shared |
@@ -231,7 +231,7 @@ One select for the house: **Auto / Vacation / Off / Summer**.
 | `sensor.<room>_target_temperature`, `sensor.<room>_room_temperature` | Target and room temperature, in the unit of the house |
 | `sensor.<room>_heating_rate` | Learned minutes per degree for the current outdoor temperature (fixed part, estimates, episodes) |
 | `sensor.<room>_cooling_rate` | How fast the room falls now without heating (coefficient, episodes, tolerance) |
-| `sensor.<room>_heating_runtime`, `sensor.<house>_heating_runtime` | Total heating time (total increasing): a room while its heat source runs, the house while the heat source runs (without one, while a room heats) |
+| `sensor.<room>_heating_time`, `sensor.<house>_heating_time` (`…_heating_runtime` when created before 2.3.18) | Total heating time (total increasing): a room while its heat source runs, the house while the heat source runs (without one, while a room heats) |
 | `sensor.<room>_next_change` | Next scheduled change |
 | `binary_sensor.<room>_heat_demand` | Whether the room asks for heat; the `heating` attribute tells if its heat source runs |
 | `sensor.<house>_presence` | home / nearby / far |

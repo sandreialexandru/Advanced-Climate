@@ -24,7 +24,7 @@ type: custom:smart-heating-control-card
 | Opțiune | Implicit | Ce face |
 | --- | --- | --- |
 | `title` | Încălzire | Titlul cardului (un text gol îl ascunde). |
-| `rooms` | toate | Lista senzorilor *Decision* ai camerelor de arătat. |
+| `rooms` | toate | Lista senzorilor *Decizie* ai camerelor de arătat. |
 | `show_house` | `true` | Partea casei (vezi mai jos). |
 | `show_rooms` | `true` | Camerele. |
 | `show_timeline` | `true` | Graficul fiecărei camere. |
@@ -53,24 +53,24 @@ collapsed: true
 - **Prezența** și starea fiecărei persoane.
 - **Media temperaturii de afară** (pe orele din *Medie pe*), **sezonul**,
   **cererea de căldură**, **timpul de încălzire**.
-- **Modul** (Auto / Vacation / Off / Summer), **Pauză**, **Oaspeți**, datele
-  **vacanței**, butoanele **Reevaluează** și anularea tuturor schimbărilor
+- **Modul** (Auto / Vacanță / Oprit / Vară), **Pauză**, **Oaspeți**, datele
+  **vacanței**, butoanele **Reevaluează** și anularea tuturor modificărilor
   manuale.
 - **Cald afară**, cât încălzirea e oprită pentru că e cald, cu motivul (media
   măsurată sau prognoza) sau când prognoza lasă încălzirea să pornească (vezi
-  [capitolul 6](06-vreme.ro.md)). Nu apare unde nu are efect: modul Off sau
-  Summer, în afara sezonului, în pauză.
+  [capitolul 6](06-vreme.ro.md)). Nu apare unde nu are efect: modul Oprit sau
+  Vară, în afara sezonului, în pauză.
 - O **bandă de pauză** sus, cât casa e în pauză.
 
 ## O cameră
 
 Antetul arată temperatura acum, ținta, decizia și motivul (în limba cardului),
-plus insignele pentru încălzire, fereastră deschisă și schimbare manuală. Sub
+plus insignele pentru încălzire, fereastră deschisă și modificare manuală. Sub
 țintă apare **timpul până la țintă** (de exemplu *~35 min*) sau, în timpul unei
 opriri anticipate, **temperatura estimată la schimbare** (*~21.5° la 22:00*).
 Dacă o cameră sub țintă nu încălzește, cardul spune de ce (*Nu încălzește: …*,
 vezi [capitolul 8](08-sursa-si-energie.ro.md#când-nu-încălzește-o-cameră-sub-țintă)).
-Butonul *Înapoi la automat* anulează o schimbare manuală.
+Butonul *Înapoi la automat* anulează o modificare manuală.
 
 Secțiunile, în ordine:
 
@@ -90,17 +90,17 @@ Valorile se citesc cu mouse-ul, la atingere sau trăgând pe grafic. Zoom cu
 butoanele (1h, 6h, −, +), dublu clic, ciupire sau Ctrl + rotiță, până la 20 de
 minute; când e mărit, te muți în timp trăgând fereastra din bara de sub grafic.
 
-Partea planificată arată ce se va întâmpla: programul; o schimbare manuală cu
+Partea planificată arată ce se va întâmpla: programul; o modificare manuală cu
 durată până la sfârșitul ei; o vacanță planificată până la preîncălzire; un
 eveniment din calendar până la sfârșitul lui. O fereastră, antiînghețul sau
-mișcarea robinetelor apar doar pentru acum. Modul Off / Summer, pauza, plecarea,
+mișcarea robinetelor apar doar pentru acum. Modul Oprit / Vară, pauza, plecarea,
 senzorii căzuți și *Cald afară* apar așa cum sunt acum, pe toată perioada.
 
 ### Setează temporar
 
 Pui un nivel sau o temperatură pentru un număr de ore: *[Setează] [21] °C pentru
-[2] h*. Ore goale = regula configurată pentru schimbările manuale. Tot aici e
-comutatorul **Child lock**.
+[2] h*. Ore goale = regula configurată pentru modificările manuale. Tot aici e
+comutatorul **Blocare modificări**.
 
 ### Niveluri
 
@@ -130,7 +130,7 @@ Pe grupuri:
   **Resetează** (cu un al doilea clic pentru confirmare), apoi ultimul episod de
   încălzire.
 
-La o schimbare manuală, cardul arată unde a fost făcută (card / serviciu sau pe
+La o modificare manuală, cardul arată unde a fost făcută (card / serviciu sau pe
 dispozitiv), până când, *se aplică după: …* sau *revine după: …*.
 
 Aproape orice valoare, stare sau insignă deschide la atingere fereastra cu
@@ -139,5 +139,5 @@ detaliile entității.
 ## Limba
 
 Cardul e în engleză și română, după limba Home Assistant. Motivul deciziei și
-numele ajustărilor sunt traduse (senzorul *Decision* le are ca `reason_key` și
+numele ajustărilor sunt traduse (senzorul *Decizie* le are ca `reason_key` și
 `reason_params`; `reason` rămâne textul în engleză).

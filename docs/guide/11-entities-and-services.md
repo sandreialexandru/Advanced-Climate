@@ -15,10 +15,10 @@ the house or the room, e.g. `sensor.bedroom_decision`.
 | *Guest mode* (switch) | Guest mode (the house stays *home*). |
 | *Vacation start*, *Vacation end* (date and time) | The vacation period. An end before (or equal to) the start is refused, as with `set_vacation`. |
 | *Heating season* (binary sensor) | Whether it is the heating season. |
-| *Outdoor cutoff* (binary sensor) | Whether the heating is off because it is warm. |
+| *Warm outside* (binary sensor) | Whether the heating is off because it is warm. |
 | *Heat demand* (binary sensor) | Whether heat is asked for now. |
 | *Outdoor average* (sensor) | The outdoor average over *Average over* hours; attributes: the latest value, the cutoff reason (`cutoff_reason`: `measured`, `forecast_warm`, `forecast_cold`), the forecast mean (`forecast_mean`), the thresholds, the forecast. |
-| *Heating runtime* (sensor) | Total heating hours of the house. |
+| *Heating time* (sensor) | Total heating hours of the house. |
 | *Clear manual changes* (button) | Clears the manual changes of every room. |
 | *Clear vacation* (button) | Clears the vacation. |
 | *Reevaluate* (button) | Works everything out again now. |
@@ -33,7 +33,7 @@ the house or the room, e.g. `sensor.bedroom_decision`.
 | *Next change* (sensor) | The next schedule change; attributes: the next level, the profile. |
 | *Heating rate* (sensor) | Learned minutes per degree for the outdoor temperature now (see [chapter 7](07-optimal-start-stop-and-learning.md)). |
 | *Cooling rate* (sensor) | How fast the room falls now without heating. |
-| *Heating runtime* (sensor) | Total heating hours of the room. |
+| *Heating time* (sensor) | Total heating hours of the room. |
 | *Heat demand* (binary sensor) | Whether the room asks for heat; the `heating` attribute shows whether its source runs. |
 | *Window open* (binary sensor) | Whether a window counts as open now. |
 | *Manual change* (binary sensor) | Whether a manual change is active. |
@@ -60,7 +60,7 @@ the house or the room, e.g. `sensor.bedroom_decision`.
 | `presence_far` | Everybody is far |
 | `presence_nearby` | Nobody home, someone nearby |
 | `room_unoccupied` | Room unoccupied |
-| `sensor_fallback` | Temperature sensors failed |
+| `sensor_fallback` | Temperature sensors unavailable |
 | `schedule` | The schedule |
 | `optimal_start` | Optimal start |
 | `optimal_stop` | Optimal stop |

@@ -9,7 +9,7 @@
 [![Tests](https://github.com/sandreialexandru/Smart-Heating-Control/actions/workflows/tests.yml/badge.svg)](https://github.com/sandreialexandru/Smart-Heating-Control/actions/workflows/tests.yml)
 
 Programe de încălzire pentru Home Assistant care țin cont de **prezență, zone,
-ferestre, vreme și schimbări manuale**, cu o singură decizie clară pentru
+ferestre, vreme și modificări manuale**, cu o singură decizie clară pentru
 fiecare cameră și motivul ei.
 
 Smart Heating Control este construită în jurul **Generic Thermostat**: folosește
@@ -62,10 +62,10 @@ interfața în engleză; cu Home Assistant în română ele apar traduse.
   următoarea oră din prognoză contează valoarea măsurată. Pragul, histerezisul,
   *Medie pe* și *Ore de prognoză* vin toate din opțiuni. Fără prognoză decide
   doar media măsurată.
-- **Schimbări manuale**: detectate automat și păstrate o durată fixă sau până
+- **Modificări manuale**: detectate automat și păstrate o durată fixă sau până
   la următoarea reevaluare (schimbare de program, prezență, fereastră sau mod).
   Un dispozitiv care doar raportează mai târziu valorile trimise de integrare
-  (de exemplu un TRV Zigbee pe baterie) nu e o schimbare manuală. Dacă între
+  (de exemplu un TRV Zigbee pe baterie) nu e o modificare manuală. Dacă între
   timp o regulă de mai sus (fereastră, antiîngheț) schimbă dispozitivele,
   valoarea manuală se pune din nou după aceea. Blocare pentru copii, pauză și
   butoane de anulare pe cameră și pentru toată casa.
@@ -84,7 +84,7 @@ interfața în engleză; cu Home Assistant în română ele apar traduse.
   sursa de căldură, și în pauză), temperatură maximă, verificarea comenzilor
   cu reîncercare, alerte pentru dispozitive indisponibile, senzori defecți,
   baterii descărcate și ferestre deschise, mișcarea robinetelor TRV.
-- **Vizibilitate**: un senzor *Decision* pentru fiecare cameră, cu regula
+- **Vizibilitate**: un senzor *Decizie* pentru fiecare cameră, cu regula
   câștigătoare și motivul, un eveniment la fiecare schimbare, diagnostic cu
   ultimele 100 de decizii și un card Lovelace cu program editabil.
 
@@ -122,7 +122,7 @@ testele; rulează și pe cea mai nouă).
    dispozitive, senzori, ferestre și program. Zona *Whole house* se schimbă la
    fel (*⋮ → Reconfigurează* pe pagina integrării).
 3. Restul se află în **opțiunile** integrării (prezență, zile lucrătoare și
-   calendar, vreme și sezon, energie, centrală, schimbări manuale și vacanță,
+   calendar, vreme și sezon, energie, centrală, modificări manuale și vacanță,
    alerte).
 
 ### Unitatea de temperatură
@@ -155,7 +155,7 @@ nimic:
   de călătorie, valorile pentru prag / prognoză / sezon / compensare doar
   pentru ce e activat, pragurile de preț și fotovoltaic doar cu senzorii lor,
   timpii sursei de căldură doar cu o sursă, durata fixă doar pentru acel tip de
-  schimbare manuală.
+  modificare manuală.
 
 ### Formatul programului
 
@@ -178,7 +178,7 @@ activ pentru toate zilele. Pornirea unui profil le oprește pe cele active cu ca
 se suprapune („toate zilele” se suprapune cu zilele lucrătoare și cu weekendul;
 zilele anume se suprapun când au o zi comună), deci o zi nu are niciodată două.
 
-O zi **neacoperită de niciun profil activ rămâne pe protecție la îngheț**; camera
+O zi **neacoperită de niciun profil activ rămâne pe antiîngheț**; camera
 afișează o alertă (*Fără profil activ în program: …*), iar cardul avertizează
 înainte ca pornirea sau oprirea unui profil să lase astfel de zile. Profilurile
 salvate înainte de 2.2 își păstrează zilele: `mon` … `sun` pentru ziua lor,
@@ -192,13 +192,13 @@ celelalte pornesc oprite. Selectorul *Profile* al camerelor a fost eliminat în
 Regulile sunt evaluate de sus în jos; prima care se aplică decide:
 
 1. Siguranță (antiîngheț, temperatură maximă) – aplicată mereu, și unei
-   schimbări manuale și în pauză (un nivel peste maxim se trimite ca maxim);
+   modificări manuale și în pauză (un nivel peste maxim se trimite ca maxim);
    antiînghețul pornește singur sursa de căldură
 2. Pauză
 3. Mișcarea robinetelor – în orice mod, nu cu o fereastră deschisă
 4. Mod Oprit / Vară / în afara sezonului de încălzire
 5. Fereastră deschisă
-6. Schimbare manuală
+6. Modificare manuală
 7. Vacanță (într-o zi fără profil activ: antiîngheț)
 8. Prezență: departe → `away` (într-o zi fără profil activ: antiîngheț),
    aproape → `eco` (sau o temperatură fixă; cu *Nu peste program* cea mai mică
@@ -211,17 +211,17 @@ fotovoltaic, câștig solar) și limitele de siguranță.
 
 ## Entități
 
-Casă: *Mode* (select), *Presence* (acasă / aproape / departe), *Pause* și
-*Guest mode* (comutatoare), *Vacation start / end* (dată și oră), *Heating
-season*, *Outdoor cutoff* și *Heat demand* (senzori binari), *Outdoor average*,
-*Heating runtime*, butoane pentru anularea schimbărilor manuale, anularea
+Casă: *Mod* (select), *Prezență* (acasă / aproape / departe), *Pauză* și
+*Mod oaspeți* (comutatoare), *Început / Sfârșit vacanță* (dată și oră), *Heating
+season*, *Cald afară* și *Cerere de căldură* (senzori binari), *Medie afară*,
+*Timp de încălzire*, butoane pentru anularea modificărilor manuale, anularea
 vacanței și reevaluare.
 
-Cameră: *Decision* (enum, cu motivul în atribute), *Target temperature*, *Room
-temperature*, *Next change*, *Heating rate*, *Cooling rate*, *Heating
-runtime*, *Heat demand*, *Window open*, *Manual change*,
-*Child lock* (comutator), *Clear manual change*, *Reset heating learning* și
-*Reset cooling learning* (butoane) și, pentru camerele
+Cameră: *Decizie* (enum, cu motivul în atribute), *Temperatură țintă*, *Room
+temperature*, *Următoarea schimbare*, *Viteză de încălzire*, *Viteză de răcire*, *Heating
+runtime*, *Cerere de căldură*, *Fereastră deschisă*, *Modificare manuală*,
+*Blocare modificări* (comutator), *Anulează modificarea manuală*, *Resetează învățarea încălzirii* și
+*Resetează învățarea răcirii* (butoane) și, pentru camerele
 fără Generic Thermostat, temperaturile nivelurilor (numere).
 
 ## Învățarea încălzirii
@@ -294,11 +294,11 @@ temperatura de afară (o linie dreaptă).
   setarea *Hysteresis* (și pentru termostatele indisponibile la configurare,
   care nu pot fi verificate).
 
-Senzorii *Heating runtime* numără la fel: o cameră cât merge sursa ei de
+Senzorii *Timp de încălzire* numără la fel: o cameră cât merge sursa ei de
 căldură, casa cât merge sursa de căldură (fără ea, cât încălzește cel puțin o
 cameră). Graficul din card arată aceste perioade.
 
-Senzorul *Heating rate* arată **minutele pe grad** pentru temperatura de
+Senzorul *Viteză de încălzire* arată **minutele pe grad** pentru temperatura de
 afară de acum; atributele arată partea fixă (`fixed_minutes`), minutele pe grad
 la −10 / 0 / 10 / 20 °C, schimbarea pe grad de afară, ce termeni se folosesc,
 numărul de episoade (și al celor mari), cât de jos sub țintă începe un episod
@@ -310,7 +310,7 @@ Cât timp o cameră e sub țintă, cardul arată sub temperatura țintă **timpu
 până la țintă** (de exemplu *~35 min*), după încălzirea învățată pentru
 temperatura de afară de acum; până la primul episod arată *se învață…*, cu
 valoarea implicită folosită dedesubt (*implicit 60 min/1°C*).
-Senzorul *Decision* îl are ca atribut `time_to_target` (minute).
+Senzorul *Decizie* îl are ca atribut `time_to_target` (minute).
 
 ## Învățarea răcirii și oprirea anticipată
 
@@ -348,8 +348,8 @@ scade de la 22 la 21,5 °C în 40 de minute, sleep începe la 21:20.
   întâmplă des, micșorează *Maximum early stop*.
 - Cardul arată temperatura estimată la schimbare (de exemplu *~21.5° la
   22:00*), după răcirea învățată și temperatura de afară așteptată până
-  atunci; senzorul *Decision* o are ca atribut `stop_forecast`.
-- Senzorul *Cooling rate* arată cât de repede scade camera acum fără
+  atunci; senzorul *Decizie* o are ca atribut `stop_forecast`.
+- Senzorul *Viteză de răcire* arată cât de repede scade camera acum fără
   încălzire; atributele arată coeficientul, episoadele și toleranța.
 
 ## Prognoza de afară pentru pornirea / oprirea anticipată
@@ -371,7 +371,7 @@ pragul de oprire după prognoză sau o cameră cu pornire / oprire anticipată.
 Cardul arată următoarea pornire sau oprire anticipată în *Detaliile* camerei
 (de exemplu *Pornire pentru presetul home (21.0°) la 07:00: începe pe la 05:10, afară
 prognozat 2.4°*, sau *Pornire pentru temperatura 21.0° la …* când nivelul se trimite ca temperatură; *în curs din …* după ce a început; *se învață…* până se învață ceva).
-Senzorul *Decision* o are ca atribut `next_estimate`: `kind` (`optimal_start` /
+Senzorul *Decizie* o are ca atribut `next_estimate`: `kind` (`optimal_start` /
 `optimal_stop`), `at` (schimbarea), `preset`, `minutes`, `starts_at`,
 `started_at`, `outdoor`, `outdoor_source` (`forecast` / `now`), `learned`,
 `sent_as` (`preset` / `temperature`) și `temperature` (a nivelului).
@@ -383,8 +383,8 @@ temperatură de afară cunoscută și să nu fie anulată pentru acea schimbare.
 
 | Serviciu | Descriere |
 | --- | --- |
-| `advanced_climate.set_override` | Setează un preset sau o temperatură ca schimbare manuală (durată opțională) |
-| `advanced_climate.clear_override` | Anulează schimbările manuale (o cameră sau toate) |
+| `advanced_climate.set_override` | Setează un preset sau o temperatură ca modificare manuală (durată opțională) |
+| `advanced_climate.clear_override` | Anulează modificările manuale (o cameră sau toate) |
 | `advanced_climate.set_vacation` | Setează sau anulează perioada de vacanță |
 | `advanced_climate.reevaluate` | Evaluează totul acum |
 | `advanced_climate.set_schedule` | Înlocuiește programul unei camere (text sau profiluri) |
@@ -412,8 +412,8 @@ type: custom:smart-heating-control-card
 | Opțiune | Implicit | Arată |
 | --- | --- | --- |
 | `title` | Încălzire | Titlul cardului (un text gol îl ascunde) |
-| `rooms` | toate | Lista senzorilor *Decision* ai camerelor de arătat |
-| `show_house` | `true` | Prezența și persoanele, media temperaturii de afară (pe orele din *Medie pe*), sezonul, cererea de căldură, timpul de încălzire, modul (Auto / Vacanță / Oprit / Vară), Pauză, Oaspeți, datele vacanței, reevaluare și anularea tuturor schimbărilor manuale |
+| `rooms` | toate | Lista senzorilor *Decizie* ai camerelor de arătat |
+| `show_house` | `true` | Prezența și persoanele, media temperaturii de afară (pe orele din *Medie pe*), sezonul, cererea de căldură, timpul de încălzire, modul (Auto / Vacanță / Oprit / Vară), Pauză, Oaspeți, datele vacanței, reevaluare și anularea tuturor modificărilor manuale |
 | `show_rooms` | `true` | Camerele |
 | `show_timeline` | `true` | Graficul ultimelor 24 de ore și al următoarelor 12: temperatura camerei, ținta (colorată după nivel), nivelurile planificate și perioadele în care camera s-a încălzit. Valorile se citesc cu mouse-ul, la atingere sau trăgând pe grafic. Zoom cu butoanele (1h, 6h, −, +), dublu clic, ciupire sau Ctrl + rotiță, până la 20 de minute; când e mărit, deplasarea în timp se face trăgând fereastra din bara de sub grafic (sau atingând un loc pe ea) |
 | `show_quick_override` | `true` | Setează un nivel sau o temperatură pentru un număr de ore (gol = regula configurată) |
@@ -422,10 +422,10 @@ type: custom:smart-heating-control-card
 | `show_schedule_editor` | `true` | Profilurile programului cu editor: orele de început se trag pe bara zilei (pași de 5 minute), un profil se copiază peste altă zi |
 | `collapsed` | `false` | Camerele încep pliate; atinge numele camerei ca s-o deschizi |
 | `compact` | `false` | Un rând pe cameră (nume, regulă, acum → țintă) și unul pentru casă; atinge un rând ca să-l deschizi |
-| `runtime_period` | `day` | Timpul de încălzire arătat pentru `day`, `week` sau `month` (perioade calendaristice, din statisticile pe termen lung; atinge valoarea în card ca s-o schimbi). Senzorii *Heating runtime* rămân totaluri cumulate |
+| `runtime_period` | `day` | Timpul de încălzire arătat pentru `day`, `week` sau `month` (perioade calendaristice, din statisticile pe termen lung; atinge valoarea în card ca s-o schimbi). Senzorii *Timp de încălzire* rămân totaluri cumulate |
 
 Fiecare cameră arată și decizia, motivul, insignele pentru încălzire /
-fereastră / schimbare manuală și *Înapoi la automat*; comutatorul *Child lock*
+fereastră / modificare manuală și *Înapoi la automat*; comutatorul *Blocare modificări*
 este în *Setează temporar*. Secțiunile sunt, în ordine: *Setează temporar*,
 *Niveluri*, *Program* (fiecare profil cu zilele lui și un comutator pornit /
 oprit; zilele se aleg în editor) și *Detalii*.
@@ -433,21 +433,21 @@ oprit; zilele se aleg în editor) și *Detalii*.
 - **Nu încălzește**: sub țintă, camera spune de ce nu încălzește (în toleranța
   termostatului sau în histerezis, timp minim pornit / oprit, așteaptă alte
   camere sau camera de referință, sursa de căldură oprită sau necunoscută,
-  termostatul oprit). Senzorul *Decision* îl are ca `no_heat_reason`.
+  termostatul oprit). Senzorul *Decizie* îl are ca `no_heat_reason`.
 - **Cald afară**: cât încălzirea e oprită pentru că e cald, casa arată de ce,
   de exemplu *Cald afară: pornit • încălzirea e oprită până media scade la
   16°*, *pornit (prognoză) • încălzirea e oprită: media prognozei pe 3 h este
   19.2°*, sau cât prognoza lasă încălzirea să pornească *anulat (prognoză) • vine frigul: media prognozei pe 3 h
-  este 12.4°, camerele încălzesc la nevoie*; senzorul *Outdoor average* are
+  este 12.4°, camerele încălzesc la nevoie*; senzorul *Medie afară* are
   `cutoff_reason` (`measured`, `forecast_warm`, `forecast_cold`) și
-  `forecast_mean`. Nu apare unde pragul nu are efect: modul Off sau
-  Summer, în afara sezonului de încălzire și în pauză (în Vacanță rămâne:
+  `forecast_mean`. Nu apare unde pragul nu are efect: modul Oprit sau
+  Vară, în afara sezonului de încălzire și în pauză (în Vacanță rămâne:
   *away* încă încălzește).
 - **Grafic**: partea planificată urmează ce se va întâmpla: programul; o
-  schimbare manuală cu durată până la sfârșitul ei; o vacanță planificată până
+  modificare manuală cu durată până la sfârșitul ei; o vacanță planificată până
   la preîncălzire și un eveniment din calendar până la sfârșitul lui, apoi
   programul; fereastra, antiînghețul sau exercitarea ventilelor doar pentru
-  acum (programul în continuare); modul Off / Summer, în afara sezonului,
+  acum (programul în continuare); modul Oprit / Vară, în afara sezonului,
   pauza, toți plecați sau în apropiere, senzorii picați și cald afară așa cum
   sunt acum, pe toată perioada.
 - **Grafic**: temperatura de afară pe o bandă separată (măsurată, apoi
@@ -456,7 +456,7 @@ oprit; zilele se aleg în editor) și *Detalii*.
   mai lungă decât permit setările camerei); în ea ținta programată este deja
   nivelul următor, iar tooltip-ul arată *Pornire anticipată* / *Oprire
   anticipată* deasupra ei.
-- **Pauză**: o bandă sus pe card cât timp casa e în pauză (comutatorul *Pause*
+- **Pauză**: o bandă sus pe card cât timp casa e în pauză (comutatorul *Pauză*
   rămâne singurul control).
 - **Detalii**, pe grupuri: alertele camerei și ale casei (primele, în limba
   cardului); *Temperaturi* (camera, ținta, presetul termostatului, ajustările,
@@ -465,7 +465,7 @@ oprit; zilele se aleg în editor) și *Detalii*.
   fixă și minutele pe grad acum; răcire: episoade și cât de repede scade camera
   acum; fiecare cu un buton **Resetează** care cere confirmare printr-un al
   doilea clic; ultimul episod de încălzire la sfârșit).
-- **Schimbare manuală**: unde a fost făcută (card / serviciu sau pe dispozitiv),
+- **Modificare manuală**: unde a fost făcută (card / serviciu sau pe dispozitiv),
   până când, *se aplică după: …* cât timp o regulă de mai sus ține o schimbare
   din card departe de dispozitive și *revine după: …* cât timp o regulă de mai
   sus o întrerupe.
@@ -474,7 +474,7 @@ oprit; zilele se aleg în editor) și *Detalii*.
 - **Linkuri**: valorile, stările, insignele și detaliile deschid fereastra cu
   detaliile entității.
 - **Limbă**: motivul deciziei și numele ajustărilor apar în limba cardului
-  (senzorul *Decision* le are ca `reason_key` și `reason_params`; `reason`
+  (senzorul *Decizie* le are ca `reason_key` și `reason_params`; `reason`
   rămâne textul în engleză).
 
 

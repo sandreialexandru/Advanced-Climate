@@ -534,7 +534,7 @@
           },
           "data_description": {
             "solar_offset": "Valoare negativă (de ex. -1) coboară ținta cât e soare, pentru camerele încălzite de soare. Folosește entitatea meteo a casei (apare doar dacă e setată). 0 = oprit.",
-            "valve_exercise": "Deschide TRV-urile complet 5 minute o dată pe săptămână, contra calcarului, în orice mod (și vara). O pauză, o schimbare manuală sau o fereastră deschisă o amână pentru mai târziu în aceeași zi; nu cere căldură."
+            "valve_exercise": "Deschide TRV-urile complet 5 minute o dată pe săptămână, contra calcarului, în orice mod (și vara). O pauză, o modificare manuală sau o fereastră deschisă o amână pentru mai târziu în aceeași zi; nu cere căldură."
           }
         },
         "levels_nearby": {
@@ -651,7 +651,7 @@
         }
       },
       "outdoor_average": {
-        "name": "Medie exterioară"
+        "name": "Medie afară"
       },
       "heating_runtime": {
         "name": "Timp de încălzire"
@@ -663,8 +663,8 @@
           "frost_protection": "Antiîngheț",
           "maximum_temperature": "Temperatură maximă",
           "pause": "Pauză",
-          "mode_off": "Oprit",
-          "summer": "Vară",
+          "mode_off": "Mod oprit",
+          "summer": "Mod vară",
           "out_of_season": "În afara sezonului",
           "valve_exercise": "Mișcarea robinetelor",
           "window_open": "Fereastră deschisă",
@@ -701,7 +701,7 @@
         "name": "Sezon de încălzire"
       },
       "outdoor_cutoff": {
-        "name": "Oprire de la exterior"
+        "name": "Cald afară"
       },
       "heat_demand": {
         "name": "Cerere de căldură"

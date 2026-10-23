@@ -104,7 +104,7 @@
           "weather": "Weather and season",
           "energy": "Energy",
           "boiler": "Heat source and heat demand",
-          "behavior": "Overrides, vacation and limits",
+          "behavior": "Manual changes, vacation and limits",
           "alerts": "Alerts"
         }
       },
@@ -195,12 +195,12 @@
         "description": "Only for houses where the rooms cannot start the heat source themselves (TRVs or zone valves): the integration then starts it when rooms ask for heat, and a room heats (for the learning and the heating time) only while it runs. With Generic Thermostat or a relay on the boiler leave it empty; the alert below still works."
       },
       "behavior": {
-        "title": "Overrides, vacation and limits",
+        "title": "Manual changes, vacation and limits",
         "data": {
           "override_mode": "Manual changes are kept",
           "override_scope": "Manual change applies to",
           "vacation_preheat_hours": "Preheat before the end of a vacation",
-          "auto_vacation_hours": "Automatic vacation after far away for",
+          "auto_vacation_hours": "Automatic vacation after everyone is far for",
           "frost_temp": "Frost protection",
           "max_temp": "Maximum temperature",
           "reevaluation_minutes": "Periodic check every"
@@ -209,7 +209,7 @@
           "override_mode": "One rule for every manual change. 'Fixed duration' keeps it for the hours below. 'Until next reevaluation' ends when the schedule, presence, a window or the mode changes; the periodic check does not end it.",
           "override_scope": "'Only that room' suits most homes. 'Whole house' copies a manual change to every room; use it only when every room has its own valves.",
           "vacation_preheat_hours": "The schedule returns this many hours before the vacation ends, so the house is warm when you arrive.",
-          "auto_vacation_hours": "Turns on the vacation by itself after everybody has been far away this long. 0 = only manually.",
+          "auto_vacation_hours": "Turns on the vacation by itself after everybody has been far this long. 0 = only manually.",
           "frost_temp": "Used with an open window or the Off mode. Rooms with Generic Thermostat use its minimum temperature instead.",
           "max_temp": "No level, adjustment or manual change from the integration goes above this.",
           "reevaluation_minutes": "Safety check that resends the decision if a device lost it. Changes are applied immediately anyway; 5–15 minutes is fine."
@@ -654,7 +654,7 @@
         "name": "Outdoor average"
       },
       "heating_runtime": {
-        "name": "Heating runtime"
+        "name": "Heating time"
       },
       "decision": {
         "name": "Decision",
@@ -662,18 +662,18 @@
           "starting": "Starting",
           "frost_protection": "Frost protection",
           "maximum_temperature": "Maximum temperature",
-          "pause": "Paused",
-          "mode_off": "Off",
-          "summer": "Summer",
+          "pause": "Pause",
+          "mode_off": "Mode off",
+          "summer": "Summer mode",
           "out_of_season": "Out of season",
           "valve_exercise": "Valve exercise",
           "window_open": "Window open",
           "manual_override": "Manual change",
           "vacation": "Vacation",
-          "presence_far": "Far away",
+          "presence_far": "Far",
           "presence_nearby": "Nearby",
           "room_unoccupied": "Room unoccupied",
-          "sensor_fallback": "Sensor fallback",
+          "sensor_fallback": "Sensor unavailable",
           "schedule": "Schedule",
           "optimal_start": "Optimal start",
           "optimal_stop": "Optimal stop",
@@ -701,7 +701,7 @@
         "name": "Heating season"
       },
       "outdoor_cutoff": {
-        "name": "Outdoor cutoff"
+        "name": "Warm outside"
       },
       "heat_demand": {
         "name": "Heat demand"

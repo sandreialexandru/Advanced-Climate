@@ -74,7 +74,7 @@ Pe lângă niveluri mai există două limite:
 
 Pentru fiecare cameră integrarea calculează mereu **o singură decizie**: ce
 regulă se aplică acum și ce țintă rezultă. Decizia se vede în senzorul
-*Decision* al camerei și în card, împreună cu motivul. De exemplu:
+*Decizie* al camerei și în card, împreună cu motivul. De exemplu:
 
 - *Program: home*;
 - *Toți sunt departe (în afara zonelor apropiate)*;
@@ -90,14 +90,14 @@ Ca două reguli să nu se contrazică niciodată, ele au o **ordine fixă**. Se
 verifică de sus în jos, iar prima care se aplică decide:
 
 1. **Siguranță**: antiîngheț și temperatură maximă. Se aplică mereu, chiar și
-   peste o schimbare manuală sau în pauză.
+   peste o modificare manuală sau în pauză.
 2. **Pauză**: integrarea nu trimite nicio comandă.
 3. **Mișcarea robinetelor**: o dată pe săptămână TRV-urile se deschid complet
    câteva minute, contra depunerilor.
 4. **Mod Oprit / Vară / în afara sezonului**: încălzire oprită (la Oprit, doar
    antiîngheț).
 5. **Fereastră deschisă**.
-6. **Schimbare manuală**.
+6. **Modificare manuală**.
 7. **Vacanță**: `away`.
 8. **Prezență**: departe → `away`, aproape → `eco` (sau o temperatură fixă).
 9. **Program**: cu pornirea și oprirea anticipată și ocuparea camerei.

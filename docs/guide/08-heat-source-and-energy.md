@@ -115,9 +115,9 @@ sum is limited to ±3 °C and never applies to a frost protection (see
 
 ## Heating time
 
-- **Heating runtime** of every room: how long the room heated (while its source
+- **Heating time** of every room: how long the room heated (while its source
   ran).
-- **Heating runtime** of the house: how long the heat source ran; without a
+- **Heating time** of the house: how long the heat source ran; without a
   source, how long at least one room heated.
 - **Heat demand** (binary sensor) of the house: whether heat is asked for now; of
   a room: whether the room asks, with the `heating` attribute (whether its

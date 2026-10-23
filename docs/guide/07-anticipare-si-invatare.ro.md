@@ -137,7 +137,7 @@ implicită de 30 de minute, începe la **21:30**.
 
 - **Timpul până la țintă**: cât timp camera e sub țintă, sub temperatura țintă
   apare de exemplu *~35 min* (atributul `time_to_target` al senzorului
-  *Decision*).
+  *Decizie*).
 - **Următoarea pornire / oprire anticipată**, în *Detaliile* camerei, de exemplu
   *Pornire pentru presetul home (21.0°) la 07:00: începe pe la 05:10, afară
   prognozat 2.4°*; după ce a început, *în curs din …*.
@@ -147,14 +147,14 @@ implicită de 30 de minute, începe la **21:30**.
 - **Învățarea**, în *Detalii*: numărul de episoade, partea fixă și minutele pe
   grad acum (de exemplu *12 episoade · 25 min + 49 min/°C acum*), cât de repede
   scade camera acum și ultimul episod.
-- Senzorii **Heating rate** (minute pe grad acum, cu atribute) și **Cooling
+- Senzorii **Viteză de încălzire** (minute pe grad acum, cu atribute) și **Cooling
   rate** (cât de repede scade camera acum fără încălzire).
 
 ## Resetarea învățării
 
 Dacă ai schimbat ceva important (alte calorifere, altă curbă a centralei,
 izolație nouă), învățarea se adaptează singură în câteva săptămâni. Ca să
-înceapă imediat de la zero, apasă **Reset heating learning** sau **Reset
+înceapă imediat de la zero, apasă **Resetează învățarea încălzirii** sau **Reset
 cooling learning** (butoanele camerei, sau *Resetează* în *Detaliile* cardului,
 cu un al doilea clic pentru confirmare).
 

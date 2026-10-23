@@ -57,7 +57,7 @@ casa e *aproape* (`eco`). Când vine și Maria, casa e *acasă* (programul).
 - **Senzori de prezență** (mmWave, mișcare, un `input_boolean`): cât e pornit
   oricare dintre ei, casa e *acasă*. Util pentru cine nu are telefon (copii,
   bunici) sau ca siguranță.
-- **Modul oaspeți** (comutatorul *Guest mode* al casei): ține casa *acasă*
+- **Modul oaspeți** (comutatorul *Mod oaspeți* al casei): ține casa *acasă*
   indiferent de persoane, de exemplu când vin musafiri și tu pleci. Se oprește
   singur după *Modul oaspeți se oprește după* ore (0 = doar manual).
 
@@ -114,8 +114,8 @@ pe program.
 
 Vacanța pune toate camerele pe `away`. Se poate porni în trei feluri:
 
-1. **Modul *Vacation*** (selectul *Mode* al casei): vacanță până îl schimbi.
-2. **Datele vacanței** (*Vacation start* și *Vacation end*, sau serviciul
+1. **Modul *Vacanță*** (selectul *Mod* al casei): vacanță până îl schimbi.
+2. **Datele vacanței** (*Început vacanță* și *Sfârșit vacanță*, sau serviciul
    `set_vacation`): vacanța începe și se termină singură.
    - Doar cu data de sfârșit: vacanța începe acum.
    - **Preîncălzire înainte de sfârșitul vacanței** (implicit 4 ore):
@@ -143,7 +143,7 @@ trece singură pe vacanță (`away`). Duminică seara, la 10 km de casă, vacan�
 automată se termină și casa se încălzește.
 
 Cardul are câmpurile pentru datele vacanței și butonul de anulare. Senzorul
-*Presence* al casei arată în atribute starea fiecărei persoane (`persons`), dacă
+*Prezență* al casei arată în atribute starea fiecărei persoane (`persons`), dacă
 cineva e pe drum spre casă (`arriving`), modul oaspeți (`guest_mode`), dacă e
 vacanță (`vacation_active`) sau preîncălzirea dinaintea sfârșitului ei
 (`vacation_preheating`), și o schimbare care așteaptă întârzierea (`pending`,

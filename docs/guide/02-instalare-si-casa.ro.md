@@ -229,7 +229,7 @@ Detalii: [capitolul 8](08-sursa-si-energie.ro.md).
 | Setare | Implicit | Ce face |
 | --- | --- | --- |
 | Modificările manuale se păstrează | Durată fixă | *Durată fixă* (orele de mai jos) sau *Până la următoarea reevaluare* (până se schimbă programul, prezența, o fereastră sau modul). |
-| Modificarea manuală se aplică | Doar acea cameră | *Toată casa* copiază o schimbare manuală în toate camerele; doar când fiecare cameră are robinete proprii. |
+| Modificarea manuală se aplică | Doar acea cameră | *Toată casa* copiază o modificare manuală în toate camerele; doar când fiecare cameră are robinete proprii. |
 | Preîncălzire înainte de sfârșitul vacanței | 4 h | Programul revine cu atâtea ore înainte de sfârșitul vacanței. |
 | Vacanță automată după departe timp de | 0 h (oprit) | Vacanța pornește singură după ce toți au fost departe atâtea ore. |
 | Antiîngheț | 7 °C (3 – 15 °C) | Cea mai mică temperatură. Camerele cu Generic Thermostat folosesc în locul ei temperatura minimă a GT. |
